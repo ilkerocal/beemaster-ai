@@ -7,50 +7,54 @@
   <meta name="description" content="BeeMaster AI - Yapay zeka destekli arıcılık yönetim platformu">
   <title>🐝 BeeMaster AI - Arıcılık Yönetimi</title>
 
-  <!-- Cache control — force fresh load -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+  <!-- Cache bypass -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
-  <!-- PWA Manifest -->
-  <link rel="manifest" href="manifest.json?v=3">
-  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg?v=3">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=3">
-
-  <!-- iOS PWA -->
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json?v=5">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg?v=5">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=5">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BeeMaster AI">
+  <meta name="application-name" content="BeeMaster AI">
 
-  <!-- Stylesheet (cache-busted) -->
-  <link rel="stylesheet" href="css/app.css?v=3">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/app.css?v=5">
 
-  <!-- Leaflet (Harita için — opsiyonel CDN) -->
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
 
-  <!-- Initial loading screen — shown until JS loads -->
+  <!-- Boot screen (CSS inline, instantly visible) -->
   <style>
     .boot-screen {
-      position: fixed; inset: 0; z-index: 9999;
+      position: fixed; inset: 0; z-index: 99999;
       background: #07080C; color: #E8EAF2;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      transition: opacity 0.3s;
+      transition: opacity 0.4s ease;
     }
     .boot-screen.hidden { opacity: 0; pointer-events: none; }
-    .boot-screen__logo { font-size: 64px; margin-bottom: 16px; animation: pulse 2s ease-in-out infinite; }
-    .boot-screen__title { font-size: 24px; font-weight: 800; margin-bottom: 8px; background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .boot-screen__logo { font-size: 72px; margin-bottom: 16px; animation: pulse 2s ease-in-out infinite; }
+    .boot-screen__title { font-size: 26px; font-weight: 800; margin-bottom: 8px;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text;
+      background-clip: text; color: transparent; letter-spacing: -0.02em; }
     .boot-screen__sub { font-size: 13px; color: #8A8FA3; margin-bottom: 32px; }
-    .boot-screen__loader { width: 200px; height: 3px; background: #1F2330; border-radius: 2px; overflow: hidden; }
+    .boot-screen__loader { width: 220px; height: 3px; background: #1F2330; border-radius: 2px; overflow: hidden; }
     .boot-screen__bar { height: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b); width: 30%; animation: slide 1.5s ease-in-out infinite; }
     @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
     @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
-    noscript { display: flex; align-items: center; justify-content: center; height: 100vh; background: #07080C; color: #E8EAF2; font-family: system-ui; }
+    noscript {
+      display: flex; align-items: center; justify-content: center; height: 100vh;
+      background: #07080C; color: #E8EAF2; font-family: system-ui; text-align: center; padding: 20px;
+    }
   </style>
 </head>
 <body>
-  <!-- Boot screen — instantly visible, hides when app loads -->
+  <!-- Boot screen — instantly visible, hides when App.init completes -->
   <div class="boot-screen" id="boot-screen">
     <div class="boot-screen__logo">🐝</div>
     <div class="boot-screen__title">BeeMaster AI</div>
@@ -59,12 +63,13 @@
   </div>
 
   <noscript>
-    <div style="text-align:center;padding:20px">
+    <div>
       <h1>🐝 BeeMaster AI</h1>
       <p>JavaScript gereklidir. Lütfen tarayıcınızda JS'yi etkinleştirin.</p>
     </div>
   </noscript>
 
+  <!-- App shell -->
   <div class="app">
     <aside class="sidebar" id="sidebar"></aside>
 
@@ -104,7 +109,7 @@
   <nav class="bottom-nav" id="bottom-nav"></nav>
 
   <!-- Modal -->
-  <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)BM.Modal.close()">
+  <div class="modal-overlay" id="modal-overlay">
     <div class="modal">
       <div class="modal__head">
         <div class="modal__title" id="modal-title">Başlık</div>
@@ -120,86 +125,74 @@
     </div>
   </div>
 
-  <!-- Toast -->
+  <!-- Toast container -->
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- Global error handler — shows errors on screen so user knows what's wrong -->
+  <!-- ============================================================
+       SINGLE BUNDLE — All BM modules + App controller
+       Loaded with defer to ensure DOM ready before execution
+       ============================================================ -->
+  <script src="js/app.bundle.js?v=5" defer></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous" defer></script>
+
+  <!-- Init script — runs AFTER bundle (DOMContentLoaded) -->
   <script>
+    // Global error handler
     window.addEventListener('error', e => {
-      console.error('JS Error:', e.error);
-      const err = document.getElementById('js-error');
-      if (err) {
-        err.textContent = '⚠️ JS Hatası: ' + (e.error?.message || e.message);
-        err.style.display = 'block';
+      console.error('[GLOBAL ERROR]', e.error || e.message);
+    });
+    window.addEventListener('unhandledrejection', e => {
+      console.error('[UNHANDLED REJECTION]', e.reason);
+    });
+
+    // Hide boot screen once App is ready
+    function hideBootScreen() {
+      var boot = document.getElementById('boot-screen');
+      if (boot && !boot.classList.contains('hidden')) {
+        boot.classList.add('hidden');
+        setTimeout(function() { if (boot.parentNode) boot.remove(); }, 500);
       }
-    });
-  </script>
+    }
 
-  <!-- Scripts (sıralama önemli) -->
-  <script>
-    // Hide boot screen once everything is loaded
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        var boot = document.getElementById('boot-screen');
-        if (boot) {
-          boot.classList.add('hidden');
-          setTimeout(function() { boot.remove(); }, 400);
-        }
-      }, 200);
-    });
-
-    // Init App
-    try {
-      App.init();
-      console.log('[BeeMaster AI v3.0] Initialized OK');
-    } catch (e) {
-      console.error('App.init failed:', e);
+    // Show error on boot screen
+    function showBootError(msg) {
       var boot = document.getElementById('boot-screen');
       if (boot) {
-        boot.innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px"><div style="font-size:48px;margin-bottom:12px">⚠️</div><div style="font-size:18px;font-weight:700;margin-bottom:8px">Yükleme Hatası</div><div style="font-size:13px;color:#8A8FA3;max-width:400px">' + (e.message || e) + '</div><button onclick="localStorage.clear();location.reload()" style="margin-top:20px;padding:10px 20px;background:#F4B400;color:#000;border:none;border-radius:8px;cursor:pointer;font-weight:600">Sayfayı Yenile & Cache Temizle</button></div>';
+        boot.innerHTML = '<div style="text-align:center;padding:32px;max-width:480px">' +
+          '<div style="font-size:56px;margin-bottom:16px">⚠️</div>' +
+          '<div style="font-size:20px;font-weight:800;margin-bottom:12px;color:#EF4444">Yükleme Hatası</div>' +
+          '<div style="font-size:13px;color:#8A8FA3;line-height:1.5;margin-bottom:20px">' + msg + '</div>' +
+          '<button onclick="localStorage.clear();location.reload()" style="padding:12px 24px;background:#F4B400;color:#000;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:14px">🔄 Yenile & Cache Temizle</button>' +
+          '</div>';
       }
     }
-  </script>
 
-  <!-- Error display -->
-  <div id="js-error" style="display:none;position:fixed;top:0;left:0;right:0;background:#dc2626;color:white;padding:10px 20px;font-family:system-ui;font-size:13px;z-index:10000"></div>
-
-  <!-- Service Worker (network-first, no cache) -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      // Unregister OLD SWs (they cause caching issues)
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        regs.forEach(function(reg) { reg.unregister(); });
-      });
-    }
-  </script>
-<script src="js/app.bundle.js?v=4"></script>
-  <script>
-    // Hide boot screen once everything is loaded
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        var boot = document.getElementById('boot-screen');
-        if (boot) {
-          boot.classList.add('hidden');
-          setTimeout(function() { boot.remove(); }, 400);
-        }
-      }, 200);
-    });
-
-    try {
-      if (typeof App !== 'undefined') {
+    // Init App — wait for DOM + bundle
+    function bootstrap() {
+      if (typeof App === 'undefined' || typeof BM === 'undefined') {
+        return setTimeout(bootstrap, 50);
+      }
+      try {
         App.init();
-        console.log('[BeeMaster AI v3.1] Bundled · Initialized OK');
-      } else {
-        throw new Error('App not loaded');
-      }
-    } catch (e) {
-      console.error('App.init failed:', e);
-      var boot = document.getElementById('boot-screen');
-      if (boot) {
-        boot.innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px;max-width:400px"><div style="font-size:48px;margin-bottom:12px">⚠️</div><div style="font-size:18px;font-weight:700;margin-bottom:8px">Yükleme Hatası</div><div style="font-size:13px;color:#8A8FA3">' + (e.message || e) + '</div><button onclick="localStorage.clear();location.reload()" style="margin-top:20px;padding:10px 20px;background:#F4B400;color:#000;border:none;border-radius:8px;cursor:pointer;font-weight:600">Yenile & Cache Temizle</button></div>';
+        console.log('[BeeMaster AI v3.5] Ready');
+        setTimeout(hideBootScreen, 300);
+      } catch (e) {
+        console.error('Init failed:', e);
+        showBootError(e.message || 'Bilinmeyen hata');
       }
     }
+
+    // Start polling for App
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+
+    // Fallback: hide boot after 5s no matter what
+    setTimeout(function() {
+      hideBootScreen();
+    }, 5000);
   </script>
 </body>
 </html>
