@@ -85,6 +85,40 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,Aria
 .bottom-nav{display:none}
 @media(max-width:1024px){.app{grid-template-columns:1fr;grid-template-areas:"header" "main"}.sidebar{display:none}.bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:100;padding:8px;justify-content:space-around}.bottom-nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;border:none;background:transparent;color:var(--text-dim);font-size:10px;cursor:pointer;font-family:inherit}.bottom-nav-item.active{color:var(--honey)}.bottom-nav-item .ico{font-size:18px}.main{padding-bottom:80px}.stats-grid{grid-template-columns:repeat(2,1fr)}.content-grid{grid-template-columns:1fr}.actions-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:640px){.stat-value{font-size:26px}.header{padding:0 16px}.main{padding:16px}}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex;animation:fadeIn .2s}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border)}
+.modal-head h3{margin:0;font-size:16px;font-weight:700}
+.modal-close{background:transparent;border:none;color:var(--text-dim);font-size:28px;cursor:pointer;padding:0 8px;line-height:1;font-family:inherit}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:24px;display:flex;flex-direction:column;gap:14px}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--border);background:var(--surface2)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* Form fields */
+.field{display:flex;flex-direction:column;gap:6px}
+.field>span{font-size:12px;color:var(--text-dim);font-weight:600}
+.field input,.field select,.field textarea{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:var(--r-sm);font-size:14px;font-family:inherit;transition:.15s;width:100%;box-sizing:border-box}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--honey);box-shadow:0 0 0 3px rgba(244,180,0,.15)}
+.field textarea{resize:vertical;min-height:60px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* List item with action buttons */
+.list-item-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)}
+.list-item-row:last-child{border-bottom:none}
+.list-item-row .list-main{flex:1;min-width:0}
+.actions-mini{display:flex;gap:6px;flex-shrink:0}
+.btn-mini{background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:6px 12px;border-radius:var(--r-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s}
+.btn-mini:hover{background:var(--border);border-color:var(--honey)}
+.btn-mini.danger{color:var(--red)}
+.btn-mini.danger:hover{background:rgba(239,68,68,.15);border-color:var(--red)}
+
+/* Empty state */
+.empty{padding:32px 16px;text-align:center;color:var(--text-dim);font-size:14px}
+.empty .card-link{display:inline-block;margin-top:8px;color:var(--honey);font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
@@ -152,41 +186,315 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,Aria
 <div class="toast-container" id="toast-container"></div>
 
 <script>
+// ============================================================
+// Data — localStorage ile kalici veri
+// ============================================================
 var Data = {
-  apiaries: [
-    {id:1,name:'Eğil Merkez',location:'Eğil, Diyarbakır',hives:4,status:'active',flora:'Geven, Kekik, Adaçayı'},
-    {id:2,name:'Surlar Üssü',location:'Sur, Diyarbakır',hives:3,status:'active',flora:'Pamuk, Ayçiçeği'}
-  ],
-  hives: [
-    {id:1,apiary:'Eğil Merkez',queen:'Ana Arı #1 (Karniyol)',frames:10,population:'Güçlü',honey:12.5,status:'good',lastInspection:'3 gün önce'},
-    {id:2,apiary:'Eğil Merkez',queen:'Ana Arı #2 (Kafkas)',frames:8,population:'Orta',honey:8.2,status:'warning',lastInspection:'5 gün önce'},
-    {id:3,apiary:'Eğil Merkez',queen:'Ana Arı #3 (Anadolu)',frames:10,population:'Güçlü',honey:15.0,status:'good',lastInspection:'2 gün önce'},
-    {id:4,apiary:'Eğil Merkez',queen:'Ana Arı #4 (Karniyol)',frames:9,population:'Güçlü',honey:11.8,status:'good',lastInspection:'1 gün önce'},
-    {id:5,apiary:'Surlar Üssü',queen:'Ana Arı #5 (Kafkas)',frames:7,population:'Zayıf',honey:3.5,status:'danger',lastInspection:'7 gün önce'},
-    {id:6,apiary:'Surlar Üssü',queen:'Ana Arı #6 (Anadolu)',frames:10,population:'Güçlü',honey:9.7,status:'good',lastInspection:'4 gün önce'},
-    {id:7,apiary:'Surlar Üssü',queen:'Ana Arı #7 (Karpat)',frames:8,population:'Orta',honey:6.4,status:'warning',lastInspection:'6 gün önce'}
-  ],
-  harvests: [
-    {month:'Mayıs',weight:4.5},{month:'Haziran',weight:8.2},{month:'Temmuz',weight:12.8},{month:'Ağustos',weight:9.1},
-    {month:'Eylül',weight:1.6},{month:'Ekim',weight:0}
-  ],
-  inspections: [
-    {date:'18 Tem 2026',hive:'Kovan #1',varroa:1,notes:'Genel durum iyi',status:'ok'},
-    {date:'17 Tem 2026',hive:'Kovan #3',varroa:2,notes:'Yumurta düzenli',status:'ok'},
-    {date:'16 Tem 2026',hive:'Kovan #5',varroa:8,notes:'Varroa yüksek - tedavi gerekiyor',status:'danger'},
-    {date:'15 Tem 2026',hive:'Kovan #2',varroa:4,notes:'Ana arı değişti',status:'warn'},
-    {date:'14 Tem 2026',hive:'Kovan #7',varroa:3,notes:'Çerçeveler azaldı',status:'warn'}
-  ],
-  queens: [
-    {id:1,age:2,breed:'Karniyol',productivity:'Yüksek',status:'active',marked:true},
-    {id:2,age:3,breed:'Kafkas',productivity:'Orta',status:'active',marked:true},
-    {id:3,age:1,breed:'Anadolu',productivity:'Yüksek',status:'active',marked:false},
-    {id:4,age:2,breed:'Karniyol',productivity:'Yüksek',status:'active',marked:true},
-    {id:5,age:4,breed:'Kafkas',productivity:'Düşük',status:'replace',marked:true}
-  ],
-  weather: {temp:28,condition:'Güneşli',humidity:35,wind:12,flora:['Geven','Kekik','Adaçayı','Pamuk','Ayçiçeği']}
+  load: function() {
+    try {
+      var saved = localStorage.getItem('beemaster-data');
+      if (saved) {
+        var d = JSON.parse(saved);
+        this.apiaries = d.apiaries || [];
+        this.hives = d.hives || [];
+        this.inspections = d.inspections || [];
+        this.queens = d.queens || [];
+        this.harvests = d.harvests || [];
+        return true;
+      }
+    } catch(e) { console.warn('Data load failed', e); }
+    return false;
+  },
+  save: function() {
+    try {
+      localStorage.setItem('beemaster-data', JSON.stringify({
+        apiaries: this.apiaries, hives: this.hives, inspections: this.inspections,
+        queens: this.queens, harvests: this.harvests
+      }));
+    } catch(e) { console.warn('Data save failed', e); }
+  },
+  seed: function() {
+    this.apiaries = [
+      {id:1, name:'Eğil Merkez', location:'Eğil, Diyarbakır', flora:'Geven, Kekik, Adaçayı', note:''},
+      {id:2, name:'Surlar Üssü', location:'Sur, Diyarbakır', flora:'Pamuk, Ayçiçeği', note:''}
+    ];
+    this.hives = [
+      {id:1, apiaryId:1, name:'Kovan #1', queen:'Ana Arı #1 (Karniyol)', frames:10, population:'Güçlü', honey:12.5, varroa:1, status:'good', lastInspection:'3 gün önce', note:''},
+      {id:2, apiaryId:1, name:'Kovan #2', queen:'Ana Arı #2 (Kafkas)', frames:8, population:'Orta', honey:8.2, varroa:4, status:'warning', lastInspection:'5 gün önce', note:''},
+      {id:3, apiaryId:1, name:'Kovan #3', queen:'Ana Arı #3 (Anadolu)', frames:10, population:'Güçlü', honey:15.0, varroa:2, status:'good', lastInspection:'2 gün önce', note:''},
+      {id:4, apiaryId:1, name:'Kovan #4', queen:'Ana Arı #4 (Karniyol)', frames:9, population:'Güçlü', honey:11.8, varroa:2, status:'good', lastInspection:'1 gün önce', note:''},
+      {id:5, apiaryId:2, name:'Kovan #5', queen:'Ana Arı #5 (Kafkas)', frames:7, population:'Zayıf', honey:3.5, varroa:8, status:'danger', lastInspection:'7 gün önce', note:''},
+      {id:6, apiaryId:2, name:'Kovan #6', queen:'Ana Arı #6 (Anadolu)', frames:10, population:'Güçlü', honey:9.7, varroa:2, status:'good', lastInspection:'4 gün önce', note:''},
+      {id:7, apiaryId:2, name:'Kovan #7', queen:'Ana Arı #7 (Karpat)', frames:8, population:'Orta', honey:6.4, varroa:3, status:'warning', lastInspection:'6 gün önce', note:''}
+    ];
+    this.inspections = [
+      {id:1, hiveId:1, date:'18 Tem 2026', varroa:1, population:'Güçlü', eggs:'Düzenli', brood:8, note:'Genel durum iyi', status:'ok'},
+      {id:2, hiveId:3, date:'17 Tem 2026', varroa:2, population:'Güçlü', eggs:'Düzenli', brood:7, note:'Yumurta düzenli', status:'ok'},
+      {id:3, hiveId:5, date:'16 Tem 2026', varroa:8, population:'Zayıf', eggs:'Düzensiz', brood:4, note:'Varroa yüksek - tedavi gerekli', status:'danger'},
+      {id:4, hiveId:2, date:'15 Tem 2026', varroa:4, population:'Orta', eggs:'Düzenli', brood:6, note:'Ana arı değişti', status:'warn'},
+      {id:5, hiveId:7, date:'14 Tem 2026', varroa:3, population:'Orta', eggs:'Düzenli', brood:5, note:'Çerçeveler azaldı', status:'warn'}
+    ];
+    this.queens = [
+      {id:1, breed:'Karniyol', age:2, productivity:'Yüksek', status:'active', marked:true},
+      {id:2, breed:'Kafkas', age:3, productivity:'Orta', status:'active', marked:true},
+      {id:3, breed:'Anadolu', age:1, productivity:'Yüksek', status:'active', marked:false},
+      {id:4, breed:'Karniyol', age:2, productivity:'Yüksek', status:'active', marked:true},
+      {id:5, breed:'Kafkas', age:4, productivity:'Düşük', status:'replace', marked:true}
+    ];
+    this.harvests = [
+      {month:'Mayıs', weight:4.5}, {month:'Haziran', weight:8.2},
+      {month:'Temmuz', weight:12.8}, {month:'Ağustos', weight:9.1},
+      {month:'Eylül', weight:1.6}, {month:'Ekim', weight:0}
+    ];
+    this.save();
+  },
+  nextId: function(arr) {
+    if (!arr.length) return 1;
+    return Math.max.apply(null, arr.map(function(i){return i.id||0})) + 1;
+  }
 };
 
+// Veri yoksa seed
+if (!Data.load()) Data.seed();
+
+// ============================================================
+// Modal — form bazlı ekleme/düzenleme
+// ============================================================
+var Modal = {
+  open: function(title, html, onSave) {
+    var m = document.getElementById('modal');
+    if (!m) {
+      m = document.createElement('div');
+      m.id = 'modal';
+      m.className = 'modal-overlay';
+      m.innerHTML = '<div class="modal"><div class="modal-head"><h3 id="modal-title"></h3><button class="modal-close" onclick="Modal.close()">×</button></div><form id="modal-form"><div class="modal-body" id="modal-body"></div><div class="modal-foot"><button type="button" class="btn btn-ghost" onclick="Modal.close()">İptal</button><button type="submit" class="btn btn-primary">Kaydet</button></div></form></div>';
+      document.body.appendChild(m);
+    }
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-body').innerHTML = html;
+    m.classList.add('active');
+    var form = document.getElementById('modal-form');
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      var fd = new FormData(form);
+      var data = {};
+      fd.forEach(function(v,k){ data[k]=v; });
+      if (onSave(data)) Modal.close();
+    };
+    setTimeout(function(){var first = m.querySelector('input,textarea,select'); if(first) first.focus();}, 50);
+  },
+  close: function() {
+    var m = document.getElementById('modal');
+    if (m) m.classList.remove('active');
+  },
+  confirm: function(msg, onYes) {
+    Modal.open('Onay', '<p style="padding:8px 0;color:var(--text-dim)">'+msg+'</p>', function(){onYes(); return true;});
+  }
+};
+
+// ============================================================
+// Yardimcılar
+// ============================================================
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});
+}
+function statusBadge(s) {
+  var map = {good:'OK', warning:'DİKKAT', danger:'ACİL', ok:'İYİ', warn:'DİKKAT', active:'AKTİF', replace:'DEĞİŞTİR'};
+  var cls = s==='good'||s==='ok'?'ok':(s==='danger'?'danger':'warn');
+  return '<span class="badge '+cls+'">'+(map[s]||s)+'</span>';
+}
+function dotColor(s) {
+  return s==='good'||s==='ok'?'dot-green':(s==='danger'?'dot-red':'dot-yellow');
+}
+
+// ============================================================
+// CRUD — Kovan
+// ============================================================
+function openAddHive() {
+  var apiaryOpts = Data.apiaries.map(function(a){return '<option value="'+a.id+'">'+escapeHtml(a.name)+'</option>';}).join('');
+  Modal.open('Yeni Kovan Ekle',
+    '<label class="field"><span>Kovan Adı *</span><input name="name" required placeholder="Örn: Kovan #8"></label>'+
+    '<label class="field"><span>Ana Arı Irkı *</span><input name="queen" required placeholder="Örn: Karniyol"></label>'+
+    '<label class="field"><span>Arı Üssü *</span><select name="apiaryId" required>'+apiaryOpts+'</select></label>'+
+    '<div class="field-row"><label class="field"><span>Çerçeve</span><input name="frames" type="number" min="0" value="10"></label>'+
+    '<label class="field"><span>Popülasyon</span><select name="population"><option>Güçlü</option><option>Orta</option><option>Zayıf</option></select></label></div>'+
+    '<label class="field"><span>Bal (kg)</span><input name="honey" type="number" step="0.1" value="0"></label>'+
+    '<label class="field"><span>Notlar</span><textarea name="note" rows="2" placeholder="Ek bilgi..."></textarea></label>',
+    function(d){
+      d.id = Data.nextId(Data.hives);
+      d.frames = parseInt(d.frames)||0;
+      d.honey = parseFloat(d.honey)||0;
+      d.varroa = 0;
+      d.status = 'good';
+      d.lastInspection = 'Henüz yok';
+      Data.hives.push(d);
+      Data.save();
+      App.toast('Kovan eklendi ✓');
+      App.render('hives');
+      return true;
+    }
+  );
+}
+function openEditHive(id) {
+  var h = Data.hives.find(function(x){return x.id===id;});
+  if (!h) return;
+  var apiaryOpts = Data.apiaries.map(function(a){return '<option value="'+a.id+'"'+(a.id===h.apiaryId?' selected':'')+'>'+escapeHtml(a.name)+'</option>';}).join('');
+  Modal.open('Kovan Düzenle — '+escapeHtml(h.name),
+    '<label class="field"><span>Kovan Adı *</span><input name="name" required value="'+escapeHtml(h.name)+'"></label>'+
+    '<label class="field"><span>Ana Arı Irkı *</span><input name="queen" required value="'+escapeHtml(h.queen)+'"></label>'+
+    '<label class="field"><span>Arı Üssü *</span><select name="apiaryId" required>'+apiaryOpts+'</select></label>'+
+    '<div class="field-row"><label class="field"><span>Çerçeve</span><input name="frames" type="number" min="0" value="'+h.frames+'"></label>'+
+    '<label class="field"><span>Popülasyon</span><select name="population"><option'+(h.population==='Güçlü'?' selected':'')+'>Güçlü</option><option'+(h.population==='Orta'?' selected':'')+'>Orta</option><option'+(h.population==='Zayıf'?' selected':'')+'>Zayıf</option></select></label></div>'+
+    '<label class="field"><span>Bal (kg)</span><input name="honey" type="number" step="0.1" value="'+h.honey+'"></label>'+
+    '<label class="field"><span>Notlar</span><textarea name="note" rows="2">'+escapeHtml(h.note||'')+'</textarea></label>',
+    function(d){
+      d.frames = parseInt(d.frames)||0;
+      d.honey = parseFloat(d.honey)||0;
+      Object.assign(h, d);
+      Data.save();
+      App.toast('Kovan güncellendi ✓');
+      App.render('hives');
+      return true;
+    }
+  );
+}
+function deleteHive(id) {
+  var h = Data.hives.find(function(x){return x.id===id;});
+  if (!h) return;
+  Modal.confirm('"'+h.name+'" kovanını silmek istiyor musunuz? Bu işlem geri alınamaz.', function(){
+    Data.hives = Data.hives.filter(function(x){return x.id!==id;});
+    Data.inspections = Data.inspections.filter(function(x){return x.hiveId!==id;});
+    Data.save();
+    App.toast('Kovan silindi');
+    App.render('hives');
+  });
+}
+
+// ============================================================
+// CRUD — Muayene
+// ============================================================
+function openAddInspection() {
+  if (!Data.hives.length) { App.toast('Önce kovan ekleyin'); return; }
+  var hiveOpts = Data.hives.map(function(h){return '<option value="'+h.id+'">'+escapeHtml(h.name)+' — '+escapeHtml(h.queen)+'</option>';}).join('');
+  Modal.open('Yeni Muayene Ekle',
+    '<label class="field"><span>Kovan *</span><select name="hiveId" required>'+hiveOpts+'</select></label>'+
+    '<label class="field"><span>Tarih *</span><input name="date" type="date" required value="'+new Date().toISOString().split('T')[0]+'"></label>'+
+    '<div class="field-row"><label class="field"><span>Varroa (adet)</span><input name="varroa" type="number" min="0" value="0"></label>'+
+    '<label class="field"><span>Yavru Çerçeve</span><input name="brood" type="number" min="0" value="6"></label></div>'+
+    '<label class="field"><span>Popülasyon</span><select name="population"><option>Güçlü</option><option selected>Orta</option><option>Zayıf</option></select></label>'+
+    '<label class="field"><span>Yumurta Düzeni</span><select name="eggs"><option>Düzenli</option><option>Düzensiz</option><option>Yok</option></select></label>'+
+    '<label class="field"><span>Notlar</span><textarea name="note" rows="3" placeholder="Muayene notları..."></textarea></label>',
+    function(d){
+      d.id = Data.nextId(Data.inspections);
+      d.varroa = parseInt(d.varroa)||0;
+      d.brood = parseInt(d.brood)||0;
+      d.status = d.varroa>=6?'danger':(d.varroa>=3?'warn':'ok');
+      Data.inspections.push(d);
+      // Kovan'in son muayenesini güncelle
+      var h = Data.hives.find(function(x){return x.id==d.hiveId;});
+      if (h) {
+        h.varroa = d.varroa;
+        h.lastInspection = d.date;
+        h.status = d.status==='danger'?'danger':(d.status==='warn'?'warning':'good');
+      }
+      Data.save();
+      App.toast('Muayene eklendi ✓');
+      App.render('inspections');
+      return true;
+    }
+  );
+}
+function openEditInspection(id) {
+  var i = Data.inspections.find(function(x){return x.id===id;});
+  if (!i) return;
+  var hiveOpts = Data.hives.map(function(h){return '<option value="'+h.id+'"'+(h.id===i.hiveId?' selected':'')+'>'+escapeHtml(h.name)+'</option>';}).join('');
+  Modal.open('Muayene Düzenle',
+    '<label class="field"><span>Kovan *</span><select name="hiveId" required>'+hiveOpts+'</select></label>'+
+    '<label class="field"><span>Tarih *</span><input name="date" type="date" required value="'+i.date+'"></label>'+
+    '<div class="field-row"><label class="field"><span>Varroa (adet)</span><input name="varroa" type="number" min="0" value="'+i.varroa+'"></label>'+
+    '<label class="field"><span>Yavru Çerçeve</span><input name="brood" type="number" min="0" value="'+i.brood+'"></label></div>'+
+    '<label class="field"><span>Popülasyon</span><select name="population"><option'+(i.population==='Güçlü'?' selected':'')+'>Güçlü</option><option'+(i.population==='Orta'?' selected':'')+'>Orta</option><option'+(i.population==='Zayıf'?' selected':'')+'>Zayıf</option></select></label>'+
+    '<label class="field"><span>Yumurta Düzeni</span><select name="eggs"><option'+(i.eggs==='Düzenli'?' selected':'')+'>Düzenli</option><option'+(i.eggs==='Düzensiz'?' selected':'')+'>Düzensiz</option><option'+(i.eggs==='Yok'?' selected':'')+'>Yok</option></select></label>'+
+    '<label class="field"><span>Notlar</span><textarea name="note" rows="3">'+escapeHtml(i.note||'')+'</textarea></label>',
+    function(d){
+      d.varroa = parseInt(d.varroa)||0;
+      d.brood = parseInt(d.brood)||0;
+      d.status = d.varroa>=6?'danger':(d.varroa>=3?'warn':'ok');
+      Object.assign(i, d);
+      Data.save();
+      App.toast('Muayene güncellendi ✓');
+      App.render('inspections');
+      return true;
+    }
+  );
+}
+function deleteInspection(id) {
+  var i = Data.inspections.find(function(x){return x.id===id;});
+  if (!i) return;
+  Modal.confirm('Bu muayeneyi silmek istiyor musunuz?', function(){
+    Data.inspections = Data.inspections.filter(function(x){return x.id!==id;});
+    Data.save();
+    App.toast('Muayene silindi');
+    App.render('inspections');
+  });
+}
+
+// ============================================================
+// CRUD — Üs
+// ============================================================
+function openAddApiary() {
+  Modal.open('Yeni Arı Üssü Ekle',
+    '<label class="field"><span>Üs Adı *</span><input name="name" required placeholder="Örn: Çınar Üssü"></label>'+
+    '<label class="field"><span>Konum *</span><input name="location" required placeholder="Örn: Çınar, Diyarbakır"></label>'+
+    '<label class="field"><span>Flora</span><input name="flora" placeholder="Örn: Geven, Kekik"></label>'+
+    '<label class="field"><span>Notlar</span><textarea name="note" rows="2"></textarea></label>',
+    function(d){
+      d.id = Data.nextId(Data.apiaries);
+      Data.apiaries.push(d);
+      Data.save();
+      App.toast('Üs eklendi ✓');
+      App.render('apiaries');
+      return true;
+    }
+  );
+}
+function openEditApiary(id) {
+  var a = Data.apiaries.find(function(x){return x.id===id;});
+  if (!a) return;
+  Modal.open('Üs Düzenle — '+escapeHtml(a.name),
+    '<label class="field"><span>Üs Adı *</span><input name="name" required value="'+escapeHtml(a.name)+'"></label>'+
+    '<label class="field"><span>Konum *</span><input name="location" required value="'+escapeHtml(a.location)+'"></label>'+
+    '<label class="field"><span>Flora</span><input name="flora" value="'+escapeHtml(a.flora||'')+'"></label>'+
+    '<label class="field"><span>Notlar</span><textarea name="note" rows="2">'+escapeHtml(a.note||'')+'</textarea></label>',
+    function(d){
+      Object.assign(a, d);
+      Data.save();
+      App.toast('Üs güncellendi ✓');
+      App.render('apiaries');
+      return true;
+    }
+  );
+}
+function deleteApiary(id) {
+  var a = Data.apiaries.find(function(x){return x.id===id;});
+  if (!a) return;
+  var hiveCount = Data.hives.filter(function(h){return h.apiaryId===id;}).length;
+  if (hiveCount > 0) {
+    App.toast('Bu üsde '+hiveCount+' kovan var. Önce kovanları silin.');
+    return;
+  }
+  Modal.confirm('"'+a.name+'" üssünü silmek istiyor musunuz?', function(){
+    Data.apiaries = Data.apiaries.filter(function(x){return x.id!==id;});
+    Data.save();
+    App.toast('Üs silindi');
+    App.render('apiaries');
+  });
+}
+
+// ============================================================
+// App
+// ============================================================
 var App = {
   nav: function(view) {
     document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});
@@ -195,41 +503,40 @@ var App = {
     });
     var el = document.getElementById('view-' + view);
     if (el) el.classList.add('active');
-    var titles = {dashboard:['Dashboard','Genel bakış · Eğil, Diyarbakır'],apiaries:['Arı Üsleri','Tüm üsler'],hives:['Kovanlar','Tüm kovanlar'],inspections:['Muayeneler','Son muayeneler'],queens:['Ana Arılar','Ana arı envanteri'],honey:['Bal Hasadı','Hasat geçmişi'],feeding:['Besleme','Besleme takibi'],treatments:['Tedaviler','Tedavi kayıtları'],inventory:['Envanter','Malzeme envanteri'],analytics:['Analitik','Performans analizi'],reports:['Raporlar','Rapor merkezı'],settings:['Ayarlar','Uygulama ayarları']};
-    var t = titles[view] || titles.dashboard;
+    var titles = {
+      dashboard:['Dashboard','Genel bakış · Eğil, Diyarbakır'],
+      apiaries:['Arı Üsleri',Data.apiaries.length+' üs'],
+      hives:['Kovanlar',Data.hives.length+' kovan'],
+      inspections:['Muayeneler',Data.inspections.length+' kayıt'],
+      queens:['Ana Arılar',Data.queens.length+' ana arı'],
+      honey:['Bal Hasadı',Data.harvests.reduce(function(s,h){return s+h.weight},0).toFixed(1)+' kg toplam']
+    };
+    var t = titles[view] || [view,''];
     document.getElementById('page-title').textContent = t[0];
     document.getElementById('page-subtitle').textContent = t[1];
     this.render(view);
-    location.hash = view;
+    if (history.pushState) history.pushState(null, '', '#'+view);
   },
 
   render: function(view) {
     view = view || 'dashboard';
     var fn = this['render_' + view];
     if (fn) fn.call(this);
-    else this.render_placeholder(view);
-  },
-
-  render_placeholder: function(view) {
-    var el = document.getElementById('view-' + view);
-    if (!el) return;
-    var labels = {settings:'Ayarlar',feeding:'Besleme',treatments:'Tedaviler',inventory:'Envanter',reports:'Raporlar'};
-    el.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--text-dim)"><div style="font-size:48px;margin-bottom:12px">🚧</div><div style="font-size:18px;font-weight:600;margin-bottom:4px;color:var(--text)">'+(labels[view]||view)+'</div><div style="font-size:13px">Bu modül yakında hazır olacak</div></div>';
   },
 
   render_dashboard: function() {
     var d = Data;
     var totalHives = d.hives.length;
-    var activeApiaries = d.apiaries.filter(function(a){return a.status==='active'}).length;
+    var activeApiaries = d.apiaries.length;
     var totalHoney = d.harvests.reduce(function(s,h){return s+h.weight},0);
     var avgVarroa = d.inspections.length ? (d.inspections.reduce(function(s,i){return s+i.varroa},0)/d.inspections.length).toFixed(1) : 0;
-    var maxHoney = Math.max.apply(null, d.harvests.map(function(h){return h.weight}));
+    var maxHoney = Math.max.apply(null, d.harvests.map(function(h){return h.weight}).concat([1]));
 
     var stats = [
-      {label:'Toplam Kovan',value:totalHives,change:'+12%',dir:'up',icon:'🏠',type:'honey'},
-      {label:'Aktif Üs',value:activeApiaries,change:'Sabit',dir:'neutral',icon:'📍',type:'info'},
-      {label:'Toplam Bal',value:totalHoney.toFixed(1)+' kg',change:'+8%',dir:'up',icon:'🍯',type:'success'},
-      {label:'Ort. Varroa',value:avgVarroa,change:'-15%',dir:'up',icon:'⚠️',type:parseFloat(avgVarroa)>3?'danger':'warning'}
+      {label:'Toplam Kovan',value:totalHives,change:'Canlı',dir:'up',icon:'🏠',type:'honey'},
+      {label:'Aktif Üs',value:activeApiaries,change:'Tümü',dir:'neutral',icon:'📍',type:'info'},
+      {label:'Toplam Bal',value:totalHoney.toFixed(1)+' kg',change:'Hasat',dir:'up',icon:'🍯',type:'success'},
+      {label:'Ort. Varroa',value:avgVarroa,change:'Son muayeneler',dir:parseFloat(avgVarroa)>3?'down':'up',icon:'⚠️',type:parseFloat(avgVarroa)>3?'danger':'warning'}
     ];
 
     var html = '<div class="stats-grid">';
@@ -239,68 +546,97 @@ var App = {
     html += '</div>';
 
     html += '<div class="actions-grid">';
-    var actions = [['📋','Yeni Muayene'],['🍯','Hasat'],['🌾','Besleme'],['💊','Tedavi'],['➕','Yeni Kovan']];
+    var actions = [
+      ['📋','Yeni Muayene','openAddInspection()'],
+      ['🍯','Hasat',"App.toast('Hasat modülü yakında')"],
+      ['🌾','Besleme',"App.toast('Besleme modülü yakında')"],
+      ['💊','Tedavi',"App.toast('Tedavi modülü yakında')"],
+      ['➕','Yeni Kovan','openAddHive()']
+    ];
     actions.forEach(function(a){
-      html += '<button class="action-btn" onclick="App.toast(\''+a[1]+' eklendi\')"><div class="action-ico">'+a[0]+'</div><div class="action-label">'+a[1]+'</div></button>';
+      html += '<button class="action-btn" onclick="'+a[2]+'"><div class="action-ico">'+a[0]+'</div><div class="action-label">'+a[1]+'</div></button>';
     });
     html += '</div>';
 
     html += '<div class="content-grid"><div><div class="card"><div class="card-head"><div class="card-title">📈 Hasat Performansı</div></div><div class="chart-wrap">';
     d.harvests.forEach(function(h){
-      var height = maxHoney>0 ? Math.round((h.weight/maxHoney)*100) : 0;
+      var height = Math.round((h.weight/maxHoney)*100);
       html += '<div class="bar-col"><div class="bar-val">'+h.weight+' kg</div><div class="bar" style="height:'+height+'%"></div><div class="bar-label">'+h.month+'</div></div>';
     });
     html += '</div></div>';
 
-    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div class="card-title">📋 Son Muayeneler</div><span class="card-link" onclick="App.nav(\'inspections\')">Tümü →</span></div>';
-    d.inspections.forEach(function(i){
-      var dot = i.status==='ok'?'dot-green':(i.status==='danger'?'dot-red':'dot-yellow');
-      var badge = i.status==='ok'?'ok':(i.status==='danger'?'danger':'warn');
-      html += '<div class="list-item"><div class="list-dot '+dot+'"></div><div class="list-main"><div class="list-name">'+i.hive+'</div><div class="list-info">'+i.date+' · '+i.notes+'</div></div><span class="badge '+badge+'">Varroa: '+i.varroa+'</span></div>';
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div class="card-title">📋 Son Muayeneler</div><a class="card-link" onclick="App.nav(\'inspections\')">Tümü →</a></div>';
+    var recent = d.inspections.slice().sort(function(a,b){return (b.id||0)-(a.id||0)}).slice(0,5);
+    if (!recent.length) {
+      html += '<div class="empty">Henüz muayene yok. <a class="card-link" onclick="openAddInspection()">İlk muayeneyi ekle →</a></div>';
+    }
+    recent.forEach(function(i){
+      var hive = d.hives.find(function(h){return h.id===i.hiveId;});
+      var hname = hive?hive.name:'Kovan #'+i.hiveId;
+      html += '<div class="list-item"><div class="list-dot '+dotColor(i.status)+'"></div><div class="list-main"><div class="list-name">'+escapeHtml(hname)+' · '+i.date+'</div><div class="list-info">'+escapeHtml(i.note||'-')+'</div></div>'+statusBadge(i.status)+'</div>';
     });
     html += '</div></div>';
 
-    html += '<div><div class="card weather-card"><div class="card-head"><div class="card-title">🌤️ Hava & Flora</div></div><div class="weather-now"><div class="weather-icon">'+(d.weather.condition==='Güneşli'?'☀️':'⛅')+'</div><div><div class="weather-temp">'+d.weather.temp+'°C</div><div class="weather-info">'+d.weather.condition+' · Nem %'+d.weather.humidity+' · Rüzgar '+d.weather.wind+' km</div></div></div><div class="cl">Aktif flora:</div><div class="flora-tags">';
-    d.weather.flora.forEach(function(f){html += '<span class="flora-tag">'+f+'</span>';});
-    html += '</div></div>';
+    html += '<div><div class="card weather-card"><div class="card-head"><div class="card-title">🌤️ Hava & Flora</div></div><div class="weather-now"><div class="weather-icon">☀️</div><div><div class="weather-temp">28°C</div><div class="weather-info">Güneşli · Nem %35 · Rüzgar 12 km</div></div></div><div class="cl">Aktif flora:</div><div class="flora-tags"><span class="flora-tag">Geven</span><span class="flora-tag">Kekik</span><span class="flora-tag">Adaçayı</span><span class="flora-tag">Pamuk</span><span class="flora-tag">Ayçiçeği</span></div></div>';
 
     html += '<div class="card" style="margin-top:16px"><div class="card-head"><div class="card-title">⚠️ Uyarılar</div></div>';
-    var alerts = [['Kovan #5','Varroa çok yüksek (8)','danger'],['Kovan #2','Ana arı değişti','warn'],['Kovan #7','Çerçeve sayısı düştü','warn']];
-    alerts.forEach(function(a){
-      html += '<div class="list-item"><div class="list-dot '+(a[2]==='danger'?'dot-red':'dot-yellow')+'"></div><div class="list-main"><div class="list-name">'+a[0]+'</div><div class="list-info">'+a[1]+'</div></div><span class="badge '+a[2]+'">'+(a[2]==='danger'?'Acil':'Dikkat')+'</span></div>';
-    });
+    var dangers = d.hives.filter(function(h){return h.status==='danger'||h.varroa>=6;});
+    var warns = d.hives.filter(function(h){return h.status==='warning'||(h.varroa>=3&&h.varroa<6);});
+    if (!dangers.length && !warns.length) {
+      html += '<div class="empty">Aktif uyarı yok 🎉</div>';
+    } else {
+      dangers.forEach(function(h){
+        html += '<div class="list-item"><div class="list-dot dot-red"></div><div class="list-main"><div class="list-name">'+escapeHtml(h.name)+'</div><div class="list-info">Varroa '+h.varroa+' — acil tedavi</div></div><span class="badge danger">ACİL</span></div>';
+      });
+      warns.slice(0,3).forEach(function(h){
+        html += '<div class="list-item"><div class="list-dot dot-yellow"></div><div class="list-main"><div class="list-name">'+escapeHtml(h.name)+'</div><div class="list-info">Varroa '+h.varroa+' — izle</div></div><span class="badge warn">DİKKAT</span></div>';
+      });
+    }
     html += '</div></div></div>';
 
     document.getElementById('view-dashboard').innerHTML = html;
   },
 
   render_apiaries: function() {
-    var html = '<div class="stats-grid"><div class="stat-card"><div class="stat-icon info">📍</div><div class="stat-label">Toplam Üs</div><div class="stat-value">'+Data.apiaries.length+'</div></div><div class="stat-card"><div class="stat-icon honey">🏠</div><div class="stat-label">Toplam Kovan</div><div class="stat-value">'+Data.hives.length+'</div></div></div>';
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="color:var(--text-dim);font-size:13px">'+Data.apiaries.length+' üs</div><button class="btn btn-primary" onclick="openAddApiary()">+ Yeni Üs</button></div>';
     html += '<div class="card"><div class="card-head"><div class="card-title">Arı Üsleri</div></div>';
+    if (!Data.apiaries.length) {
+      html += '<div class="empty">Henüz üs yok. <a class="card-link" onclick="openAddApiary()">İlk üssü ekle →</a></div>';
+    }
     Data.apiaries.forEach(function(a){
-      html += '<div class="list-item"><div class="list-dot dot-green"></div><div class="list-main"><div class="list-name">'+a.name+'</div><div class="list-info">'+a.location+' · '+a.hives+' kovan · Flora: '+a.flora+'</div></div><span class="badge ok">Aktif</span></div>';
+      var hiveCount = Data.hives.filter(function(h){return h.apiaryId===a.id;}).length;
+      html += '<div class="list-item-row"><div class="list-dot dot-green"></div><div class="list-main"><div class="list-name">'+escapeHtml(a.name)+'</div><div class="list-info">'+escapeHtml(a.location)+' · '+hiveCount+' kovan · Flora: '+escapeHtml(a.flora||'-')+(a.note?' · '+escapeHtml(a.note):'')+'</div></div><div class="actions-mini"><button class="btn-mini" onclick="openEditApiary('+a.id+')">Düzenle</button><button class="btn-mini danger" onclick="deleteApiary('+a.id+')">Sil</button></div></div>';
     });
     html += '</div>';
     document.getElementById('view-apiaries').innerHTML = html;
   },
 
   render_hives: function() {
-    var html = '<div class="card"><div class="card-head"><div class="card-title">Kovanlar ('+Data.hives.length+')</div></div>';
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="color:var(--text-dim);font-size:13px">'+Data.hives.length+' kovan</div><button class="btn btn-primary" onclick="openAddHive()">+ Yeni Kovan</button></div>';
+    html += '<div class="card"><div class="card-head"><div class="card-title">Kovanlar</div></div>';
+    if (!Data.hives.length) {
+      html += '<div class="empty">Henüz kovan yok. <a class="card-link" onclick="openAddHive()">İlk kovanı ekle →</a></div>';
+    }
     Data.hives.forEach(function(h){
-      var dot = h.status==='good'?'dot-green':(h.status==='danger'?'dot-red':'dot-yellow');
-      var badge = h.status==='good'?'ok':(h.status==='danger'?'danger':'warn');
-      html += '<div class="list-item"><div class="list-dot '+dot+'"></div><div class="list-main"><div class="list-name">Kovan #'+h.id+' · '+h.apiary+'</div><div class="list-info">'+h.queen+' · '+h.frames+' çerçeve · '+h.honey+' kg bal · Son muayene: '+h.lastInspection+'</div></div><span class="badge '+badge+'">'+h.population+'</span></div>';
+      var apiary = Data.apiaries.find(function(a){return a.id===h.apiaryId;});
+      var apiaryName = apiary?apiary.name:'Atanmamış';
+      html += '<div class="list-item-row"><div class="list-dot '+dotColor(h.status)+'"></div><div class="list-main"><div class="list-name">'+escapeHtml(h.name)+' — '+escapeHtml(apiaryName)+'</div><div class="list-info">'+escapeHtml(h.queen)+' · '+h.frames+' çerçeve · '+h.honey+' kg bal · Varroa: '+h.varroa+' · Son: '+escapeHtml(h.lastInspection||'-')+'</div></div><div class="actions-mini"><button class="btn-mini" onclick="openEditHive('+h.id+')">Düzenle</button><button class="btn-mini danger" onclick="deleteHive('+h.id+')">Sil</button></div></div>';
     });
     html += '</div>';
     document.getElementById('view-hives').innerHTML = html;
   },
 
   render_inspections: function() {
-    var html = '<div class="card"><div class="card-head"><div class="card-title">Muayene Geçmişi</div></div>';
-    Data.inspections.forEach(function(i){
-      var dot = i.status==='ok'?'dot-green':(i.status==='danger'?'dot-red':'dot-yellow');
-      var badge = i.status==='ok'?'ok':(i.status==='danger'?'danger':'warn');
-      html += '<div class="list-item"><div class="list-dot '+dot+'"></div><div class="list-main"><div class="list-name">'+i.hive+' · '+i.date+'</div><div class="list-info">'+i.notes+'</div></div><span class="badge '+badge+'">Varroa: '+i.varroa+'</span></div>';
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="color:var(--text-dim);font-size:13px">'+Data.inspections.length+' kayıt</div><button class="btn btn-primary" onclick="openAddInspection()">+ Yeni Muayene</button></div>';
+    html += '<div class="card"><div class="card-head"><div class="card-title">Muayene Geçmişi</div></div>';
+    if (!Data.inspections.length) {
+      html += '<div class="empty">Henüz muayene yok. <a class="card-link" onclick="openAddInspection()">İlk muayeneyi ekle →</a></div>';
+    }
+    var sorted = Data.inspections.slice().sort(function(a,b){return (b.id||0)-(a.id||0)});
+    sorted.forEach(function(i){
+      var hive = Data.hives.find(function(h){return h.id===i.hiveId;});
+      var hname = hive?hive.name:'Kovan #'+i.hiveId;
+      html += '<div class="list-item-row"><div class="list-dot '+dotColor(i.status)+'"></div><div class="list-main"><div class="list-name">'+escapeHtml(hname)+' — '+i.date+'</div><div class="list-info">'+escapeHtml(i.note||'-')+' · '+i.population+' · Yavru: '+i.brood+' çerçeve · Yumurta: '+escapeHtml(i.eggs||'-')+'</div></div><div class="actions-mini"><button class="btn-mini" onclick="openEditInspection('+i.id+')">Düzenle</button><button class="btn-mini danger" onclick="deleteInspection('+i.id+')">Sil</button></div></div>';
     });
     html += '</div>';
     document.getElementById('view-inspections').innerHTML = html;
@@ -309,9 +645,7 @@ var App = {
   render_queens: function() {
     var html = '<div class="card"><div class="card-head"><div class="card-title">Ana Arılar ('+Data.queens.length+')</div></div>';
     Data.queens.forEach(function(q){
-      var dot = q.status==='active'?'dot-green':'dot-yellow';
-      var badge = q.status==='active'?'ok':'warn';
-      html += '<div class="list-item"><div class="list-dot '+dot+'"></div><div class="list-main"><div class="list-name">Ana Arı #'+q.id+' · '+q.breed+'</div><div class="list-info">Yaş: '+q.age+' yıl · Verim: '+q.productivity+(q.marked?' · İşaretli':' · İşaretsiz')+'</div></div><span class="badge '+badge+'">'+(q.status==='active'?'Aktif':'Değiştir')+'</span></div>';
+      html += '<div class="list-item-row"><div class="list-dot '+(q.status==='active'?'dot-green':'dot-yellow')+'"></div><div class="list-main"><div class="list-name">Ana Arı #'+q.id+' — '+escapeHtml(q.breed)+'</div><div class="list-info">Yaş: '+q.age+' yıl · Verim: '+q.productivity+(q.marked?' · İşaretli':'')+'</div></div>'+statusBadge(q.status)+'</div>';
     });
     html += '</div>';
     document.getElementById('view-queens').innerHTML = html;
@@ -319,25 +653,15 @@ var App = {
 
   render_honey: function() {
     var total = Data.harvests.reduce(function(s,h){return s+h.weight},0);
-    var html = '<div class="stats-grid"><div class="stat-card"><div class="stat-icon success">🍯</div><div class="stat-label">Toplam Hasat</div><div class="stat-value">'+total.toFixed(1)+' kg</div></div><div class="stat-card"><div class="stat-icon honey">📅</div><div class="stat-label">Bu Ay</div><div class="stat-value">'+Data.harvests[2].weight+' kg</div></div></div>';
+    var html = '<div class="stats-grid"><div class="stat-card"><div class="stat-icon success">🍯</div><div class="stat-label">Toplam Hasat</div><div class="stat-value">'+total.toFixed(1)+' kg</div></div></div>';
     html += '<div class="card"><div class="card-head"><div class="card-title">Hasat Geçmişi</div></div><div class="chart-wrap">';
-    var max = Math.max.apply(null, Data.harvests.map(function(h){return h.weight}));
+    var max = Math.max.apply(null, Data.harvests.map(function(h){return h.weight}).concat([1]));
     Data.harvests.forEach(function(h){
       var height = Math.round((h.weight/max)*100);
       html += '<div class="bar-col"><div class="bar-val">'+h.weight+' kg</div><div class="bar" style="height:'+height+'%"></div><div class="bar-label">'+h.month+'</div></div>';
     });
     html += '</div></div>';
     document.getElementById('view-honey').innerHTML = html;
-  },
-
-  render_analytics: function() {
-    var html = '<div class="card"><div class="card-head"><div class="card-title">Üs Performansı</div></div>';
-    Data.apiaries.forEach(function(a){
-      var hCount = Data.hives.filter(function(h){return h.apiary===a.name}).length;
-      html += '<div class="list-item"><div class="list-dot dot-green"></div><div class="list-main"><div class="list-name">'+a.name+'</div><div class="list-info">'+hCount+' kovan · '+a.hives+' beklenen</div></div><span class="badge ok">Aktif</span></div>';
-    });
-    html += '</div>';
-    document.getElementById('view-analytics').innerHTML = html;
   },
 
   toast: function(msg) {
@@ -359,24 +683,18 @@ var App = {
   }
 };
 
-// Unregister any existing service worker
+// ESC ile modal kapat
+document.addEventListener('keydown', function(e){ if (e.key==='Escape') Modal.close(); });
+
+// Unregister SW
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(function(regs){
-    regs.forEach(function(r){r.unregister()});
-  });
+  navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister();});});
 }
 
 // Apply saved theme
-try {
-  var saved = localStorage.getItem('bm-theme');
-  if (saved) {
-    document.documentElement.setAttribute('data-theme', saved);
-    var btn = document.getElementById('theme-toggle');
-    if (btn) btn.textContent = saved==='dark'?'🌙':'☀️';
-  }
-} catch(e){}
+try { var saved = localStorage.getItem('bm-theme'); if (saved) { document.documentElement.setAttribute('data-theme', saved); } } catch(e){}
 
-// Init immediately
+// Init
 function init() {
   var view = (location.hash || '#dashboard').slice(1);
   App.nav(view);
@@ -388,6 +706,6 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
-</script>
+</script></script>
 </body>
 </html>
