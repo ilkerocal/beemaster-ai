@@ -136,15 +136,6 @@
   </script>
 
   <!-- Scripts (sıralama önemli) -->
-  <script src="js/utils.js?v=3"></script>
-  <script src="js/db.js?v=3"></script>
-  <script src="js/ui.js?v=3"></script>
-  <script src="js/modules/apiaries.js?v=3"></script>
-  <script src="js/modules/hives.js?v=3"></script>
-  <script src="js/modules/inspections.js?v=3"></script>
-  <script src="js/modules/crud.js?v=3"></script>
-  <script src="js/modules/dashboard.js?v=3"></script>
-  <script src="js/app.js?v=3"></script>
   <script>
     // Hide boot screen once everything is loaded
     window.addEventListener('load', function() {
@@ -180,6 +171,34 @@
       navigator.serviceWorker.getRegistrations().then(function(regs) {
         regs.forEach(function(reg) { reg.unregister(); });
       });
+    }
+  </script>
+<script src="js/app.bundle.js?v=4"></script>
+  <script>
+    // Hide boot screen once everything is loaded
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        var boot = document.getElementById('boot-screen');
+        if (boot) {
+          boot.classList.add('hidden');
+          setTimeout(function() { boot.remove(); }, 400);
+        }
+      }, 200);
+    });
+
+    try {
+      if (typeof App !== 'undefined') {
+        App.init();
+        console.log('[BeeMaster AI v3.1] Bundled · Initialized OK');
+      } else {
+        throw new Error('App not loaded');
+      }
+    } catch (e) {
+      console.error('App.init failed:', e);
+      var boot = document.getElementById('boot-screen');
+      if (boot) {
+        boot.innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px;max-width:400px"><div style="font-size:48px;margin-bottom:12px">⚠️</div><div style="font-size:18px;font-weight:700;margin-bottom:8px">Yükleme Hatası</div><div style="font-size:13px;color:#8A8FA3">' + (e.message || e) + '</div><button onclick="localStorage.clear();location.reload()" style="margin-top:20px;padding:10px 20px;background:#F4B400;color:#000;border:none;border-radius:8px;cursor:pointer;font-weight:600">Yenile & Cache Temizle</button></div>';
+      }
     }
   </script>
 </body>

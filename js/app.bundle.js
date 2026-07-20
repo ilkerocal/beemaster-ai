@@ -1,0 +1,3136 @@
+/* BeeMaster AI v3.0 - Bundled JS (order: utils, db, ui, modules/*, app) */
+
+/* ===== js/utils.js ===== */
+// ============================================================
+// Utils — Spec 03, 14 — Global namespace pattern
+// ============================================================
+(function (global) {
+  'use strict';
+
+  const BM = global.BM = global.BM || {};
+
+  const $ = (sel, ctx = document) => ctx.querySelector(sel);
+  const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+
+  const uid = () => 'id_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+  const esc = (s) => {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  };
+
+  const fmt = (n, d = 1) => Number(n || 0).toFixed(d);
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  const dateStr = (d) => {
+    if (!d) return '-';
+    try { return new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }); }
+    catch (e) { return d; }
+  };
+
+  const dateAgo = (d) => {
+    if (!d) return '-';
+    const days = Math.floor((Date.now() - new Date(d).getTime()) / 864e5);
+    if (days === 0) return 'bugün';
+    if (days === 1) return 'dün';
+    if (days < 30) return days + ' gün önce';
+    if (days < 365) return Math.floor(days / 30) + ' ay önce';
+    return Math.floor(days / 365) + ' yıl önce';
+  };
+
+  // Icon registry — Lucide alternatifi (emoji, Spec 03 §2.5)
+  const Icons = {
+    dashboard: '📊', apiaries: '📍', hives: '🏠', inspections: '📋',
+    queens: '👑', honey: '🍯', feeding: '🌾', treatments: '💊',
+    diseases: '🦠', inventory: '📦', analytics: '📈', reports: '📄',
+    settings: '⚙️', edit: '✏️', delete: '🗑', plus: '+', search: '🔍',
+    bell: '🔔', sun: '☀️', moon: '🌙', check: '✓', close: '×',
+    warn: '⚠️', info: 'ℹ️', home: '🏠', map: '🗺', list: '📋',
+    bee: '🐝', flask: '🧪', shield: '🛡', drop: '💧',
+    varroa: '🦠', nosema: '🦠', foulbrood: '⚠️', chalkbrood: '⚪',
+    sacbrood: '⚠️', beetle: '🪲',
+  };
+
+  // Transforms / Labels
+  const T = {
+    strain: s => ({anatolian:'Anadolu',caucasian:'Kafkas',carniolan:'Karniyol',italian:'İtalyan',hybrid:'Hibrit'}[s] || s),
+    box: s => ({langstroth:'Langstroth',dadant:'Dadant',layens:'Layens',flow:'Flow',top_bar:'Top-Bar'}[s] || s),
+    pop: s => ({very_strong:'Çok Güçlü',strong:'Güçlü',medium:'Orta',weak:'Zayıf',very_weak:'Çok Zayıf'}[s] || s),
+    color: s => ({white:'Beyaz',yellow:'Sarı',red:'Kırmızı',green:'Yeşil',blue:'Mavi'}[s] || s),
+    source: s => ({bred:'Yetiştirildi',purchased:'Satın alındı',swarm:'Oğul',supersedure:'Süpersedür',emergency:'Acil'}[s] || s),
+    feedType: s => ({sugar_syrup:'Şeker Şurubu',fondant:'Fondant',pollen_patty:'Polen Keçi',candy:'Kek',honey_water:'Bal+Su'}[s] || s),
+    reason: s => ({weak_colony:'Zayıf koloni',winter_prep:'Kış hazırlığı',drought:'Kuraklık',supplement:'Ek besin',stimulative:'Teşvik'}[s] || s),
+    disease: s => ({varroosis:'Varroosis',nosemosis:'Nosema',foulbrood:'Yavru Çürüğü',chalkbrood:'Kireç Hastalığı',sacbrood:'Torba Hastalığı',small_hive_beetle:'KKB'}[s] || s),
+    invCat: s => ({medication:'İlaç',feed:'Yem',equipment:'Ekipman',consumable:'Sarf'}[s] || s),
+    status: s => ({active:'Aktif',weak:'Zayıf',dead:'Ölü',sold:'Satıldı',merged:'Birleşti',treating:'Tedavide',planned:'Planlı',completed:'Tamamlandı',in_progress:'Sürüyor',resolved:'Çözüldü',superseded:'Değiştirildi',missing:'Kayıp',ok:'İYİ',good:'İYİ',warning:'DİKKAT',danger:'ACİL'}[s] || s),
+    statusCls: s => ['good','ok','active','completed','resolved'].includes(s) ? 'badge--ok' : ['danger','dead'].includes(s) ? 'badge--danger' : 'badge--warn',
+    statusDot: s => ['good','ok','active','completed','resolved'].includes(s) ? 'row-list__dot--g' : ['danger','dead'].includes(s) ? 'row-list__dot--r' : 'row-list__dot--y',
+  };
+
+  // EventBus
+  const Bus = {
+    handlers: {},
+    on(event, fn) { (this.handlers[event] = this.handlers[event] || []).push(fn); return () => this.off(event, fn); },
+    off(event, fn) { this.handlers[event] = (this.handlers[event] || []).filter(f => f !== fn); },
+    emit(event, data) { (this.handlers[event] || []).forEach(fn => fn(data)); }
+  };
+
+  Object.assign(BM, { $, $$, uid, esc, fmt, today, dateStr, dateAgo, Icons, T, Bus });
+})(window);
+
+/* ===== js/db.js ===== */
+// ============================================================
+// Storage — localStorage adapter (IndexedDB pattern, Spec 11)
+// Spec 11 §3: Offline-first, IndexedDB primary, localStorage fallback
+// ============================================================
+(function (global) {
+  'use strict';
+
+  const BM = global.BM = global.BM || {};
+  const KEY = 'beemaster-v3';
+
+  // Schema (Spec 08 — Database Architecture)
+  const SCHEMA = ['apiaries','hives','queens','frames','inspections','harvests','feedings','treatments','diseases','inventory'];
+
+  // Seed data — full Turkish context, realistic values
+  const seedData = () => {
+    const now = new Date().toISOString();
+    const ago = d => new Date(Date.now() - d * 864e5).toISOString().slice(0, 10);
+
+    const apiaries = [
+      { id: 'ap_1', name: 'Eğil Merkez', location: 'Eğil, Diyarbakır', lat: 38.247, lng: 40.135, flora: 'Geven, Kekik, Adaçayı, Pamuk', notes: 'Yayla konumu', archived: false, createdAt: now, updatedAt: now },
+      { id: 'ap_2', name: 'Surlar Üssü', location: 'Sur, Diyarbakır', lat: 37.915, lng: 40.230, flora: 'Pamuk, Ayçiçeği, Geven', notes: '', archived: false, createdAt: now, updatedAt: now }
+    ];
+
+    const hiveSeed = [
+      { n: 'Kovan-01', ap: 'ap_1', strain: 'carniolan', box: 'langstroth', fc: 10, pop: 'very_strong', var: 1, qBreed: 'Karniyol F1', qAge: 2 },
+      { n: 'Kovan-02', ap: 'ap_1', strain: 'caucasian', box: 'langstroth', fc: 10, pop: 'strong', var: 3, qBreed: 'Kafkas Saf', qAge: 3 },
+      { n: 'Kovan-03', ap: 'ap_1', strain: 'anatolian', box: 'langstroth', fc: 10, pop: 'strong', var: 2, qBreed: 'Anadolu Yerli', qAge: 1 },
+      { n: 'Kovan-04', ap: 'ap_1', strain: 'carniolan', box: 'langstroth', fc: 8, pop: 'strong', var: 2, qBreed: 'Karniyol', qAge: 2 },
+      { n: 'Kovan-05', ap: 'ap_2', strain: 'caucasian', box: 'dadant', fc: 7, pop: 'weak', var: 8, qBreed: 'Kafkas', qAge: 4 },
+      { n: 'Kovan-06', ap: 'ap_2', strain: 'anatolian', box: 'langstroth', fc: 10, pop: 'strong', var: 2, qBreed: 'Anadolu', qAge: 2 },
+      { n: 'Kovan-07', ap: 'ap_2', strain: 'hybrid', box: 'layens', fc: 8, pop: 'medium', var: 4, qBreed: 'Hibrit', qAge: 2 }
+    ];
+
+    const hives = [];
+    const queens = [];
+    const frames = [];
+
+    hiveSeed.forEach((s, i) => {
+      const hid = 'hv_' + (i + 1);
+      const qid = 'q_' + (i + 1);
+      queens.push({
+        id: qid, hiveId: hid, strain: s.strain,
+        birthDate: new Date(Date.now() - s.qAge * 365 * 864e5).toISOString().slice(0, 10),
+        source: 'bred', markedColor: ['white', 'yellow', 'red', 'green', 'blue'][(new Date().getFullYear() - s.qAge) % 5],
+        status: 'active', performanceScore: Math.max(0.3, 1 - s.var * 0.08 - (s.pop === 'weak' ? 0.3 : 0)),
+        notes: '', createdAt: now, updatedAt: now
+      });
+      hives.push({
+        id: hid, apiaryId: s.ap, name: s.n, status: s.pop === 'weak' ? 'weak' : 'active',
+        strain: s.strain, boxType: s.box, frameCount: s.fc, positionInApiary: i + 1,
+        queenId: qid, nfcTag: 'BM-' + Date.now().toString(36).toUpperCase() + '-' + (i + 1),
+        installedAt: ago((i + 1) * 30), notes: '', createdAt: now, updatedAt: now
+      });
+      const ftypes = ['brood', 'brood', 'brood', 'honey', 'honey', 'pollen', 'foundation', 'empty'];
+      for (let p = 1; p <= s.fc; p++) {
+        frames.push({
+          id: 'fr_' + hid + '_' + p, hiveId: hid, position: p,
+          frameType: ftypes[(p - 1) % ftypes.length] || 'empty',
+          foundationType: 'wax', status: 'in_use', cyclesCompleted: Math.floor(Math.random() * 4),
+          waxAgeMonths: Math.floor(Math.random() * 24) + 1, notes: '',
+          createdAt: now, updatedAt: now
+        });
+      }
+    });
+
+    const inspSeed = [
+      { hi: 0, days: 3, var: 1, pop: 'very_strong', brood: 7, honey: 2, note: 'Sezon başı kontrol, her şey yolunda' },
+      { hi: 1, days: 5, var: 3, pop: 'strong', brood: 5, honey: 3, note: 'Ana arı yumurtluyor, yavru düzenli' },
+      { hi: 2, days: 2, var: 2, pop: 'strong', brood: 6, honey: 4, note: 'Yavru düzeni iyi, bal ekleniyor' },
+      { hi: 3, days: 1, var: 2, pop: 'strong', brood: 5, honey: 3, note: 'Hızlı gelişme' },
+      { hi: 4, days: 7, var: 8, pop: 'weak', brood: 2, honey: 1, note: 'ACİL: Varroa yüksek, tedavi gerekli' },
+      { hi: 5, days: 4, var: 2, pop: 'strong', brood: 6, honey: 3, note: 'Normal kontrol' },
+      { hi: 6, days: 6, var: 4, pop: 'medium', brood: 4, honey: 2, note: 'Çerçeve azaldı' }
+    ];
+    const inspections = inspSeed.map((s, i) => ({
+      id: 'in_' + (i + 1), hiveId: hives[s.hi].id, date: ago(s.days),
+      varroaCount: s.var, population: s.pop, eggsPattern: 'regular',
+      broodFrames: s.brood, honeyFrames: s.honey, pollenFrames: 1, queenSeen: true,
+      weather: 'sunny', notes: s.note, aiAnomalies: s.var >= 6 ? 2 : 0, createdAt: now
+    }));
+
+    const harvests = [
+      { hiveId: hives[0].id, days: 90, w: 4.2 }, { hiveId: hives[1].id, days: 60, w: 6.5 },
+      { hiveId: hives[2].id, days: 30, w: 8.8 }, { hiveId: hives[3].id, days: 15, w: 3.2 },
+      { hiveId: hives[5].id, days: 25, w: 5.4 }, { hiveId: hives[6].id, days: 45, w: 4.1 }
+    ].map((h, i) => ({
+      id: 'hv_h' + (i + 1), hiveId: h.hiveId, apiaryId: hives.find(x => x.id === h.hiveId).apiaryId,
+      date: ago(h.days), weight: h.w, quality: 'A', frames: Math.floor(h.w / 1.5),
+      notes: '', createdAt: now
+    }));
+
+    const feedings = [
+      { hiveId: hives[4].id, days: 2, type: 'sugar_syrup', amountKg: 2.5, reason: 'weak_colony', status: 'completed', notes: '1:1 şurup' },
+      { hiveId: hives[6].id, days: 10, type: 'fondant', amountKg: 1, reason: 'winter_prep', status: 'planned', notes: 'Kışlık destek' }
+    ].map((f, i) => ({
+      id: 'fd_' + (i + 1), hiveId: f.hiveId, date: ago(f.days),
+      type: f.type, amountKg: f.amountKg, reason: f.reason, status: f.status,
+      notes: f.notes, createdAt: now
+    }));
+
+    const treatments = [{
+      id: 'tr_1', hiveId: hives[4].id, date: ago(1), product: 'Apivar',
+      dosage: '2 şerit', duration: '42 gün', varroaBefore: 8, varroaAfter: null,
+      status: 'in_progress', notes: 'Varroa yüksek — acil tedavi', createdAt: now
+    }];
+
+    const diseases = [{
+      id: 'ds_1', hiveId: hives[4].id, date: ago(1), disease: 'varroosis',
+      severity: 'high', treatment: 'Apivar', status: 'treating',
+      notes: 'Varroa destructor', createdAt: now
+    }];
+
+    const inventory = [
+      { name: 'Apivar şerit', c: 'medication', q: 8, u: 'adet', m: 5, p: 85 },
+      { name: 'Şeker (besleme)', c: 'feed', q: 25, u: 'kg', m: 10, p: 12 },
+      { name: 'Çerçeve (boş)', c: 'equipment', q: 30, u: 'adet', m: 10, p: 35 },
+      { name: 'Petek temeli', c: 'equipment', q: 50, u: 'adet', m: 20, p: 8 },
+      { name: 'Ana arı kafesi', c: 'equipment', q: 3, u: 'adet', m: 2, p: 25 }
+    ].map((i, idx) => ({
+      id: 'in_' + (idx + 1), name: i.name, category: i.c, quantity: i.q,
+      unit: i.u, minStock: i.m, costTry: i.p, supplier: '', notes: '',
+      createdAt: now
+    }));
+
+    return { apiaries, hives, queens, frames, inspections, harvests, feedings, treatments, diseases, inventory };
+  };
+
+  // Storage API
+  const Storage = {
+    state: null,
+
+    load() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        if (raw) {
+          this.state = JSON.parse(raw);
+          SCHEMA.forEach(k => { if (!Array.isArray(this.state[k])) this.state[k] = []; });
+          return true;
+        }
+      } catch (e) { console.warn('Storage load failed', e); }
+      return false;
+    },
+
+    save() {
+      try {
+        localStorage.setItem(KEY, JSON.stringify(this.state));
+      } catch (e) { console.warn('Storage save failed', e); }
+    },
+
+    reset() {
+      localStorage.removeItem(KEY);
+      this.state = null;
+      this.init();
+    },
+
+    init() {
+      if (!this.load()) {
+        this.state = seedData();
+        this.save();
+      }
+    },
+
+    // CRUD generic
+    list(coll) { return this.state[coll] || []; },
+    get(coll, id) { return (this.state[coll] || []).find(x => x.id === id); },
+    add(coll, data) {
+      const id = BM.uid();
+      const now = new Date().toISOString();
+      const obj = { id, createdAt: now, updatedAt: now, ...data };
+      this.state[coll].push(obj);
+      this.save();
+      BM.Bus.emit('change:' + coll, obj);
+      return obj;
+    },
+    update(coll, id, data) {
+      const idx = this.state[coll].findIndex(x => x.id === id);
+      if (idx < 0) return null;
+      this.state[coll][idx] = { ...this.state[coll][idx], ...data, updatedAt: new Date().toISOString() };
+      this.save();
+      BM.Bus.emit('change:' + coll, this.state[coll][idx]);
+      return this.state[coll][idx];
+    },
+    remove(coll, id) {
+      this.state[coll] = this.state[coll].filter(x => x.id !== id);
+      this.save();
+      BM.Bus.emit('change:' + coll, { id });
+    },
+
+    // Cascade delete
+    cascadeDeleteHive(hiveId) {
+      ['frames', 'inspections', 'harvests', 'feedings', 'treatments', 'diseases']
+        .forEach(c => this.state[c] = this.state[c].filter(x => x.hiveId !== hiveId));
+      this.state.queens = this.state.queens.filter(q => q.hiveId !== hiveId);
+      this.remove('hives', hiveId);
+    }
+  };
+
+  Storage.init();
+  BM.Storage = Storage;
+  BM.SCHEMA = SCHEMA;
+})(window);
+
+/* ===== js/ui.js ===== */
+// ============================================================
+// UI Components — Modal, Toast, Tabs (Spec 03 §3.1)
+// ============================================================
+(function (global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  // ============ MODAL ============
+  const Modal = {
+    cb: null,
+    el: null,
+
+    open(title, html, onSubmit) {
+      if (!this.el) {
+        this.el = document.getElementById('modal-overlay');
+      }
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-body').innerHTML = html;
+      document.getElementById('modal-form').onsubmit = (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const data = {};
+        for (const [k, v] of fd.entries()) {
+          if (data[k] !== undefined) {
+            // multi-value
+            if (!Array.isArray(data[k])) data[k] = [data[k]];
+            data[k].push(v);
+          } else {
+            data[k] = v;
+          }
+        }
+        if (this.cb && this.cb(data) !== false) this.close();
+      };
+      this.cb = onSubmit;
+      this.el.classList.add('modal-overlay--active');
+      setTimeout(() => {
+        const f = document.getElementById('modal-body').querySelector('input,select,textarea');
+        if (f) f.focus();
+      }, 50);
+    },
+
+    close() {
+      if (this.el) this.el.classList.remove('modal-overlay--active');
+      this.cb = null;
+    },
+
+    confirm(msg, onYes) {
+      this.open('⚠️ Onay',
+        `<div class="empty" style="padding:var(--space-3) 0">
+          <div class="empty__icon">⚠️</div>
+          <div class="empty__title">${BM.esc(msg)}</div>
+        </div>`,
+        () => { onYes(); return true; }
+      );
+    },
+
+    showReport(html) {
+      this.open('Rapor', html, () => true);
+    }
+  };
+
+  // ============ TOAST ============
+  const Toast = {
+    container: null,
+    show(msg, type = 'info') {
+      if (!this.container) this.container = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      el.className = 'toast toast--' + type;
+      el.textContent = msg;
+      this.container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 300);
+      }, 3000);
+    }
+  };
+
+  // ============ TABS ============
+  const Tabs = {
+    init(container, tabs, defaultTab, onChange) {
+      const tabBar = container.querySelector('.tabs');
+      const content = container.querySelector('.tabs__content');
+      if (!tabBar || !content) return;
+
+      const render = (activeId) => {
+        tabBar.innerHTML = tabs.map(t => `
+          <button type="button" class="tabs__item ${t.id === activeId ? 'tabs__item--active' : ''}" data-tab="${t.id}">
+            ${BM.esc(t.label)}
+          </button>
+        `).join('');
+        const tab = tabs.find(t => t.id === activeId);
+        if (tab) content.innerHTML = tab.content;
+        onChange && onChange(activeId);
+        tabBar.querySelectorAll('.tabs__item').forEach(btn => {
+          btn.onclick = () => render(btn.dataset.tab);
+        });
+      };
+
+      render(defaultTab || tabs[0].id);
+      return { setActive: render };
+    }
+  };
+
+  // ============ WIZARD ============
+  const Wizard = {
+    open(title, steps, onComplete) {
+      let currentStep = 0;
+      const state = {};
+
+      const render = () => {
+        const step = steps[currentStep];
+        const isLast = currentStep === steps.length - 1;
+
+        Modal.open(title,
+          `
+            <div class="wizard">
+              <div class="wizard__steps">
+                ${steps.map((s, i) => `
+                  <div class="wizard__step ${i === currentStep ? 'wizard__step--active' : (i < currentStep ? 'wizard__step--done' : '')}">
+                    <div class="wizard__step-num">${i < currentStep ? '✓' : i + 1}</div>
+                    <div class="wizard__step-label">${BM.esc(s.label)}</div>
+                  </div>
+                `).join('')}
+              </div>
+              <div id="wizard-body">${step.render(state)}</div>
+              <div class="wizard__nav">
+                <button type="button" class="btn btn--ghost" ${currentStep === 0 ? 'disabled' : ''} onclick="BM.Wizard._prev()">← Geri</button>
+                <div style="font-size:11px;color:var(--text-secondary)">${currentStep + 1}/${steps.length}</div>
+                ${isLast
+                  ? `<button type="button" class="btn btn--primary" onclick="BM.Wizard._complete()">✓ Tamamla</button>`
+                  : `<button type="button" class="btn btn--primary" onclick="BM.Wizard._next()">İleri →</button>`}
+              </div>
+            </div>
+          `,
+          () => false // Wizard kendi navigation'unu yonetiyor
+        );
+        // Modal form'u disable et (submit wizard tarafindan kontrol ediliyor)
+        document.getElementById('modal-form').onsubmit = (e) => { e.preventDefault(); return false; };
+        // Hide default foot
+        const foot = document.querySelector('.modal__foot');
+        if (foot) foot.style.display = 'none';
+
+        // Trigger step's onMount
+        if (step.onMount) step.onMount(state, (data) => Object.assign(state, data));
+      };
+
+      this._next = () => {
+        const step = steps[currentStep];
+        if (step.validate && !step.validate(state)) return;
+        if (step.onNext) step.onNext(state);
+        if (currentStep < steps.length - 1) {
+          currentStep++;
+          render();
+        }
+      };
+
+      this._prev = () => {
+        if (currentStep > 0) {
+          currentStep--;
+          render();
+        }
+      };
+
+      this._complete = () => {
+        const step = steps[currentStep];
+        if (step.validate && !step.validate(state)) return;
+        Modal.close();
+        // Restore default foot
+        const foot = document.querySelector('.modal__foot');
+        if (foot) foot.style.display = '';
+        onComplete(state);
+      };
+
+      render();
+    }
+  };
+
+  Object.assign(BM, { Modal, Toast, Tabs, Wizard });
+})(window);
+
+/* ===== js/modules/apiaries.js ===== */
+// ============================================================
+// Apiaries Module — Spec 05_Modules/Apiaries.md
+// P0: CRUD + harita + üs bazlı özet
+// ============================================================
+(function (global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  const apiariesModule = {
+    // ============ CRUD ============
+    add() {
+      BM.Modal.open('Yeni Arı Üssü',
+        `<label class="field"><span class="field-label">Üs Adı *</span>
+          <input class="input" name="name" required placeholder="Örn: Çınar Üssü"></label>
+         <label class="field"><span class="field-label">Konum *</span>
+          <input class="input" name="location" required placeholder="Örn: Çınar, Diyarbakır"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Enlem</span>
+             <input class="input" name="lat" type="number" step="0.001" placeholder="38.247"></label>
+           <label class="field"><span class="field-label">Boylam</span>
+             <input class="input" name="lng" type="number" step="0.001" placeholder="40.135"></label>
+         </div>
+         <label class="field"><span class="field-label">Flora</span>
+           <input class="input" name="flora" placeholder="Geven, Kekik, Pamuk"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => {
+          if (d.lat) d.lat = parseFloat(d.lat);
+          if (d.lng) d.lng = parseFloat(d.lng);
+          BM.Storage.add('apiaries', d);
+          BM.Toast.show('Üs eklendi ✓', 'success');
+          App.render('apiaries');
+          return true;
+        }
+      );
+    },
+
+    edit(id) {
+      const a = BM.Storage.get('apiaries', id);
+      if (!a) return;
+      BM.Modal.open('Üs Düzenle — ' + a.name,
+        `<label class="field"><span class="field-label">Üs Adı *</span>
+           <input class="input" name="name" required value="${BM.esc(a.name)}"></label>
+         <label class="field"><span class="field-label">Konum *</span>
+           <input class="input" name="location" required value="${BM.esc(a.location)}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Enlem</span>
+             <input class="input" name="lat" type="number" step="0.001" value="${a.lat || ''}"></label>
+           <label class="field"><span class="field-label">Boylam</span>
+             <input class="input" name="lng" type="number" step="0.001" value="${a.lng || ''}"></label>
+         </div>
+         <label class="field"><span class="field-label">Flora</span>
+           <input class="input" name="flora" value="${BM.esc(a.flora || '')}"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(a.notes || '')}</textarea></label>`,
+        (d) => {
+          if (d.lat) d.lat = parseFloat(d.lat);
+          if (d.lng) d.lng = parseFloat(d.lng);
+          BM.Storage.update('apiaries', id, d);
+          BM.Toast.show('Üs güncellendi ✓', 'success');
+          App.render('apiaries');
+          return true;
+        }
+      );
+    },
+
+    del(id) {
+      const a = BM.Storage.get('apiaries', id);
+      if (!a) return;
+      const hiveCount = BM.Storage.list('hives').filter(h => h.apiaryId === id).length;
+      if (hiveCount > 0) {
+        BM.Toast.show(`Bu üsde ${hiveCount} kovan var. Önce kovanları taşıyın/silin.`, 'error');
+        return;
+      }
+      BM.Modal.confirm(`"${a.name}" üssünü silmek istiyor musunuz?`, () => {
+        BM.Storage.remove('apiaries', id);
+        BM.Toast.show('Üs silindi', 'info');
+        App.render('apiaries');
+      });
+    },
+
+    archive(id) {
+      const a = BM.Storage.get('apiaries', id);
+      if (!a) return;
+      const newStatus = !a.archived;
+      BM.Modal.confirm(`"${a.name}" üssünü ${newStatus ? 'arşivlemek' : 'arşivden çıkarmak'} istiyor musunuz?`, () => {
+        BM.Storage.update('apiaries', id, { archived: newStatus });
+        BM.Toast.show(newStatus ? 'Üs arşivlendi' : 'Üs arşivden çıkarıldı', 'info');
+        App.render('apiaries');
+      });
+    },
+
+    // AP-03: Kovan tasima
+    move(id) {
+      const a = BM.Storage.get('apiaries', id);
+      if (!a) return;
+      const hives = BM.Storage.list('hives').filter(h => h.apiaryId === id);
+      if (!hives.length) { BM.Toast.show('Bu üsde kovan yok', 'error'); return; }
+      const otherApiaries = BM.Storage.list('apiaries').filter(x => x.id !== id && !x.archived);
+      if (!otherApiaries.length) { BM.Toast.show('Başka aktif üs yok', 'error'); return; }
+
+      BM.Modal.open('🚚 Kovan Taşı — ' + a.name,
+        `<label class="field"><span class="field-label">Hedef Üs *</span>
+           <select class="select" name="targetApiaryId" required>
+             ${otherApiaries.map(x => `<option value="${x.id}">${BM.esc(x.name)}</option>`).join('')}
+           </select></label>
+         <label class="field"><span class="field-label">Taşınacak Kovanlar</span>
+           <div style="max-height:200px;overflow-y:auto;background:var(--bg-tertiary);padding:var(--space-2);border-radius:var(--radius-md)">
+             ${hives.map(h => `<label style="display:flex;align-items:center;gap:var(--space-2);padding:6px;cursor:pointer"><input type="checkbox" name="hiveIds" value="${h.id}" checked>${BM.esc(h.name)} <span style="font-size:11px;color:var(--text-secondary)">(${h.frameCount} çerçeve)</span></label>`).join('')}
+           </div></label>
+         <label class="field"><span class="field-label">Taşıma Notu</span>
+           <textarea class="textarea" name="note" rows="2" placeholder="Mesafe, süre, kontrol listesi..."></textarea></label>`,
+        (d) => {
+          const ids = Array.isArray(d.hiveIds) ? d.hiveIds : (d.hiveIds ? [d.hiveIds] : []);
+          const target = BM.Storage.get('apiaries', d.targetApiaryId);
+          if (!target || !ids.length) { BM.Toast.show('En az bir kovan seçin', 'error'); return false; }
+          ids.forEach(hid => {
+            BM.Storage.update('hives', hid, { apiaryId: target.id });
+          });
+          BM.Toast.show(ids.length + ' kovan ' + target.name + ' üssüne taşındı ✓', 'success');
+          App.render('apiaries');
+          return true;
+        }
+      );
+    },
+
+    // ============ RENDER ============
+    render(view = 'list') {
+      this._currentView = view;
+      const list = BM.Storage.list('apiaries');
+      const withCoords = list.filter(a => a.lat && a.lng);
+      const totalHives = BM.Storage.list('hives').length;
+      const totalHoney = BM.Storage.list('harvests').reduce((s, h) => s + h.weight, 0);
+      const lowStock = BM.Storage.list('inventory').filter(i => i.quantity <= i.minStock).length;
+
+      const header = `
+        <div class="actions-bar">
+          <div>
+            <h2 style="font-size:18px;font-weight:700">Arı Üsleri</h2>
+            <div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} üs · ${totalHives} kovan · ${BM.fmt(totalHoney)} kg bal</div>
+          </div>
+          <div style="display:flex;gap:var(--space-2)">
+            <div class="view-toggle">
+              <button type="button" class="view-toggle__btn ${view === 'list' ? 'view-toggle__btn--active' : ''}" onclick="App.render('apiaries', 'list')">📋 Liste</button>
+              <button type="button" class="view-toggle__btn ${view === 'map' ? 'view-toggle__btn--active' : ''}" onclick="App.render('apiaries', 'map')">🗺 Harita</button>
+            </div>
+            <button class="btn btn--primary" onclick="BM.apiaries.add()">+ Yeni Üs</button>
+          </div>
+        </div>
+      `;
+
+      const stats = `
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat__icon stat__icon--honey">${BM.Icons.apiaries}</div>
+            <div class="stat__label">Toplam Üs</div>
+            <div class="stat__value">${list.length}</div>
+            <div class="stat__meta">${withCoords.length} GPS'li</div>
+          </div>
+          <div class="stat">
+            <div class="stat__icon stat__icon--success">${BM.Icons.hives}</div>
+            <div class="stat__label">Toplam Kovan</div>
+            <div class="stat__value">${totalHives}</div>
+            <div class="stat__meta">${list.filter(a => !a.archived).length} aktif üste</div>
+          </div>
+          <div class="stat">
+            <div class="stat__icon stat__icon--info">${BM.Icons.honey}</div>
+            <div class="stat__label">Toplam Bal</div>
+            <div class="stat__value">${BM.fmt(totalHoney)} kg</div>
+            <div class="stat__meta">Üs bazlı</div>
+          </div>
+          <div class="stat">
+            <div class="stat__icon stat__icon--warning">${BM.Icons.inventory}</div>
+            <div class="stat__label">Stok Uyarısı</div>
+            <div class="stat__value">${lowStock}</div>
+            <div class="stat__meta ${lowStock > 0 ? 'stat__meta--down' : ''}">${lowStock > 0 ? 'Sipariş ver' : 'Tam'}</div>
+          </div>
+        </div>
+      `;
+
+      if (view === 'map') {
+        setTimeout(() => this._initMap(), 100);
+        return header + `<div id="ap-map" class="map-container"></div>` + stats +
+          this._renderList();
+      }
+
+      return header + stats + this._renderList();
+    },
+
+    _renderList() {
+      const list = BM.Storage.list('apiaries');
+      if (!list.length) {
+        return `<div class="card" style="margin-top:var(--space-4)">
+          <div class="empty">
+            <div class="empty__icon">${BM.Icons.apiaries}</div>
+            <div class="empty__title">Henüz üs yok</div>
+            <div class="empty__sub">İlk üssünü ekleyerek başla</div>
+            <button class="btn btn--primary" onclick="BM.apiaries.add()">+ Yeni Üs</button>
+          </div>
+        </div>`;
+      }
+      return `<div style="display:flex;flex-direction:column;gap:var(--space-3);margin-top:var(--space-4)">${list.map(a => {
+        const hc = BM.Storage.list('hives').filter(h => h.apiaryId === a.id).length;
+        const totalHoney = BM.Storage.list('harvests').filter(h => h.apiaryId === a.id).reduce((s, h) => s + h.weight, 0);
+        const avgHoney = hc > 0 ? (totalHoney / hc).toFixed(1) : 0;
+        const recentInsp = BM.Storage.list('inspections').filter(i => {
+          const hive = BM.Storage.get('hives', i.hiveId);
+          return hive && hive.apiaryId === a.id;
+        }).sort((a, b) => b.date.localeCompare(a.date))[0];
+        const alerts = BM.Storage.list('inspections').filter(i => {
+          const hive = BM.Storage.get('hives', i.hiveId);
+          return hive && hive.apiaryId === a.id && i.varroaCount >= 6;
+        }).length;
+        return `<div class="card">
+          <div class="row-list__item" style="border:none">
+            <div class="row-list__dot ${a.archived ? 'row-list__dot--y' : 'row-list__dot--g'}"></div>
+            <div class="row-list__main">
+              <div class="row-list__name">
+                ${BM.esc(a.name)}
+                ${a.archived ? '<span class="badge badge--warn">Arşiv</span>' : ''}
+                <span class="badge badge--info">${hc} kovan</span>
+                ${alerts ? `<span class="badge badge--danger">${alerts} uyarı</span>` : ''}
+              </div>
+              <div class="row-list__info">
+                📍 ${BM.esc(a.location)}${a.lat && a.lng ? ` · GPS: ${a.lat.toFixed(3)}, ${a.lng.toFixed(3)}` : ''}${a.flora ? ` · 🌸 ${BM.esc(a.flora)}` : ''}
+              </div>
+              ${a.notes ? `<div class="row-list__info" style="font-style:italic;margin-top:2px">"${BM.esc(a.notes)}"</div>` : ''}
+            </div>
+            <div style="text-align:right;min-width:110px;flex-shrink:0">
+              <div style="font-size:16px;font-weight:700;color:var(--honey-500)">${BM.fmt(totalHoney)} kg</div>
+              <div style="font-size:10px;color:var(--text-secondary)">${hc > 0 ? avgHoney + ' kg/kovan ort.' : 'kovan yok'}</div>
+              ${recentInsp ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">Son muayene: ${BM.dateAgo(recentInsp.date)}</div>` : ''}
+            </div>
+            <div class="row-list__actions">
+              <button class="btn btn--sm" onclick="BM.apiaries.move('${a.id}')" title="Kovan Taşı">🚚</button>
+              <button class="btn btn--sm" onclick="BM.apiaries.archive('${a.id}')" title="${a.archived ? 'Arşivden Çıkar' : 'Arşivle'}">📦</button>
+              <button class="btn btn--sm" onclick="BM.apiaries.edit('${a.id}')">Düzenle</button>
+              <button class="btn btn--sm btn--danger" onclick="BM.apiaries.del('${a.id}')">Sil</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}</div>`;
+    },
+
+    // AP-01: Leaflet harita
+    _initMap() {
+      const el = document.getElementById('ap-map');
+      if (!el) return;
+      if (!window.L) {
+        el.innerHTML = '<div class="empty"><div class="empty__icon">🗺</div><div class="empty__title">Harita yüklenemedi</div><div class="empty__sub">İnternet bağlantısını kontrol et</div></div>';
+        return;
+      }
+      // Onceki haritayi temizle
+      if (this._mapInstance) {
+        this._mapInstance.remove();
+        this._mapInstance = null;
+      }
+      const withCoords = BM.Storage.list('apiaries').filter(a => a.lat && a.lng);
+      if (!withCoords.length) {
+        el.innerHTML = '<div class="empty"><div class="empty__icon">📍</div><div class="empty__title">Koordinatlı üs yok</div><div class="empty__sub">Üs eklerken Enlem/Boylam girersen haritada görünür</div></div>';
+        return;
+      }
+      const center = [withCoords[0].lat, withCoords[0].lng];
+      this._mapInstance = L.map(el, { zoomControl: true }).setView(center, 11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 18
+      }).addTo(this._mapInstance);
+      withCoords.forEach(a => {
+        const hc = BM.Storage.list('hives').filter(h => h.apiaryId === a.id).length;
+        const honey = BM.Storage.list('harvests').filter(h => h.apiaryId === a.id).reduce((s, h) => s + h.weight, 0);
+        const marker = L.marker([a.lat, a.lng]).addTo(this._mapInstance);
+        marker.bindPopup(`
+          <div style="font-family:system-ui;min-width:200px">
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px">📍 ${BM.esc(a.name)}</div>
+            <div style="font-size:12px;color:#666;margin-bottom:8px">${BM.esc(a.location)}</div>
+            <div style="font-size:11px">${hc} kovan · ${BM.fmt(honey)} kg bal</div>
+            <div style="margin-top:8px;display:flex;gap:4px">
+              <button onclick="App.render('hives');BM.apiaries.closeMap()" style="padding:6px 10px;background:#f59e0b;color:#000;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600">Kovanlar</button>
+              <button onclick="BM.apiaries.edit('${a.id}');BM.apiaries.closeMap()" style="padding:6px 10px;background:#262626;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px">Düzenle</button>
+            </div>
+          </div>
+        `);
+      });
+      if (withCoords.length > 1) {
+        const bounds = L.latLngBounds(withCoords.map(a => [a.lat, a.lng]));
+        this._mapInstance.fitBounds(bounds, { padding: [40, 40] });
+      }
+    },
+
+    closeMap() {
+      if (this._mapInstance) {
+        this._mapInstance.remove();
+        this._mapInstance = null;
+      }
+    }
+  };
+
+  BM.apiaries = apiariesModule;
+})(window);
+
+/* ===== js/modules/hives.js ===== */
+// ============================================================
+// Hives Module — Spec 05_Modules/Hives.md + Frames.md
+// HV-01..08: CRUD, detay, çerçeve haritası, taşıma, birleştirme
+// ============================================================
+(function (global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  const hivesModule = {
+    add() {
+      if (!BM.Storage.list('apiaries').length) {
+        BM.Toast.show('Önce arı üssü ekleyin', 'error');
+        return;
+      }
+      const apOpts = BM.Storage.list('apiaries').filter(a => !a.archived)
+        .map(a => `<option value="${a.id}">${BM.esc(a.name)}</option>`).join('');
+      BM.Modal.open('Yeni Kovan',
+        `<label class="field"><span class="field-label">Kovan Adı *</span>
+           <input class="input" name="name" required placeholder="Örn: Kovan-08"></label>
+         <label class="field"><span class="field-label">Arı Üssü *</span>
+           <select class="select" name="apiaryId" required>${apOpts}</select></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Irk</span>
+             <select class="select" name="strain">
+               <option value="anatolian">Anadolu</option>
+               <option value="caucasian">Kafkas</option>
+               <option value="carniolan">Karniyol</option>
+               <option value="italian">İtalyan</option>
+               <option value="hybrid">Hibrit</option>
+             </select></label>
+           <label class="field"><span class="field-label">Kutu Tipi</span>
+             <select class="select" name="boxType">
+               <option value="langstroth">Langstroth</option>
+               <option value="dadant">Dadant</option>
+               <option value="layens">Layens</option>
+               <option value="flow">Flow</option>
+               <option value="top_bar">Top-Bar</option>
+             </select></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Çerçeve Sayısı</span>
+             <input class="input" name="frameCount" type="number" min="1" max="20" value="10"></label>
+           <label class="field"><span class="field-label">Pozisyon</span>
+             <input class="input" name="positionInApiary" type="number" min="1" value="${BM.Storage.list('hives').length + 1}"></label>
+         </div>
+         <label class="field"><span class="field-label">NFC/QR Etiket</span>
+           <input class="input" name="nfcTag" placeholder="Otomatik oluşturulur"></label>
+         <label class="field"><span class="field-label">Kurulum Tarihi</span>
+           <input class="input" name="installedAt" type="date" value="${BM.today()}"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => {
+          const h = BM.Storage.add('hives', {
+            ...d,
+            status: 'active',
+            queenId: null,
+            nfcTag: d.nfcTag || ('BM-' + Date.now().toString(36).toUpperCase()),
+            frameCount: parseInt(d.frameCount) || 10,
+            positionInApiary: parseInt(d.positionInApiary) || 1
+          });
+          // Otomatik çerçeve oluştur
+          const fc = h.frameCount;
+          for (let p = 1; p <= fc; p++) {
+            BM.Storage.add('frames', {
+              hiveId: h.id, position: p,
+              frameType: p <= 3 ? 'brood' : (p <= 6 ? 'honey' : 'foundation'),
+              foundationType: 'wax', status: 'in_use',
+              cyclesCompleted: 0, waxAgeMonths: 0
+            });
+          }
+          BM.Toast.show('Kovan eklendi ✓', 'success');
+          App.render('hives');
+          return true;
+        }
+      );
+    },
+
+    edit(id) {
+      const h = BM.Storage.get('hives', id);
+      if (!h) return;
+      const apOpts = BM.Storage.list('apiaries').map(a =>
+        `<option value="${a.id}"${a.id === h.apiaryId ? ' selected' : ''}>${BM.esc(a.name)}</option>`).join('');
+      BM.Modal.open('Kovan Düzenle — ' + h.name,
+        `<label class="field"><span class="field-label">Kovan Adı *</span>
+           <input class="input" name="name" required value="${BM.esc(h.name)}"></label>
+         <label class="field"><span class="field-label">Arı Üssü *</span>
+           <select class="select" name="apiaryId" required>${apOpts}</select></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Irk</span>
+             <select class="select" name="strain">
+               ${['anatolian','caucasian','carniolan','italian','hybrid'].map(s => `<option value="${s}"${h.strain === s ? ' selected' : ''}>${BM.T.strain(s)}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label">Kutu Tipi</span>
+             <select class="select" name="boxType">
+               ${['langstroth','dadant','layens','flow','top_bar'].map(b => `<option value="${b}"${h.boxType === b ? ' selected' : ''}>${BM.T.box(b)}</option>`).join('')}
+             </select></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Çerçeve</span>
+             <input class="input" name="frameCount" type="number" min="1" max="20" value="${h.frameCount}"></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status">
+               ${['active','weak','dead','sold','merged'].map(s => `<option value="${s}"${h.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}
+             </select></label>
+         </div>
+         <label class="field"><span class="field-label">NFC/QR Etiket</span>
+           <input class="input" name="nfcTag" value="${BM.esc(h.nfcTag || '')}"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(h.notes || '')}</textarea></label>`,
+        (d) => {
+          d.frameCount = parseInt(d.frameCount) || 10;
+          BM.Storage.update('hives', id, d);
+          BM.Toast.show('Kovan güncellendi ✓', 'success');
+          App.render('hives');
+          return true;
+        }
+      );
+    },
+
+    del(id) {
+      const h = BM.Storage.get('hives', id);
+      if (!h) return;
+      BM.Modal.confirm(`"${h.name}" kovanını silmek istiyor musunuz? Tüm muayene, hasat, besleme kayıtları da silinecek.`, () => {
+        BM.Storage.cascadeDeleteHive(id);
+        BM.Toast.show('Kovan silindi', 'info');
+        App.render('hives');
+      });
+    },
+
+    // HV-06: Kovanı birleştir
+    merge(id) {
+      const h = BM.Storage.get('hives', id);
+      if (!h) return;
+      const otherHives = BM.Storage.list('hives').filter(x => x.id !== id && x.apiaryId === h.apiaryId);
+      if (!otherHives.length) {
+        BM.Toast.show('Aynı üsde birleştirilecek başka kovan yok', 'error');
+        return;
+      }
+      const opts = otherHives.map(x => `<option value="${x.id}">${BM.esc(x.name)} (${x.frameCount} çerçeve)</option>`).join('');
+      BM.Modal.open('Kovan Birleştir — ' + h.name,
+        `<div style="background:var(--warning-bg);padding:var(--space-3);border-radius:var(--radius-md);margin-bottom:var(--space-4);font-size:12px">
+          ⚠️ Birleştirilen kovan silinir. Diğer kovan güçlenir.
+         </div>
+         <label class="field"><span class="field-label">Hedef Kovan (güçlenecek) *</span>
+           <select class="select" name="targetHiveId" required>${opts}</select></label>
+         <label class="field"><span class="field-label">Birleştirme Yöntemi</span>
+           <select class="select" name="method">
+             <option value="newspaper">Gazete kağıdı (önerilen)</option>
+             <option value="queen_cage">Ana arı kafesi ile</option>
+             <option value="direct">Doğrudan (riskli)</option>
+           </select></label>`,
+        (d) => {
+          const target = BM.Storage.get('hives', d.targetHiveId);
+          if (!target) { BM.Toast.show('Hedef kovan seçin', 'error'); return false; }
+          // Target'in frameCount + h.frameCount
+          BM.Storage.update('hives', target.id, { frameCount: target.frameCount + h.frameCount });
+          // h'yi merged olarak işaretle
+          BM.Storage.update('hives', h.id, { status: 'merged' });
+          BM.Toast.show(`${h.name} → ${target.name} birleştirildi ✓`, 'success');
+          App.render('hives');
+          return true;
+        }
+      );
+    },
+
+    // HV-06: Kovanı taşı (hareket)
+    moveHive(id) {
+      const h = BM.Storage.get('hives', id);
+      if (!h) return;
+      const otherApiaries = BM.Storage.list('apiaries').filter(a => a.id !== h.apiaryId && !a.archived);
+      if (!otherApiaries.length) { BM.Toast.show('Başka aktif üs yok', 'error'); return; }
+      BM.Modal.open('Kovanı Taşı — ' + h.name,
+        `<label class="field"><span class="field-label">Hedef Üs *</span>
+           <select class="select" name="targetApiaryId" required>
+             ${otherApiaries.map(a => `<option value="${a.id}">${BM.esc(a.name)}</option>`).join('')}
+           </select></label>
+         <label class="field"><span class="field-label">Taşıma Nedeni</span>
+           <input class="input" name="reason" placeholder="Bal akışı, kış, vb."></label>`,
+        (d) => {
+          BM.Storage.update('hives', id, { apiaryId: d.targetApiaryId });
+          BM.Toast.show('Kovan taşındı ✓', 'success');
+          App.render('hives');
+          return true;
+        }
+      );
+    },
+
+    // ============ DETAIL SAYFASI ============
+    detail(id) {
+      const h = BM.Storage.get('hives', id);
+      if (!h) return;
+      const apiary = BM.Storage.get('apiaries', h.apiaryId);
+      const queen = BM.Storage.get('queens', h.queenId);
+      const frames = BM.Storage.list('frames').filter(f => f.hiveId === id).sort((a, b) => a.position - b.position);
+      const inspections = BM.Storage.list('inspections').filter(i => i.hiveId === id).sort((a, b) => b.date.localeCompare(a.date));
+      const harvests = BM.Storage.list('harvests').filter(h => h.hiveId === id).sort((a, b) => b.date.localeCompare(a.date));
+      const feedings = BM.Storage.list('feedings').filter(f => f.hiveId === id).sort((a, b) => b.date.localeCompare(a.date));
+      const treatments = BM.Storage.list('treatments').filter(t => t.hiveId === id).sort((a, b) => b.date.localeCompare(a.date));
+      const diseases = BM.Storage.list('diseases').filter(d => d.hiveId === id).sort((a, b) => b.date.localeCompare(a.date));
+      const totalHoney = harvests.reduce((s, h) => s + h.weight, 0);
+      const lastInsp = inspections[0];
+      const varroa = lastInsp ? lastInsp.varroaCount : 0;
+      const queenAge = queen ? ((Date.now() - new Date(queen.birthDate).getTime()) / (365 * 864e5)).toFixed(1) : '-';
+
+      const html = `
+        <div class="actions-bar">
+          <div>
+            <a class="link" style="color:var(--honey-500);font-weight:600;cursor:pointer" onclick="App.render('hives')">← Kovanlar</a>
+            <h1 style="font-size:24px;font-weight:700;margin-top:6px">${BM.esc(h.name)}</h1>
+            <div style="color:var(--text-secondary);font-size:13px">
+              ${BM.esc(apiary ? apiary.name : 'Atanmamış')} · ${BM.T.strain(h.strain)} · ${BM.T.box(h.boxType)} · NFC: ${BM.esc(h.nfcTag || '-')}
+            </div>
+          </div>
+          <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
+            <button class="btn btn--sm" onclick="BM.hives.moveHive('${id}')">🚚 Taşı</button>
+            <button class="btn btn--sm" onclick="BM.hives.merge('${id}')">🔗 Birleştir</button>
+            <button class="btn btn--sm" onclick="BM.inspections.add('${id}')">📋 Muayene</button>
+            <button class="btn btn--sm" onclick="BM.hives.edit('${id}')">✏️ Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.hives.del('${id}')">🗑 Sil</button>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat"><div class="stat__icon stat__icon--honey">${BM.Icons.hives}</div><div class="stat__label">Çerçeve</div><div class="stat__value">${frames.length}</div><div class="stat__meta">${BM.T.box(h.boxType)}</div></div>
+          <div class="stat"><div class="stat__icon stat__icon--success">${BM.Icons.honey}</div><div class="stat__label">Toplam Bal</div><div class="stat__value">${BM.fmt(totalHoney)} kg</div><div class="stat__meta">${harvests.length} hasat</div></div>
+          <div class="stat"><div class="stat__icon stat__icon--${varroa >= 6 ? 'danger' : varroa >= 3 ? 'warning' : 'success'}">⚠️</div><div class="stat__label">Son Varroa</div><div class="stat__value">${varroa}</div><div class="stat__meta ${varroa >= 6 ? 'stat__meta--down' : ''}">${lastInsp ? BM.dateAgo(lastInsp.date) : '—'}</div></div>
+          <div class="stat"><div class="stat__icon stat__icon--info">${BM.Icons.queens}</div><div class="stat__label">Ana Arı Yaşı</div><div class="stat__value">${queenAge}</div><div class="stat__meta">${queen ? BM.T.strain(queen.strain) : '—'}</div></div>
+        </div>
+        <div class="tabs" id="hive-tabs">
+          <button type="button" class="tabs__item tabs__item--active" data-tab="frames">Çerçeveler (${frames.length})</button>
+          <button type="button" class="tabs__item" data-tab="queen">Ana Arı</button>
+          <button type="button" class="tabs__item" data-tab="history">Geçmiş (${inspections.length + harvests.length + feedings.length + treatments.length + diseases.length})</button>
+        </div>
+        <div class="tabs__content" id="hive-tab-content"></div>
+      `;
+      document.getElementById('view-hive-detail').innerHTML = html;
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('view--active'));
+      document.querySelectorAll('[data-view]').forEach(n => n.classList.remove('nav-item--active', 'bottom-nav__item--active'));
+      document.getElementById('view-hive-detail').classList.add('view--active');
+      document.getElementById('page-title').textContent = h.name;
+      document.getElementById('page-subtitle').textContent = apiary ? apiary.name : '';
+      window.scrollTo(0, 0);
+
+      // Tab event listeners
+      const switchTab = (tabId) => {
+        document.querySelectorAll('#hive-tabs .tabs__item').forEach(b => b.classList.toggle('tabs__item--active', b.dataset.tab === tabId));
+        this._renderTab(id, tabId);
+      };
+      document.querySelectorAll('#hive-tabs .tabs__item').forEach(btn => {
+        btn.onclick = () => switchTab(btn.dataset.tab);
+      });
+      switchTab('frames');
+    },
+
+    _renderTab(id, tabId) {
+      const el = document.getElementById('hive-tab-content');
+      if (tabId === 'frames') {
+        const frames = BM.Storage.list('frames').filter(f => f.hiveId === id).sort((a, b) => a.position - b.position);
+        const summary = {brood:0,honey:0,pollen:0,foundation:0,empty:0};
+        frames.forEach(f => { if (summary[f.frameType] !== undefined) summary[f.frameType]++; });
+        const frameIcon = t => ({brood:'🟠',honey:'🟡',pollen:'🟣',foundation:'⚪',empty:'⚫'}[t] || '⬜');
+        const frameLabel = t => ({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',foundation:'Perga',empty:'Boş'}[t] || t);
+
+        el.innerHTML = `
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Petek Döngüsü (${frames.length} çerçeve)</div>
+                <div class="card-sub">Tıklayarak çerçeve tipini değiştir</div>
+              </div>
+              <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
+                <select class="select" style="width:auto" id="bulk-type">
+                  <option value="honey">Tümünü Bal yap</option>
+                  <option value="brood">Tümünü Yavru yap</option>
+                  <option value="empty">Tümünü Boşalt</option>
+                  <option value="foundation">Perga olarak işaretle</option>
+                </select>
+                <button type="button" class="btn btn--sm" onclick="BM.hives.bulkMark('${id}', document.getElementById('bulk-type').value)">Uygula</button>
+                <button type="button" class="btn btn--sm" onclick="BM.hives.resetSeason('${id}')">Sezon Sıfırla</button>
+              </div>
+            </div>
+            <div class="frame-grid">
+              ${frames.map(f => `<div class="frame frame--${f.frameType}${f.cyclesCompleted >= 5 ? ' frame--retired' : ''}" onclick="BM.frames.edit('${f.id}', '${id}')">
+                <div class="frame__icon">${frameIcon(f.frameType)}</div>
+                <div class="frame__num">#${f.position}</div>
+                <div class="frame__cycle">×${f.cyclesCompleted}</div>
+              </div>`).join('')}
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:var(--space-3);margin-top:var(--space-4);padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);font-size:12px">
+              <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:rgba(249,115,22,0.4)"></span>${summary.brood} Yumurtalık</div>
+              <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:rgba(245,158,11,0.4)"></span>${summary.honey} Bal</div>
+              <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:rgba(168,85,247,0.4)"></span>${summary.pollen} Polen</div>
+              <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:var(--bg-card)"></span>${summary.foundation} Perga</div>
+              <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:transparent;border:1px dashed var(--n-700)"></span>${summary.empty} Boş</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-left:auto;color:var(--danger)"><span style="width:14px;height:14px;border-radius:3px;background:var(--danger)"></span>🔴 Değişim gerekli (≥5 döngü)</div>
+            </div>
+          </div>
+        `;
+      } else if (tabId === 'queen') {
+        const q = BM.Storage.get('queens', BM.Storage.get('hives', id).queenId);
+        if (!q) {
+          el.innerHTML = `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.queens}</div><div class="empty__title">Bu kovanda ana arı kaydı yok</div><button class="btn btn--primary" onclick="BM.queens.add('${id}')">Ana Arı Ekle</button></div></div>`;
+          return;
+        }
+        const age = ((Date.now() - new Date(q.birthDate).getTime()) / (365 * 864e5)).toFixed(1);
+        el.innerHTML = `
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><div class="card-title">Ana Arı Bilgileri</div><button class="btn btn--sm" onclick="BM.queens.edit('${q.id}')">Düzenle</button></div>
+              <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4)">
+                <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--honey-400),var(--honey-600));display:flex;align-items:center;justify-content:center;font-size:30px">${BM.Icons.queens}</div>
+                <div>
+                  <div style="font-size:16px;font-weight:700">${BM.esc(BM.T.strain(q.strain))}</div>
+                  <div style="font-size:12px;color:var(--text-secondary)">İşaret: <strong>${BM.T.color(q.markedColor)}</strong> · Kaynak: ${BM.T.source(q.source)}</div>
+                </div>
+              </div>
+              <div class="row-list">
+                <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Doğum</div><div class="row-list__info">${BM.dateStr(q.birthDate)}</div></div></div>
+                <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Yaş</div><div class="row-list__info">${age} yıl</div></div></div>
+                <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Performans</div><div class="row-list__info">${(q.performanceScore * 100).toFixed(0)}%</div></div></div>
+                <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Durum</div><div class="row-list__info">${BM.T.status(q.status)}</div></div></div>
+                ${q.supplier ? `<div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Tedarikçi</div><div class="row-list__info">${BM.esc(q.supplier)}</div></div></div>` : ''}
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">📊 Performans Skoru</div>
+              <div style="margin-top:var(--space-4);padding:var(--space-5);background:var(--bg-tertiary);border-radius:var(--r-lg);text-align:center">
+                <div style="font-size:48px;font-weight:800;color:${q.performanceScore >= 0.7 ? 'var(--success)' : q.performanceScore >= 0.5 ? 'var(--honey-500)' : 'var(--danger)'}">${(q.performanceScore * 100).toFixed(0)}%</div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Mevcut Skor</div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (tabId === 'history') {
+        const events = [];
+        BM.Storage.list('inspections').filter(i => i.hiveId === id).forEach(i =>
+          events.push({ date: i.date, icon: '📋', title: 'Muayene', sub: `Varroa: ${i.varroaCount} · ${BM.T.pop(i.population)}${i.notes ? ' · ' + BM.esc(i.notes) : ''}` }));
+        BM.Storage.list('harvests').filter(h => h.hiveId === id).forEach(h =>
+          events.push({ date: h.date, icon: '🍯', title: 'Bal Hasadı', sub: `${h.weight} kg · ${h.quality} kalite` }));
+        BM.Storage.list('feedings').filter(f => f.hiveId === id).forEach(f =>
+          events.push({ date: f.date, icon: '🌾', title: 'Besleme', sub: `${BM.T.feedType(f.type)} · ${f.amountKg} kg` }));
+        BM.Storage.list('treatments').filter(t => t.hiveId === id).forEach(t =>
+          events.push({ date: t.date, icon: '💊', title: 'Tedavi', sub: `${BM.esc(t.product)} · ${BM.esc(t.dosage || '-')}` }));
+        BM.Storage.list('diseases').filter(d => d.hiveId === id).forEach(d =>
+          events.push({ date: d.date, icon: '🦠', title: 'Hastalık', sub: `${BM.T.disease(d.disease)} · Şiddet: ${d.severity}` }));
+        events.sort((a, b) => b.date.localeCompare(a.date));
+
+        el.innerHTML = `<div class="card">
+          <div class="card-head"><div class="card-title">Zaman Çizelgesi (${events.length} olay)</div></div>
+          ${events.length ? `<div class="timeline">${events.map(e => `<div class="timeline__item">
+            <div class="timeline__icon">${e.icon}</div>
+            <div class="timeline__body">
+              <div class="timeline__title">${BM.esc(e.title)}</div>
+              <div class="timeline__meta">${BM.dateStr(e.date)} · ${BM.esc(e.sub)}</div>
+            </div>
+          </div>`).join('')}</div>` : '<div class="empty"><div class="empty__icon">📅</div><div class="empty__title">Henüz kayıt yok</div></div>'}
+        </div>`;
+      }
+    },
+
+    bulkMark(hiveId, type) {
+      if (!confirm(`Tüm çerçeveleri "${type === 'brood' ? 'Yavru' : type === 'honey' ? 'Bal' : type === 'empty' ? 'Boş' : 'Perga'}" olarak işaretle?`)) return;
+      BM.Storage.list('frames').filter(f => f.hiveId === hiveId).forEach(f => {
+        BM.Storage.update('frames', f.id, { frameType: type });
+      });
+      BM.Toast.show('Tüm çerçeveler güncellendi ✓', 'success');
+      this._renderTab(hiveId, 'frames');
+    },
+
+    resetSeason(hiveId) {
+      if (!confirm('Yeni sezon: Tüm çerçeveler Perga, döngüler 0')) return;
+      BM.Storage.list('frames').filter(f => f.hiveId === hiveId).forEach(f => {
+        BM.Storage.update('frames', f.id, { frameType: 'foundation', cyclesCompleted: 0, waxAgeMonths: 0 });
+      });
+      BM.Toast.show('Sezon sıfırlandı ✓', 'success');
+      this._renderTab(hiveId, 'frames');
+    },
+
+    // ============ LIST RENDER ============
+    render() {
+      const list = BM.Storage.list('hives');
+      return `<div class="actions-bar">
+        <div>
+          <h2 style="font-size:18px;font-weight:700">Kovanlar</h2>
+          <div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kovan · ${BM.Storage.list('queens').length} ana arı · ${BM.Storage.list('frames').length} çerçeve</div>
+        </div>
+        <button class="btn btn--primary" onclick="BM.hives.add()">+ Yeni Kovan</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.hives}</div><div class="empty__title">Henüz kovan yok</div><button class="btn btn--primary" onclick="BM.hives.add()">+ Yeni Kovan</button></div></div>` :
+      `<div class="grid-3">${list.map(h => {
+        const apiary = BM.Storage.get('apiaries', h.apiaryId);
+        const lastInsp = BM.Storage.list('inspections').filter(i => i.hiveId === h.id).sort((a, b) => b.date.localeCompare(a.date))[0];
+        const frameCount = BM.Storage.list('frames').filter(f => f.hiveId === h.id).length;
+        const varroa = lastInsp ? lastInsp.varroaCount : 0;
+        const aiBadge = lastInsp && lastInsp.aiAnomalies ? `<span class="badge badge--warn" style="position:absolute;top:12px;left:12px">🤖 ${lastInsp.aiAnomalies}</span>` : '';
+        return `<div class="hive-card" onclick="BM.hives.detail('${h.id}')">
+          ${aiBadge}
+          <div class="hive-card__corner"><span class="badge ${BM.T.statusCls(h.status)}">${BM.T.status(h.status)}</span></div>
+          <div class="hive-card__head">
+            <div class="hive-card__icon">${BM.Icons.hives}</div>
+            <div>
+              <div class="hive-card__title">${BM.esc(h.name)}</div>
+              <div class="hive-card__sub">${BM.esc(apiary ? apiary.name : 'Atanmamış')}</div>
+            </div>
+          </div>
+          <div class="hive-card__metrics">
+            <div class="hive-card__metric"><div class="hive-card__metric-label">Irk</div><div class="hive-card__metric-value">${BM.T.strain(h.strain)}</div></div>
+            <div class="hive-card__metric"><div class="hive-card__metric-label">Çerçeve</div><div class="hive-card__metric-value">${frameCount}</div></div>
+            <div class="hive-card__metric"><div class="hive-card__metric-label">Kutu</div><div class="hive-card__metric-value">${BM.T.box(h.boxType)}</div></div>
+            <div class="hive-card__metric"><div class="hive-card__metric-label">Varroa</div><div class="hive-card__metric-value" style="color:${varroa >= 6 ? 'var(--danger)' : varroa >= 3 ? 'var(--warning)' : 'var(--success)'}">${varroa}</div></div>
+          </div>
+          <div class="hive-card__actions">
+            <button class="btn btn--sm" onclick="event.stopPropagation();BM.inspections.add('${h.id}')">📋 Muayene</button>
+            <button class="btn btn--sm" onclick="event.stopPropagation();BM.hives.edit('${h.id}')">Düzenle</button>
+          </div>
+        </div>`;
+      }).join('')}</div>`}`;
+    }
+  };
+
+  // ============ FRAMES ============
+  const framesModule = {
+    edit(frameId, hiveId) {
+      const f = BM.Storage.get('frames', frameId);
+      if (!f) return;
+      const summary = BM.Storage.list('frames').filter(x => x.hiveId === hiveId).reduce((acc, x) => {
+        acc[x.frameType] = (acc[x.frameType] || 0) + 1; return acc;
+      }, {});
+      BM.Modal.open('Çerçeve #' + f.position + ' — Detay',
+        `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:var(--space-2);margin-bottom:var(--space-4)">
+          <div style="background:rgba(249,115,22,0.15);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:var(--orange)">${summary.brood || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Yumurtalık</div></div>
+          <div style="background:rgba(245,158,11,0.15);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:var(--honey-500)">${summary.honey || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Bal</div></div>
+          <div style="background:rgba(168,85,247,0.15);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:#a855f7">${summary.pollen || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Polen</div></div>
+          <div style="background:var(--bg-tertiary);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:var(--text-secondary)">${summary.foundation || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Perga</div></div>
+          <div style="background:transparent;border:1px dashed var(--n-700);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:var(--text-muted)">${summary.empty || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Boş</div></div>
+        </div>
+        <label class="field"><span class="field-label">Tip</span>
+          <select class="select" name="frameType">
+            ${['brood','honey','pollen','foundation','empty'].map(t => `<option value="${t}"${f.frameType === t ? ' selected' : ''}>${({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',foundation:'Perga',empty:'Boş'})[t]}</option>`).join('')}
+          </select></label>
+        <div class="field-row">
+          <label class="field"><span class="field-label">Temel</span>
+            <select class="select" name="foundationType">
+              <option value="wax"${f.foundationType === 'wax' ? ' selected' : ''}>Mum</option>
+              <option value="plastic"${f.foundationType === 'plastic' ? ' selected' : ''}>Plastik</option>
+              <option value="foundationless"${f.foundationType === 'foundationless' ? ' selected' : ''}>Temesiz</option>
+            </select></label>
+          <label class="field"><span class="field-label">Durum</span>
+            <select class="select" name="status">
+              ${['in_use','extracted','cleaning','stored','retired'].map(s => `<option value="${s}"${f.status === s ? ' selected' : ''}>${s}</option>`).join('')}
+            </select></label>
+        </div>
+        <div class="field-row">
+          <label class="field"><span class="field-label">Döngü</span>
+            <input class="input" name="cyclesCompleted" type="number" min="0" value="${f.cyclesCompleted}"></label>
+          <label class="field"><span class="field-label">Petek Yaşı (ay)</span>
+            <input class="input" name="waxAgeMonths" type="number" min="0" value="${f.waxAgeMonths || 0}"></label>
+        </div>
+        <label class="field"><span class="field-label">Son Bal Alımı</span>
+          <input class="input" name="lastExtractedAt" type="date" value="${f.lastExtractedAt || ''}"></label>
+        <label class="field"><span class="field-label">Notlar</span>
+          <textarea class="textarea" name="notes" rows="2">${BM.esc(f.notes || '')}</textarea></label>`,
+        (d) => {
+          d.cyclesCompleted = parseInt(d.cyclesCompleted) || 0;
+          d.waxAgeMonths = parseInt(d.waxAgeMonths) || 0;
+          BM.Storage.update('frames', frameId, d);
+          BM.Toast.show('Çerçeve güncellendi ✓', 'success');
+          BM.hives._renderTab(hiveId, 'frames');
+          return true;
+        }
+      );
+    }
+  };
+
+  BM.hives = hivesModule;
+  BM.frames = framesModule;
+})(window);
+
+/* ===== js/modules/inspections.js ===== */
+// ============================================================
+// Inspections Module — Spec 05_Modules/Hive_Inspections.md
+// IN-01..08: Multi-step wizard, AI anomali, ses/foto, karşılaştırma
+// ============================================================
+(function (global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  const inspectionsModule = {
+    // AI anomali tespiti (IN-03)
+    detectAnomalies(d) {
+      const out = [];
+      const hive = BM.Storage.get('hives', d.hiveId);
+      if (!hive) return out;
+      const prevInsp = BM.Storage.list('inspections')
+        .filter(i => i.hiveId === hive.id)
+        .sort((a, b) => b.date.localeCompare(a.date))[0];
+
+      if (prevInsp && d.varroaCount > prevInsp.varroaCount) {
+        const inc = ((d.varroaCount - prevInsp.varroaCount) / Math.max(prevInsp.varroaCount, 1) * 100).toFixed(0);
+        if (inc >= 50) {
+          out.push({
+            icon: '⚠️', severity: 'high',
+            title: 'Varroa artışı: %' + inc,
+            explanation: `Varroa ${prevInsp.varroaCount} → ${d.varroaCount}`,
+            why: 'Önceki muayenede ' + prevInsp.varroaCount + ' idi. Tedavi gerekebilir.'
+          });
+        }
+      }
+      if (d.varroaCount >= 6) {
+        out.push({ icon: '🦠', severity: 'high', title: 'Kritik Varroa (≥6)', explanation: `${d.varroaCount} adet varroa`, why: 'Apivar veya Oksalik asit ile acil tedavi önerilir.' });
+      } else if (d.varroaCount >= 3) {
+        out.push({ icon: '⚡', severity: 'medium', title: 'Varroa takibi', explanation: `${d.varroaCount} adet varroa`, why: 'İzleme önerilir, eşik 6.' });
+      }
+      if (d.queenSeen === 'absent' && prevInsp && prevInsp.queenSeen === true) {
+        out.push({ icon: '👑', severity: 'high', title: 'Ana arı kaybı riski', explanation: 'Önceki muayenede görülüyordu, şimdi yok', why: '2 hafta içinde kontrol etmezsen topluluk söner.' });
+      }
+      const power = { very_strong: 5, strong: 4, medium: 3, weak: 2, very_weak: 1 };
+      if (prevInsp && power[d.population] < power[prevInsp.population]) {
+        out.push({ icon: '📉', severity: 'medium', title: 'Koloni gücü düştü', explanation: `${BM.T.pop(prevInsp.population)} → ${BM.T.pop(d.population)}`, why: 'Besleme ve ana arı kontrolü önerilir.' });
+      }
+      if (d.eggsPattern === 'absent') {
+        out.push({ icon: '⚠️', severity: 'high', title: 'Yumurta yok', explanation: 'Yumurtlama durmuş', why: 'Ana arı sorunu olabilir, acil kontrol.' });
+      } else if (d.eggsPattern === 'irregular') {
+        out.push({ icon: '🥚', severity: 'medium', title: 'Düzensiz yumurta', explanation: 'Yumurta düzeni bozuk', why: 'Ana arı yaşlı veya parazit etkisi olabilir.' });
+      }
+      return out;
+    },
+
+    // Multi-step wizard (IN-01)
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) {
+        BM.Toast.show('Önce kovan ekleyin', 'error');
+        return;
+      }
+      const state = {
+        hiveId: presetHiveId || (BM.Storage.list('hives')[0] && BM.Storage.list('hives')[0].id),
+        date: BM.today(), varroaCount: 0, broodFrames: 0, honeyFrames: 0, pollenFrames: 0,
+        population: 'strong', eggsPattern: 'regular', queenSeen: 'seen',
+        weather: 'sunny', notes: '', mode: 'form', template: null
+      };
+
+      const hOpts = BM.Storage.list('hives').map(h =>
+        `<option value="${h.id}"${h.id === state.hiveId ? ' selected' : ''}>${BM.esc(h.name)} — ${BM.esc(BM.T.strain(h.strain))}</option>`
+      ).join('');
+
+      const steps = [
+        {
+          label: 'Yöntem Seç',
+          render: (s) => `
+            <div style="margin-bottom:var(--space-4)">
+              <div style="font-size:12px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;margin-bottom:var(--space-2)">Hızlı Şablon</div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2)">
+                <button type="button" class="btn" onclick="BM.inspections.applyTemplate('varroa')" style="padding:var(--space-3);flex-direction:column"><div style="font-size:24px;margin-bottom:4px">🔬</div><div style="font-size:11px;font-weight:600">Varroa</div></button>
+                <button type="button" class="btn" onclick="BM.inspections.applyTemplate('winter')" style="padding:var(--space-3);flex-direction:column"><div style="font-size:24px;margin-bottom:4px">❄️</div><div style="font-size:11px;font-weight:600">Kış</div></button>
+                <button type="button" class="btn" onclick="BM.inspections.applyTemplate('spring')" style="padding:var(--space-3);flex-direction:column"><div style="font-size:24px;margin-bottom:4px">🌸</div><div style="font-size:11px;font-weight:600">Bahar</div></button>
+              </div>
+            </div>
+            <div style="border-top:1px solid var(--n-800);padding-top:var(--space-4)">
+              <div style="font-size:12px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;margin-bottom:var(--space-2)">Giriş Yöntemi</div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3)">
+                <button type="button" class="btn ${s.mode === 'form' ? 'btn--primary' : ''}" onclick="BM.inspections.setMode('form')" style="padding:var(--space-5);flex-direction:column"><div style="font-size:32px;margin-bottom:6px">📝</div><div style="font-weight:600">Form</div><div style="font-size:10px;opacity:.7">Yapılandırılmış</div></button>
+                <button type="button" class="btn ${s.mode === 'voice' ? 'btn--primary' : ''}" onclick="BM.inspections.setMode('voice')" style="padding:var(--space-5);flex-direction:column"><div style="font-size:32px;margin-bottom:6px">🎙</div><div style="font-weight:600">Sesli</div><div style="font-size:10px;opacity:.7">Mikrofon</div></button>
+                <button type="button" class="btn ${s.mode === 'photo' ? 'btn--primary' : ''}" onclick="BM.inspections.setMode('photo')" style="padding:var(--space-5);flex-direction:column"><div style="font-size:32px;margin-bottom:6px">📷</div><div style="font-weight:600">Foto</div><div style="font-size:10px;opacity:.7">Görsel kanıt</div></button>
+              </div>
+            </div>
+          `,
+          validate: () => true
+        },
+        {
+          label: 'Kovan & Tarih',
+          render: (s) => `
+            <label class="field"><span class="field-label">Kovan *</span>
+              <select class="select" id="w-hiveId">${hOpts}</select></label>
+            <label class="field"><span class="field-label">Tarih *</span>
+              <input class="input" id="w-date" type="date" required value="${s.date}"></label>
+            <label class="field"><span class="field-label">Hava</span>
+              <select class="select" id="w-weather">
+                <option value="sunny"${s.weather === 'sunny' ? ' selected' : ''}>☀️ Güneşli</option>
+                <option value="cloudy"${s.weather === 'cloudy' ? ' selected' : ''}>⛅ Bulutlu</option>
+                <option value="rainy"${s.weather === 'rainy' ? ' selected' : ''}>🌧 Yağmurlu</option>
+                <option value="windy"${s.weather === 'windy' ? ' selected' : ''}>💨 Rüzgarlı</option>
+              </select></label>
+          `,
+          onNext: (s) => {
+            const get = id => document.getElementById(id);
+            s.hiveId = get('w-hiveId').value;
+            s.date = get('w-date').value;
+            s.weather = get('w-weather').value;
+          },
+          validate: (s) => s.hiveId ? true : (BM.Toast.show('Kovan seçin', 'error'), false)
+        },
+        {
+          label: 'Detaylar',
+          render: (s) => {
+            if (s.mode === 'form') {
+              return `<label class="field"><span class="field-label">Güç (5 seviye)</span>
+                <select class="select" id="w-population">
+                  ${['very_strong','strong','medium','weak','very_weak'].map(p => `<option value="${p}"${s.population === p ? ' selected' : ''}>${BM.T.pop(p)} ${'●'.repeat({very_strong:5,strong:4,medium:3,weak:2,very_weak:1}[p])}</option>`).join('')}
+                </select></label>
+                <label class="field"><span class="field-label">Ana Arı</span>
+                  <select class="select" id="w-queenSeen">
+                    <option value="seen"${s.queenSeen === 'seen' ? ' selected' : ''}>👑 Gördüm</option>
+                    <option value="cell"${s.queenSeen === 'cell' ? ' selected' : ''}>Yavru Hücresi</option>
+                    <option value="new"${s.queenSeen === 'new' ? ' selected' : ''}>Yeni Ana Arı</option>
+                    <option value="absent"${s.queenSeen === 'absent' ? ' selected' : ''}>Yok</option>
+                  </select></label>
+                <div class="field-row">
+                  <label class="field"><span class="field-label">Yavru Çerçeve</span>
+                    <input class="input" id="w-broodFrames" type="number" min="0" value="${s.broodFrames}"></label>
+                  <label class="field"><span class="field-label">Bal Çerçeve</span>
+                    <input class="input" id="w-honeyFrames" type="number" min="0" value="${s.honeyFrames}"></label>
+                  <label class="field"><span class="field-label">Polen</span>
+                    <input class="input" id="w-pollenFrames" type="number" min="0" value="${s.pollenFrames}"></label>
+                </div>
+                <label class="field"><span class="field-label">Varroa (adet) *</span>
+                  <input class="input" id="w-varroaCount" type="number" min="0" value="${s.varroaCount}"></label>
+                <label class="field"><span class="field-label">Yumurta Düzeni</span>
+                  <select class="select" id="w-eggsPattern">
+                    <option value="regular"${s.eggsPattern === 'regular' ? ' selected' : ''}>Düzenli</option>
+                    <option value="irregular"${s.eggsPattern === 'irregular' ? ' selected' : ''}>Düzensiz</option>
+                    <option value="absent"${s.eggsPattern === 'absent' ? ' selected' : ''}>Yok</option>
+                  </select></label>
+                <label class="field"><span class="field-label">Genel Not</span>
+                  <textarea class="textarea" id="w-notes" rows="3">${BM.esc(s.notes)}</textarea></label>`;
+            }
+            if (s.mode === 'voice') {
+              return `<label class="field"><span class="field-label">🎙 Sesli Not (60 sn)</span>
+                <div style="background:var(--bg-tertiary);padding:var(--space-5);border-radius:var(--r-lg);text-align:center">
+                  <button type="button" class="btn btn--primary" id="rec-btn" onclick="BM.inspections.toggleRecord()" style="width:80px;height:80px;border-radius:50%;font-size:32px;padding:0">🎙</button>
+                  <div id="rec-status" style="margin-top:var(--space-3);font-size:12px;color:var(--text-secondary)">Kayıt için tıkla</div>
+                  <div id="rec-audio" style="margin-top:var(--space-2)"></div>
+                </div>
+                <textarea class="textarea" id="w-notes" placeholder="veya doğrudan yaz..." rows="2" style="margin-top:var(--space-3)">${BM.esc(s.notes)}</textarea></label>`;
+            }
+            if (s.mode === 'photo') {
+              return `<label class="field"><span class="field-label">📷 Fotoğraflar (Max 5)</span>
+                <input type="file" accept="image/*" multiple capture="environment" id="w-photos" onchange="BM.inspections.handlePhotos(event)" style="margin-top:var(--space-2)">
+                <div id="photo-preview" style="display:flex;gap:var(--space-2);flex-wrap:wrap;margin-top:var(--space-3)">
+                  ${(s.photos || []).map((p, i) => `<div style="width:60px;height:60px;background:url(${p}) center/cover;border-radius:var(--radius-md);border:1px solid var(--n-800);position:relative"><button type="button" onclick="BM.inspections.removePhoto(${i})" style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer">×</button></div>`).join('')}
+                </div></label>
+                <label class="field" style="margin-top:var(--space-3)"><span class="field-label">Etiket</span>
+                  <input class="input" id="w-photo-tag" placeholder="petek, ana arı, hastalık..."></label>`;
+            }
+          },
+          onNext: (s) => {
+            const get = id => document.getElementById(id);
+            if (s.mode === 'form') {
+              s.population = get('w-population').value;
+              s.queenSeen = get('w-queenSeen').value;
+              s.broodFrames = parseInt(get('w-broodFrames').value) || 0;
+              s.honeyFrames = parseInt(get('w-honeyFrames').value) || 0;
+              s.pollenFrames = parseInt(get('w-pollenFrames').value) || 0;
+              s.varroaCount = parseInt(get('w-varroaCount').value) || 0;
+              s.eggsPattern = get('w-eggsPattern').value;
+              s.notes = get('w-notes').value;
+            } else if (s.mode === 'voice' || s.mode === 'photo') {
+              s.notes = get('w-notes').value;
+              s.photoTag = get('w-photo-tag') ? get('w-photo-tag').value : '';
+            }
+          }
+        },
+        {
+          label: 'AI Analiz',
+          render: (s) => {
+            const anomalies = this.detectAnomalies(s);
+            const hive = BM.Storage.get('hives', s.hiveId);
+            return `<div class="ai-card card" style="margin-bottom:var(--space-4)">
+              <div style="font-size:13px;font-weight:700;margin-bottom:var(--space-2);display:flex;align-items:center;gap:var(--space-2)">🤖 AI Analiz Sonucu</div>
+              <div style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-3)">
+                ${BM.esc(hive ? hive.name : '?')} kovanı analiz edildi. <strong>${anomalies.length} anomali</strong>, <strong>${anomalies.filter(a => a.severity === 'high').length} yüksek risk</strong>.
+              </div>
+              ${anomalies.length ? anomalies.map(a => `
+                <div class="ai-item" style="border-left:3px solid ${a.severity === 'high' ? 'var(--danger)' : a.severity === 'medium' ? 'var(--warning)' : 'var(--info)'}">
+                  <div class="ai-item__icon">${a.icon}</div>
+                  <div class="ai-item__title">${BM.esc(a.title)}</div>
+                  <div class="ai-item__sub">${BM.esc(a.explanation)}</div>
+                  <div class="ai-item__why">${BM.esc(a.why)}</div>
+                </div>
+              `).join('') : '<div style="font-size:12px;color:var(--success)">✓ Anomali tespit edilmedi</div>'}
+            </div>
+            <div class="card" style="background:var(--bg-tertiary)">
+              <div style="font-size:12px;font-weight:700;margin-bottom:var(--space-2)">📋 Özet</div>
+              <div class="row-list">
+                <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Kovan</div></div><div style="font-weight:600">${BM.esc(hive ? hive.name : '?')}</div></div>
+                <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Tarih</div></div><div>${BM.dateStr(s.date)}</div></div>
+                <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Güç</div></div><div>${BM.T.pop(s.population)}</div></div>
+                <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Varroa</div></div><div style="color:${s.varroaCount >= 6 ? 'var(--danger)' : s.varroaCount >= 3 ? 'var(--warning)' : 'var(--success)'};font-weight:700">${s.varroaCount}</div></div>
+                <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Çerçeve</div></div><div>Y:${s.broodFrames} B:${s.honeyFrames} P:${s.pollenFrames}</div></div>
+              </div>
+            </div>`;
+          }
+        }
+      ];
+
+      BM.Wizard.open('🔬 Muayene Sihirbazı', steps, (s) => {
+        s.queenSeen = s.queenSeen === 'seen' || s.queenSeen === 'cell' || s.queenSeen === 'new';
+        s.aiAnomalies = this.detectAnomalies(s).length;
+        BM.Storage.add('inspections', s);
+        const anomalies = this.detectAnomalies(s);
+        if (anomalies.filter(a => a.severity === 'high').length > 0) {
+          BM.Toast.show(`Muayene kaydedildi. ${anomalies.length} anomali!`, 'warn');
+        } else {
+          BM.Toast.show('Muayene kaydedildi ✓', 'success');
+        }
+        if (s.varroaCount >= 6) {
+          setTimeout(() => {
+            BM.Modal.confirm('⚠️ Yüksek varroa tespit edildi. Tedavi kaydı oluşturulsun mu?', () => {
+              BM.treatments.add(s.hiveId);
+            });
+          }, 500);
+        }
+        App.render('inspections');
+      });
+
+      // Hooks for wizard buttons
+      this._state = state;
+    },
+
+    applyTemplate(name) {
+      const s = this._state;
+      if (name === 'varroa') { s.varroaCount = 0; s.population = 'strong'; s.notes = 'Varroa sayımı muayenesi'; }
+      if (name === 'winter') { s.varroaCount = 2; s.population = 'medium'; s.broodFrames = 3; s.honeyFrames = 8; s.notes = 'Kış hazırlığı kontrolü'; }
+      if (name === 'spring') { s.population = 'strong'; s.broodFrames = 5; s.eggsPattern = 'regular'; s.notes = 'Bahar kontrol'; }
+      s.template = name;
+      App.render(); // refresh
+      this.add(s.hiveId);
+    },
+
+    setMode(mode) {
+      this._state.mode = mode;
+      App.render();
+      this.add(this._state.hiveId);
+    },
+
+    toggleRecord() {
+      const btn = document.getElementById('rec-btn');
+      const status = document.getElementById('rec-status');
+      if (btn.dataset.state === 'rec') {
+        btn.dataset.state = 'idle';
+        btn.textContent = '🎙';
+        status.textContent = 'Kayıt tamamlandı ✓';
+        status.style.color = 'var(--success)';
+      } else {
+        btn.dataset.state = 'rec';
+        btn.textContent = '⏹';
+        status.textContent = '🔴 Kayıt yapılıyor...';
+        status.style.color = 'var(--danger)';
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+            const rec = new MediaRecorder(stream);
+            const chunks = [];
+            rec.ondataavailable = e => chunks.push(e.data);
+            rec.onstop = () => {
+              const blob = new Blob(chunks, { type: 'audio/webm' });
+              const url = URL.createObjectURL(blob);
+              document.getElementById('rec-audio').innerHTML = '<audio controls src="' + url + '" style="width:100%;margin-top:var(--space-2)"></audio>';
+              stream.getTracks().forEach(t => t.stop());
+            };
+            rec.start();
+            btn.onclick = () => rec.stop();
+          }).catch(err => {
+            status.textContent = '⚠️ Mikrofon erişimi reddedildi';
+            status.style.color = 'var(--warning)';
+          });
+        }
+      }
+    },
+
+    handlePhotos(e) {
+      const files = Array.from(e.target.files).slice(0, 5);
+      files.forEach(f => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          if (!this._state.photos) this._state.photos = [];
+          if (this._state.photos.length < 5) this._state.photos.push(ev.target.result);
+          App.render();
+          this.add(this._state.hiveId);
+        };
+        reader.readAsDataURL(f);
+      });
+    },
+
+    removePhoto(i) {
+      this._state.photos.splice(i, 1);
+      App.render();
+      this.add(this._state.hiveId);
+    },
+
+    edit(id) {
+      const i = BM.Storage.get('inspections', id);
+      if (!i) return;
+      BM.Modal.open('Muayene Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === i.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('')}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${i.date}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Varroa</span>
+             <input class="input" name="varroaCount" type="number" min="0" value="${i.varroaCount}"></label>
+           <label class="field"><span class="field-label">Yavru Çerçeve</span>
+             <input class="input" name="broodFrames" type="number" min="0" value="${i.broodFrames}"></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="3">${BM.esc(i.notes || '')}</textarea></label>`,
+        (d) => {
+          d.varroaCount = parseInt(d.varroaCount) || 0;
+          d.broodFrames = parseInt(d.broodFrames) || 0;
+          BM.Storage.update('inspections', id, d);
+          BM.Toast.show('Muayene güncellendi ✓', 'success');
+          App.render('inspections');
+          return true;
+        }
+      );
+    },
+
+    del(id) {
+      BM.Modal.confirm('Bu muayeneyi silmek istiyor musunuz?', () => {
+        BM.Storage.remove('inspections', id);
+        BM.Toast.show('Muayene silindi', 'info');
+        App.render('inspections');
+      });
+    },
+
+    // IN-05: İki muayene yan yana karşılaştırma
+    compare(hiveId) {
+      const list = BM.Storage.list('inspections').filter(i => i.hiveId === hiveId).sort((a, b) => b.date.localeCompare(a.date));
+      if (list.length < 2) { BM.Toast.show('Karşılaştırma için en az 2 muayene gerekli', 'error'); return; }
+      const [a, b] = list;
+      const items = [
+        ['Tarih', BM.dateStr(a.date), BM.dateStr(b.date), null],
+        ['Varroa', a.varroaCount, b.varroaCount, a.varroaCount - b.varroaCount],
+        ['Yavru Çerçeve', a.broodFrames, b.broodFrames, a.broodFrames - b.broodFrames],
+        ['Bal Çerçeve', a.honeyFrames, b.honeyFrames, a.honeyFrames - b.honeyFrames],
+        ['Popülasyon', BM.T.pop(a.population), BM.T.pop(b.population), null],
+        ['Yumurta', a.eggsPattern || '-', b.eggsPattern || '-', null],
+        ['Ana Arı', a.queenSeen ? 'Görüldü' : 'Görülmedi', b.queenSeen ? 'Görüldü' : 'Görülmedi', null],
+        ['Notlar', BM.esc(a.notes || '-'), BM.esc(b.notes || '-'), null]
+      ];
+      const html = `
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-4);text-align:center">
+          Son iki muayene yan yana — Değişim olan satırlar renkli
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:var(--bg-tertiary)">
+              <th style="padding:var(--space-3);text-align:left;font-weight:600;width:30%">Alan</th>
+              <th style="padding:var(--space-3);text-align:left;font-weight:600">${BM.dateStr(a.date)}<br><span style="font-size:10px;color:var(--text-muted);font-weight:400">${BM.dateAgo(a.date)}</span></th>
+              <th style="padding:var(--space-3);text-align:left;font-weight:600">${BM.dateStr(b.date)}<br><span style="font-size:10px;color:var(--text-muted);font-weight:400">${BM.dateAgo(b.date)}</span></th>
+              <th style="padding:var(--space-3);text-align:center;font-weight:600">Δ</th>
+            </tr>
+          </thead>
+          <tbody>${items.map(it => {
+            const changed = JSON.stringify(it[1]) !== JSON.stringify(it[2]);
+            const diff = it[3];
+            const color = diff > 0 ? 'var(--success)' : diff < 0 ? 'var(--danger)' : '';
+            return `<tr style="border-bottom:1px solid var(--n-800);${changed ? 'background:rgba(245,158,11,0.05)' : ''}">
+              <td style="padding:var(--space-3);font-weight:600">${it[0]}</td>
+              <td style="padding:var(--space-3)">${it[1]}</td>
+              <td style="padding:var(--space-3)">${it[2]}</td>
+              <td style="padding:var(--space-3);text-align:center;font-weight:700;color:${color}">${diff !== null ? (diff > 0 ? '+' : '') + diff : ''}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      `;
+      BM.Modal.showReport(html);
+    },
+
+    render() {
+      const list = BM.Storage.list('inspections').sort((a, b) => b.date.localeCompare(a.date));
+      return `<div class="actions-bar">
+        <div>
+          <h2 style="font-size:18px;font-weight:700">Muayeneler</h2>
+          <div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kayıt · AI anomali tespiti aktif</div>
+        </div>
+        <button class="btn btn--primary" onclick="BM.inspections.add()">🔬 Yeni Muayene (Sihirbaz)</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.inspections}</div><div class="empty__title">Henüz muayene yok</div><button class="btn btn--primary" onclick="BM.inspections.add()">🔬 İlk Muayeneyi Başlat</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(i => {
+        const h = BM.Storage.get('hives', i.hiveId);
+        const aiBadge = i.aiAnomalies ? `<span class="badge badge--warn">🤖 ${i.aiAnomalies}</span>` : '';
+        const modeIcon = i.mode === 'voice' ? ' 🎙' : i.mode === 'photo' ? ' 📷' : '';
+        return `<div class="timeline__item">
+          <div class="timeline__icon">📋</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')}${modeIcon} <span class="badge ${BM.T.statusCls(i.varroaCount >= 6 ? 'danger' : i.varroaCount >= 3 ? 'warning' : 'good')}">Varroa: ${i.varroaCount}</span>${aiBadge}</div>
+            <div class="timeline__meta">${BM.dateStr(i.date)} · ${BM.T.pop(i.population)} · Yavru: ${i.broodFrames} çerçeve · Bal: ${i.honeyFrames} çerçeve${i.template ? ' · 📋 ' + i.template : ''}</div>
+            ${i.notes ? `<div class="timeline__meta" style="margin-top:4px;color:var(--text-secondary)">"${BM.esc(i.notes)}"</div>` : ''}
+          </div>
+          <div class="timeline__body" style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.inspections.compare('${i.hiveId}')" title="Karşılaştır">🔄</button>
+            <button class="btn btn--sm" onclick="BM.inspections.edit('${i.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.inspections.del('${i.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  BM.inspections = inspectionsModule;
+})(window);
+
+/* ===== js/modules/crud.js ===== */
+// ============================================================
+// CRUD modülleri — Queens, Harvest, Feeding, Treatments, Diseases, Inventory
+// ============================================================
+(function (global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  // ============ QUEENS ============
+  const queensModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Yeni Ana Arı',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Irk *</span>
+             <select class="select" name="strain" required>
+               ${['anatolian','caucasian','carniolan','italian','hybrid'].map(s => `<option value="${s}">${BM.T.strain(s)}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label">İşaret Rengi</span>
+             <select class="select" name="markedColor">
+               ${['white','yellow','red','green','blue'].map(c => `<option value="${c}">${BM.T.color(c)}</option>`).join('')}
+             </select></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Doğum *</span>
+             <input class="input" name="birthDate" type="date" required value="${BM.today()}"></label>
+           <label class="field"><span class="field-label">Kaynak</span>
+             <select class="select" name="source">
+               ${['bred','purchased','swarm','supersedure','emergency'].map(s => `<option value="${s}">${BM.T.source(s)}</option>`).join('')}
+             </select></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Tedarikçi</span>
+             <input class="input" name="supplier"></label>
+           <label class="field"><span class="field-label">Maliyet (₺)</span>
+             <input class="input" name="costTry" type="number" min="0" placeholder="0"></label>
+         </div>
+         <label class="field"><span class="field-label">Performans Skoru (0-100)</span>
+           <input class="input" name="performanceScore" type="number" min="0" max="100" value="80"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => {
+          d.performanceScore = Math.max(0, Math.min(1, parseInt(d.performanceScore || 80) / 100));
+          if (d.costTry) d.costTry = parseFloat(d.costTry);
+          const q = BM.Storage.add('queens', { ...d, status: 'active' });
+          const h = BM.Storage.get('hives', d.hiveId);
+          if (h) BM.Storage.update('hives', h.id, { queenId: q.id });
+          BM.Toast.show('Ana arı eklendi ✓', 'success');
+          App.render('queens');
+          return true;
+        }
+      );
+    },
+
+    edit(id) {
+      const q = BM.Storage.get('queens', id);
+      if (!q) return;
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === q.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Ana Arı Düzenle',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Irk</span>
+             <select class="select" name="strain">
+               ${['anatolian','caucasian','carniolan','italian','hybrid'].map(s => `<option value="${s}"${q.strain === s ? ' selected' : ''}>${BM.T.strain(s)}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label">İşaret</span>
+             <select class="select" name="markedColor">
+               ${['white','yellow','red','green','blue'].map(c => `<option value="${c}"${q.markedColor === c ? ' selected' : ''}>${BM.T.color(c)}</option>`).join('')}
+             </select></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Doğum</span>
+             <input class="input" name="birthDate" type="date" required value="${q.birthDate}"></label>
+           <label class="field"><span class="field-label">Kaynak</span>
+             <select class="select" name="source">
+               ${['bred','purchased','swarm','supersedure','emergency'].map(s => `<option value="${s}"${q.source === s ? ' selected' : ''}>${BM.T.source(s)}</option>`).join('')}
+             </select></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Tedarikçi</span>
+             <input class="input" name="supplier" value="${BM.esc(q.supplier || '')}"></label>
+           <label class="field"><span class="field-label">Maliyet (₺)</span>
+             <input class="input" name="costTry" type="number" value="${q.costTry || ''}"></label>
+         </div>
+         <label class="field"><span class="field-label">Performans (0-100)</span>
+           <input class="input" name="performanceScore" type="number" min="0" max="100" value="${(q.performanceScore * 100).toFixed(0)}"></label>
+         <label class="field"><span class="field-label">Durum</span>
+           <select class="select" name="status">
+             ${['active','superseded','dead','sold','missing'].map(s => `<option value="${s}"${q.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}
+           </select></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(q.notes || '')}</textarea></label>`,
+        (d) => {
+          d.performanceScore = Math.max(0, Math.min(1, parseInt(d.performanceScore || 80) / 100));
+          if (d.costTry) d.costTry = parseFloat(d.costTry);
+          BM.Storage.update('queens', id, d);
+          BM.Toast.show('Ana arı güncellendi ✓', 'success');
+          App.render('queens');
+          return true;
+        }
+      );
+    },
+
+    del(id) {
+      BM.Modal.confirm('Bu ana arıyı silmek istiyor musunuz?', () => {
+        BM.Storage.remove('queens', id);
+        BM.Toast.show('Ana arı silindi', 'info');
+        App.render('queens');
+      });
+    },
+
+    render() {
+      const list = BM.Storage.list('queens');
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Ana Arılar</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} ana arı</div></div>
+        <button class="btn btn--primary" onclick="BM.queens.add()">+ Yeni Ana Arı</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.queens}</div><div class="empty__title">Henüz ana arı kaydı yok</div><button class="btn btn--primary" onclick="BM.queens.add()">+ İlk Ana Arı</button></div></div>` :
+      `<div class="grid-3">${list.map(q => {
+        const h = BM.Storage.get('hives', q.hiveId);
+        const age = ((Date.now() - new Date(q.birthDate).getTime()) / (365 * 864e5)).toFixed(1);
+        return `<div class="card">
+          <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4)">
+            <div style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--honey-400),var(--honey-600));display:flex;align-items:center;justify-content:center;font-size:26px">${BM.Icons.queens}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:15px;font-weight:700">${BM.esc(BM.T.strain(q.strain))}</div>
+              <div style="font-size:12px;color:var(--text-secondary)">${BM.esc(h ? h.name : 'Atanmamış')} · <span class="badge ${BM.T.statusCls(q.status)}">${BM.T.status(q.status)}</span></div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
+            <div class="hive-card__metric"><div class="hive-card__metric-label">Yaş</div><div class="hive-card__metric-value">${age} yıl</div></div>
+            <div class="hive-card__metric"><div class="hive-card__metric-label">Performans</div><div class="hive-card__metric-value" style="color:${q.performanceScore >= 0.7 ? 'var(--success)' : q.performanceScore >= 0.5 ? 'var(--honey-500)' : 'var(--danger)'}">${(q.performanceScore * 100).toFixed(0)}%</div></div>
+            <div class="hive-card__metric"><div class="hive-card__metric-label">İşaret</div><div class="hive-card__metric-value">${BM.T.color(q.markedColor)}</div></div>
+            <div class="hive-card__metric"><div class="hive-card__metric-label">Kaynak</div><div class="hive-card__metric-value">${BM.T.source(q.source)}</div></div>
+          </div>
+          <div class="hive-card__actions" style="margin-top:var(--space-4)">
+            <button class="btn btn--sm" onclick="BM.queens.edit('${q.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.queens.del('${q.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div>`}`;
+    }
+  };
+
+  // ============ HARVEST ============
+  const harvestModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Yeni Hasat',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Ağırlık (kg) *</span>
+             <input class="input" name="weight" type="number" step="0.1" min="0" required value="2.5"></label>
+           <label class="field"><span class="field-label">Kalite</span>
+             <select class="select" name="quality"><option value="A">A (Premium)</option><option value="B" selected>B (Standart)</option><option value="C">C (Endüstri)</option></select></label>
+           <label class="field"><span class="field-label">Çerçeve</span>
+             <input class="input" name="frames" type="number" min="0" value="2"></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => {
+          d.weight = parseFloat(d.weight) || 0;
+          d.frames = parseInt(d.frames) || 0;
+          const h = BM.Storage.get('hives', d.hiveId);
+          if (h) d.apiaryId = h.apiaryId;
+          BM.Storage.add('harvests', d);
+          BM.Toast.show('Hasat kaydedildi ✓', 'success');
+          App.render('harvest');
+          return true;
+        }
+      );
+    },
+    edit(id) {
+      const h = BM.Storage.get('harvests', id);
+      if (!h) return;
+      const hOpts = BM.Storage.list('hives').map(x => `<option value="${x.id}"${x.id === h.hiveId ? ' selected' : ''}>${BM.esc(x.name)}</option>`).join('');
+      BM.Modal.open('Hasat Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${h.date}"></label>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Ağırlık (kg) *</span>
+             <input class="input" name="weight" type="number" step="0.1" required value="${h.weight}"></label>
+           <label class="field"><span class="field-label">Kalite</span>
+             <select class="select" name="quality">${['A','B','C'].map(q => `<option value="${q}"${h.quality === q ? ' selected' : ''}>${q}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Çerçeve</span>
+             <input class="input" name="frames" type="number" value="${h.frames || 0}"></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(h.notes || '')}</textarea></label>`,
+        (d) => { d.weight = parseFloat(d.weight) || 0; d.frames = parseInt(d.frames) || 0; BM.Storage.update('harvests', id, d); BM.Toast.show('Hasat güncellendi ✓', 'success'); App.render('harvest'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu hasat kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('harvests', id);
+        BM.Toast.show('Hasat silindi', 'info');
+        App.render('harvest');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('harvests').sort((a, b) => b.date.localeCompare(a.date));
+      const total = list.reduce((s, h) => s + h.weight, 0);
+      // Monthly chart
+      const byMonth = {};
+      list.forEach(h => { const m = h.date.slice(0, 7); byMonth[m] = (byMonth[m] || 0) + h.weight; });
+      const months = Object.keys(byMonth).sort().slice(-6);
+      const max = Math.max(...months.map(m => byMonth[m]), 1);
+      const monthLabels = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Bal Hasadı</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${BM.fmt(total)} kg toplam · ${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.harvest.add()">+ Yeni Hasat</button>
+      </div>
+      <div class="card" style="margin-bottom:var(--space-4)">
+        <div class="card-head"><div class="card-title">Aylık Hasat Trendi</div></div>
+        <div class="chart">${months.length ? months.map(m => {
+          const v = byMonth[m];
+          const h = Math.max(4, (v / max) * 100);
+          const label = monthLabels[parseInt(m.split('-')[1]) - 1];
+          return `<div class="chart__col"><div class="chart__val">${BM.fmt(v)}kg</div><div class="chart__bar" style="height:${h}%"></div><div class="chart__label">${label}</div></div>`;
+        }).join('') : '<div style="margin:auto;color:var(--text-secondary)">Veri yok</div>'}</div>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.honey}</div><div class="empty__title">Henüz hasat yok</div><button class="btn btn--primary" onclick="BM.harvest.add()">+ İlk Hasat</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(h => {
+        const hive = BM.Storage.get('hives', h.hiveId);
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:rgba(245,158,11,0.15);color:var(--honey-500)">🍯</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(hive ? hive.name : '?')} · ${h.weight} kg <span class="badge badge--info">Kalite ${h.quality}</span></div>
+            <div class="timeline__meta">${BM.dateStr(h.date)} · ${h.frames || 0} çerçeve${h.notes ? ' · ' + BM.esc(h.notes) : ''}</div>
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.harvest.edit('${h.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.harvest.del('${h.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ FEEDING ============
+  const feedingModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Yeni Besleme',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Tip *</span>
+             <select class="select" name="type" required>
+               ${['sugar_syrup','fondant','pollen_patty','candy','honey_water'].map(t => `<option value="${t}">${BM.T.feedType(t)}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label">Miktar (kg) *</span>
+             <input class="input" name="amountKg" type="number" step="0.1" min="0" required value="1.0"></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Sebep</span>
+             <select class="select" name="reason">
+               ${['weak_colony','winter_prep','drought','supplement','stimulative'].map(r => `<option value="${r}">${BM.T.reason(r)}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status"><option value="planned">Planlı</option><option value="in_progress">Sürüyor</option><option value="completed" selected>Tamamlandı</option></select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { d.amountKg = parseFloat(d.amountKg) || 0; BM.Storage.add('feedings', d); BM.Toast.show('Besleme kaydedildi ✓', 'success'); App.render('feeding'); return true; }
+      );
+    },
+    edit(id) {
+      const f = BM.Storage.get('feedings', id); if (!f) return;
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === f.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Besleme Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${f.date}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Tip</span>
+             <select class="select" name="type">${['sugar_syrup','fondant','pollen_patty','candy','honey_water'].map(t => `<option value="${t}"${f.type === t ? ' selected' : ''}>${BM.T.feedType(t)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Miktar (kg)</span>
+             <input class="input" name="amountKg" type="number" step="0.1" value="${f.amountKg}"></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Sebep</span>
+             <select class="select" name="reason">${['weak_colony','winter_prep','drought','supplement','stimulative'].map(r => `<option value="${r}"${f.reason === r ? ' selected' : ''}>${BM.T.reason(r)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status">${['planned','in_progress','completed'].map(s => `<option value="${s}"${f.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}</select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(f.notes || '')}</textarea></label>`,
+        (d) => { d.amountKg = parseFloat(d.amountKg) || 0; BM.Storage.update('feedings', id, d); BM.Toast.show('Besleme güncellendi ✓', 'success'); App.render('feeding'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu besleme kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('feedings', id);
+        BM.Toast.show('Besleme silindi', 'info');
+        App.render('feeding');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('feedings').sort((a, b) => b.date.localeCompare(a.date));
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Besleme</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.feeding.add()">+ Yeni Besleme</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.feeding}</div><div class="empty__title">Henüz besleme kaydı yok</div><button class="btn btn--primary" onclick="BM.feeding.add()">+ İlk Besleme</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(f => {
+        const h = BM.Storage.get('hives', f.hiveId);
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:rgba(249,115,22,0.15);color:#f97316">🌾</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${f.amountKg} kg ${BM.T.feedType(f.type)} <span class="badge ${BM.T.statusCls(f.status)}">${BM.T.status(f.status)}</span></div>
+            <div class="timeline__meta">${BM.dateStr(f.date)} · ${BM.T.reason(f.reason)}${f.notes ? ' · ' + BM.esc(f.notes) : ''}</div>
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.feeding.edit('${f.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.feeding.del('${f.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ TREATMENTS ============
+  const treatmentsModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Yeni Tedavi',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Ürün *</span>
+             <input class="input" name="product" required placeholder="Örn: Apivar"></label>
+           <label class="field"><span class="field-label">Dozaj</span>
+             <input class="input" name="dosage" placeholder="2 şerit"></label>
+         </div>
+         <label class="field"><span class="field-label">Süre</span>
+           <input class="input" name="duration" placeholder="42 gün"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Varroa Önce</span>
+             <input class="input" name="varroaBefore" type="number" min="0" value="0"></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status"><option value="planned">Planlı</option><option value="in_progress" selected>Sürüyor</option><option value="completed">Tamamlandı</option></select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { d.varroaBefore = parseInt(d.varroaBefore) || 0; BM.Storage.add('treatments', d); BM.Toast.show('Tedavi kaydedildi ✓', 'success'); App.render('treatments'); return true; }
+      );
+    },
+    edit(id) {
+      const t = BM.Storage.get('treatments', id); if (!t) return;
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === t.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Tedavi Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${t.date}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Ürün *</span>
+             <input class="input" name="product" required value="${BM.esc(t.product)}"></label>
+           <label class="field"><span class="field-label">Dozaj</span>
+             <input class="input" name="dosage" value="${BM.esc(t.dosage || '')}"></label>
+         </div>
+         <label class="field"><span class="field-label">Süre</span>
+           <input class="input" name="duration" value="${BM.esc(t.duration || '')}"></label>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Önce</span>
+             <input class="input" name="varroaBefore" type="number" value="${t.varroaBefore || 0}"></label>
+           <label class="field"><span class="field-label">Sonra</span>
+             <input class="input" name="varroaAfter" type="number" value="${t.varroaAfter || ''}"></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status">${['planned','in_progress','completed'].map(s => `<option value="${s}"${t.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}</select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(t.notes || '')}</textarea></label>`,
+        (d) => { d.varroaBefore = parseInt(d.varroaBefore) || 0; d.varroaAfter = d.varroaAfter ? parseInt(d.varroaAfter) : null; BM.Storage.update('treatments', id, d); BM.Toast.show('Tedavi güncellendi ✓', 'success'); App.render('treatments'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu tedavi kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('treatments', id);
+        BM.Toast.show('Tedavi silindi', 'info');
+        App.render('treatments');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('treatments').sort((a, b) => b.date.localeCompare(a.date));
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Tedaviler</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.treatments.add()">+ Yeni Tedavi</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.treatments}</div><div class="empty__title">Henüz tedavi kaydı yok</div><button class="btn btn--primary" onclick="BM.treatments.add()">+ İlk Tedavi</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(t => {
+        const h = BM.Storage.get('hives', t.hiveId);
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:rgba(168,85,247,0.15);color:#a855f7">💊</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${BM.esc(t.product)} <span class="badge ${BM.T.statusCls(t.status)}">${BM.T.status(t.status)}</span></div>
+            <div class="timeline__meta">${BM.dateStr(t.date)} · ${BM.esc(t.dosage || '-')} · ${BM.esc(t.duration || '')}${t.varroaBefore != null ? ' · Varroa önce: ' + t.varroaBefore : ''}${t.varroaAfter != null ? ' → sonra: ' + t.varroaAfter : ''}</div>
+            ${t.notes ? `<div class="timeline__meta" style="margin-top:4px;color:var(--text-secondary)">${BM.esc(t.notes)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.treatments.edit('${t.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.treatments.del('${t.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ DISEASES ============
+  const diseasesModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Hastalık Kaydı',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Hastalık *</span>
+             <select class="select" name="disease" required>
+               ${['varroosis','nosemosis','foulbrood','chalkbrood','sacbrood','small_hive_beetle'].map(d => `<option value="${d}">${BM.T.disease(d)}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label">Şiddet *</span>
+             <select class="select" name="severity" required>
+               <option value="low">Düşük</option>
+               <option value="medium" selected>Orta</option>
+               <option value="high">Yüksek</option>
+             </select></label>
+         </div>
+         <label class="field"><span class="field-label">Tedavi</span>
+           <input class="input" name="treatment" placeholder="Uygulanan tedavi"></label>
+         <label class="field"><span class="field-label">Durum</span>
+           <select class="select" name="status">
+             <option value="active">Aktif</option>
+             <option value="treating" selected>Tedavide</option>
+             <option value="resolved">Çözüldü</option>
+           </select></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { BM.Storage.add('diseases', d); BM.Toast.show('Hastalık kaydı eklendi ✓', 'success'); App.render('diseases'); return true; }
+      );
+    },
+    edit(id) {
+      const d = BM.Storage.get('diseases', id); if (!d) return;
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === d.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Hastalık Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${d.date}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Hastalık</span>
+             <select class="select" name="disease">${['varroosis','nosemosis','foulbrood','chalkbrood','sacbrood','small_hive_beetle'].map(x => `<option value="${x}"${d.disease === x ? ' selected' : ''}>${BM.T.disease(x)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Şiddet</span>
+             <select class="select" name="severity">${['low','medium','high'].map(s => `<option value="${s}"${d.severity === s ? ' selected' : ''}>${s}</option>`).join('')}</select></label>
+         </div>
+         <label class="field"><span class="field-label">Tedavi</span>
+           <input class="input" name="treatment" value="${BM.esc(d.treatment || '')}"></label>
+         <label class="field"><span class="field-label">Durum</span>
+           <select class="select" name="status">${['active','treating','resolved'].map(s => `<option value="${s}"${d.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}</select></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(d.notes || '')}</textarea></label>`,
+        (d) => { BM.Storage.update('diseases', id, d); BM.Toast.show('Hastalık güncellendi ✓', 'success'); App.render('diseases'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu hastalık kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('diseases', id);
+        BM.Toast.show('Kayıt silindi', 'info');
+        App.render('diseases');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('diseases').sort((a, b) => b.date.localeCompare(a.date));
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Hastalıklar</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.diseases.add()">+ Yeni Kayıt</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.diseases}</div><div class="empty__title">Aktif hastalık yok 🎉</div><button class="btn btn--primary" onclick="BM.diseases.add()">+ Kayıt Ekle</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(d => {
+        const h = BM.Storage.get('hives', d.hiveId);
+        const sev = d.severity === 'high' ? 'danger' : d.severity === 'medium' ? 'warn' : 'info';
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:var(--danger-bg);color:var(--danger)">🦠</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${BM.T.disease(d.disease)} <span class="badge badge--${sev}">${d.severity}</span></div>
+            <div class="timeline__meta">${BM.dateStr(d.date)} · <span class="badge ${BM.T.statusCls(d.status)}">${BM.T.status(d.status)}</span>${d.treatment ? ' · Tedavi: ' + BM.esc(d.treatment) : ''}</div>
+            ${d.notes ? `<div class="timeline__meta" style="margin-top:4px;color:var(--text-secondary)">${BM.esc(d.notes)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.diseases.edit('${d.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.diseases.del('${d.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ INVENTORY ============
+  const inventoryModule = {
+    add() {
+      BM.Modal.open('Yeni Envanter Kalemi',
+        `<label class="field"><span class="field-label">Malzeme *</span>
+           <input class="input" name="name" required placeholder="Örn: Apivar şerit"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Kategori</span>
+             <select class="select" name="category">${['medication','feed','equipment','consumable'].map(c => `<option value="${c}">${BM.T.invCat(c)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Birim</span>
+             <select class="select" name="unit"><option>adet</option><option>kg</option><option>litre</option><option>paket</option><option>kutu</option></select></label>
+         </div>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Miktar *</span>
+             <input class="input" name="quantity" type="number" step="0.1" required value="1"></label>
+           <label class="field"><span class="field-label">Min Stok</span>
+             <input class="input" name="minStock" type="number" value="5"></label>
+           <label class="field"><span class="field-label">Fiyat (₺)</span>
+             <input class="input" name="costTry" type="number" step="0.01" value="0"></label>
+         </div>
+         <label class="field"><span class="field-label">Tedarikçi</span>
+           <input class="input" name="supplier"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { d.quantity = parseFloat(d.quantity) || 0; d.minStock = parseFloat(d.minStock) || 0; d.costTry = parseFloat(d.costTry) || 0; BM.Storage.add('inventory', d); BM.Toast.show('Envanter eklendi ✓', 'success'); App.render('inventory'); return true; }
+      );
+    },
+    edit(id) {
+      const i = BM.Storage.get('inventory', id); if (!i) return;
+      BM.Modal.open('Envanter Düzenle',
+        `<label class="field"><span class="field-label">Malzeme *</span>
+           <input class="input" name="name" required value="${BM.esc(i.name)}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Kategori</span>
+             <select class="select" name="category">${['medication','feed','equipment','consumable'].map(c => `<option value="${c}"${i.category === c ? ' selected' : ''}>${BM.T.invCat(c)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Birim</span>
+             <select class="select" name="unit">${['adet','kg','litre','paket','kutu'].map(u => `<option${i.unit === u ? ' selected' : ''}>${u}</option>`).join('')}</select></label>
+         </div>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Miktar</span>
+             <input class="input" name="quantity" type="number" step="0.1" value="${i.quantity}"></label>
+           <label class="field"><span class="field-label">Min</span>
+             <input class="input" name="minStock" type="number" value="${i.minStock || 0}"></label>
+           <label class="field"><span class="field-label">Fiyat (₺)</span>
+             <input class="input" name="costTry" type="number" step="0.01" value="${i.costTry || 0}"></label>
+         </div>
+         <label class="field"><span class="field-label">Tedarikçi</span>
+           <input class="input" name="supplier" value="${BM.esc(i.supplier || '')}"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(i.notes || '')}</textarea></label>`,
+        (d) => { d.quantity = parseFloat(d.quantity) || 0; d.minStock = parseFloat(d.minStock) || 0; d.costTry = parseFloat(d.costTry) || 0; BM.Storage.update('inventory', id, d); BM.Toast.show('Envanter güncellendi ✓', 'success'); App.render('inventory'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu kalemi silmek istiyor musunuz?', () => {
+        BM.Storage.remove('inventory', id);
+        BM.Toast.show('Silindi', 'info');
+        App.render('inventory');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('inventory');
+      const lowStock = list.filter(i => i.quantity <= i.minStock);
+      const totalValue = list.reduce((s, i) => s + (i.quantity * (i.costTry || 0)), 0);
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Envanter</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kalem · ₺${BM.fmt(totalValue, 0)} değer${lowStock.length ? ' · ' + lowStock.length + ' düşük stok' : ''}</div></div>
+        <button class="btn btn--primary" onclick="BM.inventory.add()">+ Yeni Malzeme</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.inventory}</div><div class="empty__title">Envanter boş</div><button class="btn btn--primary" onclick="BM.inventory.add()">+ İlk Malzeme</button></div></div>` :
+      `<div class="card"><div class="row-list">${list.map(i => {
+        const low = i.quantity <= i.minStock;
+        return `<div class="row-list__item" style="${low ? 'background:var(--danger-bg);margin:0 -18px;padding:11px 18px' : ''}">
+          <div class="row-list__dot ${low ? 'row-list__dot--r' : 'row-list__dot--g'}"></div>
+          <div class="row-list__main">
+            <div class="row-list__name">${BM.esc(i.name)} <span class="badge badge--info">${BM.T.invCat(i.category)}</span>${low ? ' <span class="badge badge--danger">Düşük Stok</span>' : ''}</div>
+            <div class="row-list__info">${i.quantity} ${i.unit} / min ${i.minStock} ${i.unit}${i.supplier ? ' · ' + BM.esc(i.supplier) : ''}${i.costTry ? ' · ₺' + BM.fmt(i.costTry, 2) + '/' + i.unit : ''}</div>
+          </div>
+          <div style="text-align:right;min-width:80px;flex-shrink:0">
+            <div style="font-size:16px;font-weight:700">${i.quantity} ${i.unit}</div>
+            <div style="font-size:10px;color:var(--text-secondary)">₺${BM.fmt(i.quantity * (i.costTry || 0), 0)}</div>
+          </div>
+          <div class="row-list__actions">
+            <button class="btn btn--sm" onclick="BM.inventory.edit('${i.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.inventory.del('${i.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  BM.queens = queensModule;
+  BM.harvest = harvestModule;
+  BM.feeding = feedingModule;
+  BM.treatments = treatmentsModule;
+  BM.diseases = diseasesModule;
+  BM.inventory = inventoryModule;
+})(window);
+
+/* ===== js/modules/dashboard.js ===== */
+// ============================================================
+// Dashboard, Analytics, Reports, Settings, Onboarding, Notify, App
+// ============================================================
+(function (global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  // ============ DASHBOARD ============
+  const dashboardModule = {
+    render() {
+      const s = BM.Storage.state;
+      const totalHives = s.hives.length;
+      const totalApiaries = s.apiaries.filter(a => !a.archived).length;
+      const totalHoney = s.harvests.reduce((sum, h) => sum + h.weight, 0);
+      const inspCount = s.inspections.length;
+      const avgVarroa = inspCount ? (s.inspections.reduce((sum, i) => sum + i.varroaCount, 0) / inspCount).toFixed(1) : 0;
+      const recentInsp = s.inspections.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+      const insights = this.insights();
+      const withCoords = s.apiaries.filter(a => a.lat && a.lng);
+
+      return `<div class="stats-grid">
+        <div class="stat"><div class="stat__icon stat__icon--honey">${BM.Icons.hives}</div><div class="stat__label">Toplam Kovan</div><div class="stat__value">${totalHives}</div><div class="stat__meta">${totalApiaries} aktif üste</div></div>
+        <div class="stat"><div class="stat__icon stat__icon--success">${BM.Icons.honey}</div><div class="stat__label">Toplam Bal</div><div class="stat__value">${BM.fmt(totalHoney)} kg</div><div class="stat__meta">${s.harvests.length} hasat</div></div>
+        <div class="stat"><div class="stat__icon stat__icon--info">${BM.Icons.inspections}</div><div class="stat__label">Muayene</div><div class="stat__value">${inspCount}</div><div class="stat__meta">toplam kayıt</div></div>
+        <div class="stat"><div class="stat__icon stat__icon--${parseFloat(avgVarroa) > 3 ? 'danger' : 'warning'}">⚠️</div><div class="stat__label">Ort. Varroa</div><div class="stat__value">${avgVarroa}</div><div class="stat__meta ${parseFloat(avgVarroa) > 3 ? 'stat__meta--down' : ''}">${parseFloat(avgVarroa) > 3 ? '⚠️ Yüksek' : '✓ Stabil'}</div></div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <div class="card" style="margin-bottom:var(--space-4)">
+            <div class="card-head"><div><div class="card-title">📈 Hasat Performansı</div><div class="card-sub">Son 6 ay</div></div></div>
+            ${this._renderHarvestChart()}
+          </div>
+
+          <div class="card ai-card" style="margin-bottom:var(--space-4)">
+            <div class="card-head"><div><div class="card-title">🤖 AI Önerileri</div><div class="card-sub">Kural tabanlı içgörüler</div></div></div>
+            ${insights.length ? insights.map(i => `<div class="ai-item"><div class="ai-item__icon">${i.icon}</div><div><div class="ai-item__title">${BM.esc(i.title)}</div><div class="ai-item__sub">${BM.esc(i.sub)}</div>${i.why ? `<div class="ai-item__why">${BM.esc(i.why)}</div>` : ''}</div></div>`).join('') :
+              '<div class="empty"><div class="empty__icon">✨</div><div class="empty__title">Aktif uyarı yok</div><div class="empty__sub">Her şey yolunda 🎉</div></div>'}
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="card-title">📋 Son Muayeneler</div><a class="link" onclick="App.render('inspections')">Tümü →</a></div>
+            ${recentInsp.length ? `<div class="row-list">${recentInsp.map(i => {
+              const h = BM.Storage.get('hives', i.hiveId);
+              return `<div class="row-list__item"><div class="row-list__dot ${BM.T.statusDot(i.varroaCount >= 6 ? 'danger' : i.varroaCount >= 3 ? 'warning' : 'good')}"></div><div class="row-list__main"><div class="row-list__name">${BM.esc(h ? h.name : '?')} · ${BM.T.pop(i.population)}</div><div class="row-list__info">${BM.dateStr(i.date)} · Varroa: ${i.varroaCount}${i.notes ? ' · ' + BM.esc((i.notes || '').slice(0, 40)) : ''}</div></div></div>`;
+            }).join('')}</div>` : '<div class="empty"><div class="empty__sub">Henüz muayene yok</div></div>'}
+          </div>
+        </div>
+
+        <div>
+          <div class="card weather-card" style="margin-bottom:var(--space-4)">
+            <div class="card-head"><div><div class="card-title">🌤️ Hava & Flora</div><div class="card-sub">Eğil, Diyarbakır</div></div></div>
+            <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4)">
+              <div style="font-size:48px">☀️</div>
+              <div><div style="font-size:32px;font-weight:800;letter-spacing:-0.02em">28°C</div><div style="font-size:12px;color:var(--text-secondary)">Güneşli · Nem 35% · Rüzgar 12 km</div></div>
+            </div>
+            <div style="font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;margin-bottom:var(--space-2)">Aktif Flora</div>
+            <div style="display:flex;flex-wrap:wrap;gap:var(--space-1)">${(s.apiaries[0] ? (s.apiaries[0].flora || 'Geven, Kekik, Adaçayı') : 'Geven, Kekik, Adaçayı').split(',').map(f => `<span style="background:var(--bg-tertiary);padding:4px 10px;border-radius:99px;font-size:11px">${BM.esc(f.trim())}</span>`).join('')}</div>
+          </div>
+
+          <div class="card" style="margin-bottom:var(--space-4)">
+            <div class="card-head"><div class="card-title">📍 Üs Konumları</div></div>
+            ${withCoords.length ? `<div id="dash-map" style="height:200px;border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--n-800);position:relative;background:linear-gradient(135deg,rgba(59,130,246,0.06),rgba(34,197,94,0.06))">${withCoords.map((a, i) => `<div style="position:absolute;left:${20 + (i * 40)}px;top:${40 + (i * 30)}px;background:var(--honey-500);color:#000;padding:6px 10px;border-radius:var(--radius-md);font-size:11px;font-weight:600;box-shadow:var(--shadow);cursor:pointer" onclick="App.render('apiaries','map')">📍 ${BM.esc(a.name)}</div>`).join('')}<div style="position:absolute;bottom:8px;right:10px;font-size:10px;color:var(--text-muted)">GPS: ${withCoords.length}/${s.apiaries.length} üs</div></div>` : '<div class="empty"><div class="empty__sub">Koordinat ekleyince harita görünür</div></div>'}
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="card-title">⚡ Hızlı İşlemler</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
+              <button class="btn" onclick="BM.inspections.add()" style="justify-content:flex-start">📋 Muayene</button>
+              <button class="btn" onclick="BM.harvest.add()" style="justify-content:flex-start">🍯 Hasat</button>
+              <button class="btn" onclick="BM.feeding.add()" style="justify-content:flex-start">🌾 Besleme</button>
+              <button class="btn" onclick="BM.treatments.add()" style="justify-content:flex-start">💊 Tedavi</button>
+              <button class="btn" onclick="BM.hives.add()" style="justify-content:flex-start">➕ Kovan</button>
+              <button class="btn" onclick="BM.apiaries.add()" style="justify-content:flex-start">📍 Üs</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    },
+
+    _renderHarvestChart() {
+      const harvests = BM.Storage.state.harvests;
+      if (!harvests.length) return '<div class="empty"><div class="empty__sub">Veri yok</div></div>';
+      const byMonth = {};
+      harvests.forEach(h => { const m = h.date.slice(0, 7); byMonth[m] = (byMonth[m] || 0) + h.weight; });
+      const months = Object.keys(byMonth).sort().slice(-6);
+      const max = Math.max(...months.map(m => byMonth[m]), 1);
+      const labels = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+      return `<div class="chart">${months.map(m => {
+        const v = byMonth[m];
+        const h = Math.max(4, (v / max) * 100);
+        const lbl = labels[parseInt(m.split('-')[1]) - 1];
+        return `<div class="chart__col"><div class="chart__val">${BM.fmt(v)}kg</div><div class="chart__bar" style="height:${h}%"></div><div class="chart__label">${lbl}</div></div>`;
+      }).join('')}</div>`;
+    },
+
+    insights() {
+      const out = [];
+      const s = BM.Storage.state;
+      s.hives.forEach(h => {
+        const last = s.inspections.filter(i => i.hiveId === h.id).sort((a, b) => b.date.localeCompare(a.date))[0];
+        if (last && last.varroaCount >= 6) out.push({ type: 'danger', icon: '⚠️', title: h.name + ' — Acil varroa tedavisi', sub: 'Varroa: ' + last.varroaCount + ' (eşik ≥6)', why: 'Apivar/Oksalik asit önerilir.' });
+        else if (last && last.varroaCount >= 3) out.push({ type: 'warn', icon: '⚡', title: h.name + ' — Varroa takibi', sub: 'Varroa: ' + last.varroaCount, why: 'İzleme önerilir.' });
+        if (last && last.population === 'weak') out.push({ type: 'warn', icon: '🍯', title: h.name + ' — Besleme gerekli', sub: 'Zayıf koloni', why: 'Şurup/fondant ile destekleyin.' });
+        const q = s.queens.find(q => q.id === h.queenId);
+        if (q) {
+          const age = (Date.now() - new Date(q.birthDate).getTime()) / (365 * 864e5);
+          if (age >= 3) out.push({ type: 'info', icon: '👑', title: h.name + ' — Ana arı yaşlı', sub: age.toFixed(1) + ' yıl', why: 'Değişim planla.' });
+        }
+      });
+      s.inventory.forEach(i => {
+        if (i.quantity <= i.minStock) out.push({ type: 'warn', icon: '📦', title: 'Stok az: ' + i.name, sub: 'Mevcut: ' + i.quantity + ' ' + i.unit, why: 'Sipariş ver.' });
+      });
+      if (s.harvests.length) {
+        const last = s.harvests.sort((a, b) => b.date.localeCompare(a.date))[0];
+        const days = Math.floor((Date.now() - new Date(last.date).getTime()) / 864e5);
+        if (days > 30) out.push({ type: 'info', icon: '🍯', title: 'Hasat zamanı', sub: 'Son hasattan ' + days + ' gün geçti', why: 'Kontrol edin.' });
+      }
+      return out.slice(0, 6);
+    }
+  };
+
+  // ============ ANALYTICS ============
+  const analyticsModule = {
+    render() {
+      const s = BM.Storage.state;
+      const inspCount = s.inspections.length;
+      const avgVarroa = inspCount ? (s.inspections.reduce((sum, i) => sum + i.varroaCount, 0) / inspCount).toFixed(1) : 0;
+      const totalHoney = s.harvests.reduce((sum, h) => sum + h.weight, 0);
+      const avgHoney = s.hives.length ? (totalHoney / s.hives.length).toFixed(1) : 0;
+      const activeTreat = s.treatments.filter(t => t.status === 'in_progress').length;
+      const lowStock = s.inventory.filter(i => i.quantity <= i.minStock).length;
+
+      return `<div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Analitik</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">Tüm verilerden içgörüler</div></div></div>
+      <div class="stats-grid">
+        <div class="stat"><div class="stat__icon stat__icon--honey">${BM.Icons.honey}</div><div class="stat__label">Kovan Başına</div><div class="stat__value">${avgHoney} kg</div><div class="stat__meta">${s.hives.length} kovan</div></div>
+        <div class="stat"><div class="stat__icon stat__icon--${activeTreat > 0 ? 'danger' : 'success'}">${BM.Icons.treatments}</div><div class="stat__label">Aktif Tedavi</div><div class="stat__value">${activeTreat}</div><div class="stat__meta ${activeTreat > 0 ? 'stat__meta--down' : ''}">${activeTreat > 0 ? 'Sürüyor' : 'Yok'}</div></div>
+        <div class="stat"><div class="stat__icon stat__icon--${lowStock > 0 ? 'warning' : 'success'}">${BM.Icons.inventory}</div><div class="stat__label">Düşük Stok</div><div class="stat__value">${lowStock}</div><div class="stat__meta ${lowStock > 0 ? 'stat__meta--down' : ''}">${lowStock > 0 ? 'Sipariş' : 'Tam'}</div></div>
+        <div class="stat"><div class="stat__icon stat__icon--info">${BM.Icons.inspections}</div><div class="stat__label">Muayene</div><div class="stat__value">${inspCount}</div><div class="stat__meta">toplam</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><div class="card-title">Varroa Dağılımı</div></div>
+          ${this._renderVarroaChart()}
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Üs Performansı</div></div>
+          ${this._renderApiaryChart()}
+        </div>
+      </div>
+      <div class="card" style="margin-top:var(--space-4)">
+        <div class="card-head"><div class="card-title">Kovan Performans Tablosu</div></div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr style="background:var(--bg-tertiary)">
+              <th style="padding:var(--space-3);text-align:left;font-weight:600">Kovan</th>
+              <th style="padding:var(--space-3);text-align:left">Üs</th>
+              <th style="padding:var(--space-3);text-align:left">Irk</th>
+              <th style="padding:var(--space-3);text-align:right">Bal</th>
+              <th style="padding:var(--space-3);text-align:right">Varroa</th>
+              <th style="padding:var(--space-3);text-align:right">Skor</th>
+              <th style="padding:var(--space-3);text-align:center">Son Muayene</th>
+            </tr></thead>
+            <tbody>${s.hives.map(h => {
+              const a = BM.Storage.get('apiaries', h.apiaryId);
+              const q = s.queens.find(q => q.id === h.queenId);
+              const honey = s.harvests.filter(hv => hv.hiveId === h.id).reduce((s, hv) => s + hv.weight, 0);
+              const last = s.inspections.filter(i => i.hiveId === h.id).sort((a, b) => b.date.localeCompare(a.date))[0];
+              return `<tr style="border-bottom:1px solid var(--n-800);cursor:pointer" onclick="BM.hives.detail('${h.id}')">
+                <td style="padding:var(--space-3);font-weight:600">${BM.esc(h.name)}</td>
+                <td style="padding:var(--space-3);color:var(--text-secondary)">${BM.esc(a ? a.name : '-')}</td>
+                <td style="padding:var(--space-3)">${BM.T.strain(h.strain)}</td>
+                <td style="padding:var(--space-3);text-align:right;font-weight:600;color:var(--honey-500)">${BM.fmt(honey)}</td>
+                <td style="padding:var(--space-3);text-align:right;font-weight:600;color:${last && last.varroaCount >= 6 ? 'var(--danger)' : last && last.varroaCount >= 3 ? 'var(--warning)' : 'var(--success)'}">${last ? last.varroaCount : '-'}</td>
+                <td style="padding:var(--space-3);text-align:right;color:${q && q.performanceScore >= 0.7 ? 'var(--success)' : q && q.performanceScore >= 0.5 ? 'var(--honey-500)' : 'var(--danger)'}">${q ? (q.performanceScore * 100).toFixed(0) + '%' : '-'}</td>
+                <td style="padding:var(--space-3);text-align:center;color:var(--text-secondary)">${last ? BM.dateAgo(last.date) : '-'}</td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>
+      </div>`;
+    },
+
+    _renderVarroaChart() {
+      const s = BM.Storage.state;
+      if (!s.hives.length) return '<div class="empty"><div class="empty__sub">Veri yok</div></div>';
+      const data = s.hives.map(h => {
+        const last = s.inspections.filter(i => i.hiveId === h.id).sort((a, b) => b.date.localeCompare(a.date))[0];
+        return { name: h.name, varroa: last ? last.varroaCount : 0 };
+      }).sort((a, b) => b.varroa - a.varroa);
+      const max = Math.max(...data.map(d => d.varroa), 1);
+      return `<div style="display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-2)">${data.map(d => {
+        const pct = Math.max(4, (d.varroa / max) * 100);
+        const cls = d.varroa >= 6 ? 'chart__bar--danger' : d.varroa >= 3 ? 'chart__bar--warn' : 'chart__bar--ok';
+        const color = d.varroa >= 6 ? 'var(--danger)' : d.varroa >= 3 ? 'var(--warning)' : 'var(--success)';
+        return `<div style="display:flex;align-items:center;gap:var(--space-3)"><div style="font-size:12px;font-weight:600;width:90px;color:var(--text-secondary)">${BM.esc(d.name)}</div><div style="flex:1;background:var(--bg-tertiary);height:24px;border-radius:var(--radius-md);overflow:hidden"><div class="chart__bar ${cls}" style="height:100%;width:${pct}%;max-width:none;border-radius:0"></div></div><div style="font-size:13px;font-weight:700;width:40px;text-align:right;color:${color}">${d.varroa}</div></div>`;
+      }).join('')}</div>`;
+    },
+
+    _renderApiaryChart() {
+      const s = BM.Storage.state;
+      if (!s.apiaries.length) return '<div class="empty"><div class="empty__sub">Veri yok</div></div>';
+      const data = s.apiaries.map(a => {
+        const hc = s.hives.filter(h => h.apiaryId === a.id).length;
+        const honey = s.harvests.filter(h => h.apiaryId === a.id).reduce((s, h) => s + h.weight, 0);
+        return { name: a.name, honey, kovan: hc };
+      });
+      const max = Math.max(...data.map(d => d.honey), 1);
+      return `<div style="display:flex;flex-direction:column;gap:var(--space-3);margin-top:var(--space-2)">${data.map(d => `
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-1)"><span style="font-size:12px;font-weight:600">${BM.esc(d.name)} <span style="color:var(--text-secondary);font-weight:400">(${d.kovan} kovan)</span></span><span style="font-size:13px;font-weight:700;color:var(--honey-500)">${BM.fmt(d.honey)} kg</span></div>
+          <div style="background:var(--bg-tertiary);height:18px;border-radius:var(--radius-md);overflow:hidden"><div style="background:linear-gradient(90deg,var(--honey-400),var(--honey-600));height:100%;width:${Math.max(4, (d.honey / max) * 100)}%"></div></div>
+        </div>
+      `).join('')}</div>`;
+    }
+  };
+
+  // ============ REPORTS ============
+  const reportsModule = {
+    templates: [
+      { id: 'monthly', icon: '📊', name: 'Aylık Performans', desc: 'Tüm kovanların aylık özeti' },
+      { id: 'health', icon: '⚠️', name: 'Sağlık Raporu', desc: 'Varroa, hastalık ve tedavi durumu' },
+      { id: 'queens', icon: '👑', name: 'Ana Arı Performans', desc: 'Tüm ana arıların karşılaştırması' },
+      { id: 'inventory', icon: '📦', name: 'Envanter Raporu', desc: 'Stok durumu ve uyarılar' },
+      { id: 'financial', icon: '💰', name: 'Gelir/Gider Analizi', desc: 'Maliyet ve verim özeti' },
+      { id: 'seasonal', icon: '📅', name: 'Sezonluk Özet', desc: 'Tüm yılın performansı' }
+    ],
+
+    render() {
+      return `<div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Raporlar</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">Modal önizleme + PDF export</div></div><button class="btn" onclick="App.exportData()">📥 JSON Yedek</button></div>
+      <div class="grid-3">${this.templates.map(t => `<div class="card">
+        <div style="text-align:center">
+          <div style="font-size:42px;margin-bottom:var(--space-3)">${t.icon}</div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:var(--space-1)">${BM.esc(t.name)}</div>
+          <div style="font-size:11.5px;color:var(--text-secondary);margin-bottom:var(--space-4)">${BM.esc(t.desc)}</div>
+          <div style="display:flex;gap:var(--space-2);justify-content:center">
+            <button class="btn btn--sm" onclick="BM.reports.show('${t.id}')">👁 Önizleme</button>
+            <button class="btn btn--sm btn--primary" onclick="BM.reports.pdf('${t.id}')">📄 PDF</button>
+          </div>
+        </div>
+      </div>`).join('')}</div>`;
+    },
+
+    show(id) {
+      BM.Modal.showReport(this._renderReport(id));
+    },
+
+    pdf(id) {
+      const html = this._renderReport(id);
+      const w = window.open('', '_blank');
+      if (!w) { BM.Toast.show('Pop-up engellendi', 'error'); return; }
+      w.document.write(`<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>BeeMaster AI — Rapor</title>
+        <style>body{font-family:system-ui,sans-serif;padding:30px;max-width:800px;margin:0 auto;color:#111}
+        h1,h2{border-bottom:2px solid #F4B400;padding-bottom:6px}
+        table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+        th,td{padding:8px;border:1px solid #ddd;text-align:left}
+        th{background:#F4B400;color:#000;font-weight:700}
+        .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:#fffbeb;color:#92400e}
+        .no-print{background:#F4B400;color:#000;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;margin-bottom:20px;font-weight:600}
+        @media print{body{padding:15px}}
+        </style></head><body>
+        <button class="no-print" onclick="window.print()">🖨 Yazdır / PDF Kaydet</button>
+        ${html}
+        </body></html>`);
+      w.document.close();
+    },
+
+    _renderReport(id) {
+      const s = BM.Storage.state;
+      if (id === 'monthly') {
+        const totalHoney = s.harvests.reduce((s, h) => s + h.weight, 0);
+        return `<h1>📊 Aylık Performans Raporu</h1>
+          <p>Tarih: ${BM.dateStr(BM.today())}</p>
+          <h2>Genel Özet</h2>
+          <table>
+            <tr><th>Aktif Kovan</th><td>${s.hives.length}</td></tr>
+            <tr><th>Toplam Bal</th><td>${BM.fmt(totalHoney)} kg</td></tr>
+            <tr><th>Muayene</th><td>${s.inspections.length}</td></tr>
+            <tr><th>Aktif Tedavi</th><td>${s.treatments.filter(t => t.status === 'in_progress').length}</td></tr>
+            <tr><th>Arı Üssü</th><td>${s.apiaries.length}</td></tr>
+          </table>
+          <h2>Üs Bazında Verim</h2>
+          <table>
+            <thead><tr><th>Üs</th><th>Kovan</th><th>Toplam Bal</th><th>Ortalama</th></tr></thead>
+            <tbody>${s.apiaries.map(a => {
+              const honey = s.harvests.filter(h => h.apiaryId === a.id).reduce((s, h) => s + h.weight, 0);
+              const hc = s.hives.filter(h => h.apiaryId === a.id).length;
+              return `<tr><td>${BM.esc(a.name)}</td><td>${hc}</td><td>${BM.fmt(honey)} kg</td><td>${hc > 0 ? (honey / hc).toFixed(1) : 0} kg</td></tr>`;
+            }).join('')}</tbody>
+          </table>`;
+      }
+      if (id === 'health') {
+        const dangers = s.hives.filter(h => { const last = s.inspections.filter(i => i.hiveId === h.id).sort((a, b) => b.date.localeCompare(a.date))[0]; return last && last.varroaCount >= 6; });
+        return `<h1>⚠️ Sağlık Raporu</h1>
+          <p>Tarih: ${BM.dateStr(BM.today())}</p>
+          <h2>Kritik Kovanlar (Varroa ≥6)</h2>
+          ${dangers.length ? `<table>
+            <thead><tr><th>Kovan</th><th>Son Varroa</th><th>Tarih</th></tr></thead>
+            <tbody>${dangers.map(h => {
+              const last = s.inspections.filter(i => i.hiveId === h.id).sort((a, b) => b.date.localeCompare(a.date))[0];
+              return `<tr><td>${BM.esc(h.name)}</td><td><span class="badge">${last.varroaCount}</span></td><td>${BM.dateStr(last.date)}</td></tr>`;
+            }).join('')}</tbody>
+          </table>` : '<p>Tüm kovanlar sağlıklı ✓</p>'}`;
+      }
+      if (id === 'queens') {
+        return `<h1>👑 Ana Arı Performans Raporu</h1>
+          <p>Tarih: ${BM.dateStr(BM.today())}</p>
+          <table>
+            <thead><tr><th>Kovan</th><th>Irk</th><th>Yaş</th><th>Verim</th><th>Performans</th></tr></thead>
+            <tbody>${s.queens.map(q => {
+              const h = BM.Storage.get('hives', q.hiveId);
+              const age = ((Date.now() - new Date(q.birthDate).getTime()) / (365 * 864e5)).toFixed(1);
+              const honey = s.harvests.filter(hv => hv.hiveId === q.hiveId).reduce((s, hv) => s + hv.weight, 0);
+              return `<tr><td>${BM.esc(h ? h.name : '?')}</td><td>${BM.esc(q.strain)}</td><td>${age} yıl</td><td>${BM.fmt(honey)} kg</td><td><span class="badge">${(q.performanceScore * 100).toFixed(0)}%</span></td></tr>`;
+            }).join('')}</tbody>
+          </table>`;
+      }
+      if (id === 'inventory') {
+        const total = s.inventory.reduce((s, i) => s + (i.quantity * (i.costTry || 0)), 0);
+        const low = s.inventory.filter(i => i.quantity <= i.minStock);
+        return `<h1>📦 Envanter Raporu</h1>
+          <p>Tarih: ${BM.dateStr(BM.today())} · Toplam Değer: ₺${BM.fmt(total, 0)}</p>
+          ${low.length ? `<h2 style="color:#c00">⚠️ Düşük Stok</h2>
+            <table><thead><tr><th>Malzeme</th><th>Mevcut</th><th>Min</th></tr></thead>
+            <tbody>${low.map(i => `<tr><td>${BM.esc(i.name)}</td><td>${i.quantity} ${i.unit}</td><td>${i.minStock} ${i.unit}</td></tr>`).join('')}</tbody></table>` : ''}
+          <h2>Tüm Stok</h2>
+          <table><thead><tr><th>Malzeme</th><th>Kategori</th><th>Miktar</th><th>Değer</th></tr></thead>
+          <tbody>${s.inventory.map(i => `<tr><td>${BM.esc(i.name)}</td><td>${BM.T.invCat(i.category)}</td><td>${i.quantity} ${i.unit}</td><td>₺${BM.fmt(i.quantity * (i.costTry || 0), 0)}</td></tr>`).join('')}</tbody></table>`;
+      }
+      if (id === 'financial') {
+        const treatCost = s.treatments.length * 85;
+        const feedCost = s.feedings.reduce((s, f) => s + f.amountKg * 12, 0);
+        const honey = s.harvests.reduce((s, h) => s + h.weight, 0);
+        const revenue = honey * 250;
+        return `<h1>💰 Gelir/Gider Analizi</h1>
+          <p>Tarih: ${BM.dateStr(BM.today())}</p>
+          <table>
+            <thead><tr><th>Kalem</th><th>Miktar</th><th>Birim</th><th>Toplam</th></tr></thead>
+            <tbody>
+              <tr><td>🍯 Bal Hasadı</td><td>${BM.fmt(honey)} kg</td><td>₺250/kg</td><td style="color:#16a34a;font-weight:700">+₺${BM.fmt(revenue, 0)}</td></tr>
+              <tr><td>💊 Tedavi</td><td>${s.treatments.length} işlem</td><td>₺85/işlem</td><td style="color:#dc2626;font-weight:700">-₺${BM.fmt(treatCost, 0)}</td></tr>
+              <tr><td>🌾 Besleme</td><td>${BM.fmt(s.feedings.reduce((s, f) => s + f.amountKg, 0))} kg</td><td>₺12/kg</td><td style="color:#dc2626;font-weight:700">-₺${BM.fmt(feedCost, 0)}</td></tr>
+              <tr style="background:#F4B400"><th>NET</th><th colspan="2"></th><th style="font-weight:700">₺${BM.fmt(revenue - treatCost - feedCost, 0)}</th></tr>
+            </tbody>
+          </table>`;
+      }
+      if (id === 'seasonal') {
+        const totalHoney = s.harvests.reduce((s, h) => s + h.weight, 0);
+        return `<h1>📅 Sezonluk Özet — 2026</h1>
+          <p>Tarih: ${BM.dateStr(BM.today())}</p>
+          <table>
+            <tr><th>Toplam Bal</th><td>${BM.fmt(totalHoney)} kg</td></tr>
+            <tr><th>Muayene</th><td>${s.inspections.length}</td></tr>
+            <tr><th>Üs</th><td>${s.apiaries.length}</td></tr>
+            <tr><th>Kovan</th><td>${s.hives.length}</td></tr>
+          </table>`;
+      }
+      return '';
+    }
+  };
+
+  // ============ SETTINGS ============
+  const settingsModule = {
+    render() {
+      const items = [
+        { icon: '👤', name: 'Kullanıcı', desc: 'İlker Öcal · Diyarbakır, Eğil' },
+        { icon: '🔔', name: 'Bildirim Tercihleri', desc: 'Varroa, stok, ana arı uyarıları', fn: 'BM.notify.show()' },
+        { icon: '📱', name: 'PWA Yükle', desc: 'Telefon/PC ana ekrana ekle', fn: 'BM.pwa.install()' },
+        { icon: '🌍', name: 'Konum', desc: 'GPS ile otomatik konum', fn: 'BM.utils.useLocation()' },
+        { icon: '🔄', name: 'Onboarding', desc: 'Tanıtım sihirbazını tekrar aç', fn: 'BM.onboarding.show()' },
+        { icon: '🎨', name: 'Tema & Görünüm', desc: 'Koyu/Açık mod', fn: 'App.toggleTheme()' },
+        { icon: '🔔', name: 'Bildirim Kontrolü', desc: 'Tüm aktif uyarıları şimdi kontrol et', fn: 'BM.notify.check()' },
+        { icon: 'ℹ️', name: 'Hakkında', desc: 'BeeMaster AI v2.0 · Spec-Driven PWA' }
+      ];
+      return `<div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Ayarlar</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">Uygulama ve hesap</div></div></div>
+      <div class="grid-3">${items.map(s => `<div class="card" style="cursor:pointer" onclick="${s.fn || 'void(0)'}">
+        <div style="display:flex;align-items:center;gap:var(--space-3)">
+          <div style="width:42px;height:42px;border-radius:var(--r-lg);background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;font-size:20px">${s.icon}</div>
+          <div><div style="font-size:14px;font-weight:700">${BM.esc(s.name)}</div><div style="font-size:11.5px;color:var(--text-secondary)">${BM.esc(s.desc)}</div></div>
+        </div>
+      </div>`).join('')}</div>
+      <div class="card" style="margin-top:var(--space-4)">
+        <div class="card-title">Veri Yönetimi</div>
+        <div style="display:flex;gap:var(--space-2);margin-top:var(--space-3);flex-wrap:wrap">
+          <button class="btn" onclick="App.exportData()">📥 JSON Dışa Aktar</button>
+          <button class="btn" onclick="App.importData()">📤 JSON İçe Aktar</button>
+          <button class="btn btn--danger" onclick="App.resetData()">🗑️ Tüm Veriyi Sıfırla</button>
+        </div>
+      </div>`;
+    }
+  };
+
+  // ============ ONBOARDING ============
+  const onboardingModule = {
+    init() {
+      if (localStorage.getItem('bm-onboarded')) return;
+      setTimeout(() => this.show(), 500);
+    },
+
+    show() {
+      BM.Modal.open('🐝 BeeMaster AI\'ye Hoş Geldiniz',
+        `<div style="text-align:center;padding:var(--space-5) 0">
+          <div style="font-size:64px;margin-bottom:var(--space-4)">🐝</div>
+          <h2 style="margin-bottom:var(--space-2)">Arıcılık Yönetiminin Yeni Adı</h2>
+          <p style="color:var(--text-secondary);font-size:13px;line-height:1.6;margin-bottom:var(--space-5)">
+            BeeMaster AI ile kovanlarınızı, üslerinizi, muayenelerinizi ve hasadınızı tek yerden yönetin.<br>
+            Offline çalışır, verileriniz cihazınızda güvenle saklanır.
+          </p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);text-align:left">
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--r-lg)"><div style="font-size:20px;margin-bottom:4px">🏠</div><div style="font-size:12px;font-weight:600">Kovan Yönetimi</div><div style="font-size:10px;color:var(--text-secondary)">Çerçeve haritası, ana arı</div></div>
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--r-lg)"><div style="font-size:20px;margin-bottom:4px">🤖</div><div style="font-size:12px;font-weight:600">AI Önerileri</div><div style="font-size:10px;color:var(--text-secondary)">Varroa, besleme, hasat</div></div>
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--r-lg)"><div style="font-size:20px;margin-bottom:4px">📱</div><div style="font-size:12px;font-weight:600">Offline-First</div><div style="font-size:10px;color:var(--text-secondary)">İnternetsiz çalışır</div></div>
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--r-lg)"><div style="font-size:20px;margin-bottom:4px">📊</div><div style="font-size:12px;font-weight:600">Analitik</div><div style="font-size:10px;color:var(--text-secondary)">Üs performansı</div></div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:var(--space-2);padding-top:var(--space-4);border-top:1px solid var(--n-800);margin-top:var(--space-4)">
+          <button type="button" class="btn btn--ghost" onclick="BM.onboarding.skip()">Atla</button>
+          <button type="button" class="btn btn--primary" onclick="BM.onboarding.step2()">İleri →</button>
+        </div>`,
+        () => true
+      );
+    },
+
+    step2() {
+      BM.Modal.open('🐝 İlk Üssünü Oluştur',
+        `<p style="font-size:13px;color:var(--text-secondary);margin-bottom:var(--space-4)">İlk arı üssünü oluşturarak başla. Konum eklemek haritada görünmesini sağlar.</p>
+         <label class="field"><span class="field-label">Üs Adı *</span>
+           <input class="input" name="name" required value="Eğil Merkez"></label>
+         <label class="field"><span class="field-label">Konum *</span>
+           <input class="input" name="location" required value="Eğil, Diyarbakır"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Enlem</span>
+             <input class="input" name="lat" type="number" step="0.001" value="38.247"></label>
+           <label class="field"><span class="field-label">Boylam</span>
+             <input class="input" name="lng" type="number" step="0.001" value="40.135"></label>
+         </div>
+         <button type="button" class="btn" onclick="BM.onboarding.useLocation()" style="margin-top:var(--space-2);width:100%">📍 Konumumu Al</button>
+         <label class="field" style="margin-top:var(--space-3)"><span class="field-label">Flora</span>
+           <input class="input" name="flora" value="Geven, Kekik, Adaçayı"></label>
+         <div style="display:flex;justify-content:space-between;gap:var(--space-2);padding-top:var(--space-4);border-top:1px solid var(--n-800);margin-top:var(--space-4)">
+           <button type="button" class="btn btn--ghost" onclick="BM.onboarding.show()">← Geri</button>
+           <button type="button" class="btn btn--primary" onclick="BM.onboarding.create()">Üs Oluştur ✓</button>
+         </div>`,
+        () => true
+      );
+    },
+
+    useLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            document.querySelector('input[name="lat"]').value = pos.coords.latitude.toFixed(3);
+            document.querySelector('input[name="lng"]').value = pos.coords.longitude.toFixed(3);
+            BM.Toast.show('Konum alındı ✓', 'success');
+          },
+          err => BM.Toast.show('Konum alınamadı: ' + err.message, 'error')
+        );
+      }
+    },
+
+    create() {
+      const get = sel => document.querySelector(sel);
+      const name = get('input[name="name"]').value.trim();
+      const location = get('input[name="location"]').value.trim();
+      if (!name || !location) { BM.Toast.show('Ad ve konum gerekli', 'error'); return; }
+      BM.Storage.add('apiaries', {
+        name, location,
+        lat: parseFloat(get('input[name="lat"]').value) || null,
+        lng: parseFloat(get('input[name="lng"]').value) || null,
+        flora: get('input[name="flora"]').value.trim(),
+        notes: ''
+      });
+      localStorage.setItem('bm-onboarded', '1');
+      BM.Toast.show('İlk üs oluşturuldu ✓', 'success');
+      BM.Modal.close();
+      App.render('apiaries');
+    },
+
+    skip() {
+      localStorage.setItem('bm-onboarded', '1');
+      BM.Modal.close();
+    }
+  };
+
+  // ============ NOTIFY ============
+  const notifyModule = {
+    prefs: null,
+    load() {
+      try {
+        const saved = localStorage.getItem('bm-notify');
+        this.prefs = saved ? JSON.parse(saved) : { varroaHigh: true, lowStock: true, queenOld: true, harvestDue: true };
+      } catch (e) { this.prefs = { varroaHigh: true, lowStock: true, queenOld: true, harvestDue: true }; }
+    },
+    save() { try { localStorage.setItem('bm-notify', JSON.stringify(this.prefs)); } catch (e) {} },
+
+    check() {
+      this.load();
+      const s = BM.Storage.state;
+      if (this.prefs.varroaHigh) {
+        s.hives.forEach(h => {
+          const last = s.inspections.filter(i => i.hiveId === h.id).sort((a, b) => b.date.localeCompare(a.date))[0];
+          if (last && last.varroaCount >= 6) BM.Toast.show(`🔔 ${h.name}: Varroa ${last.varroaCount} (kritik)`, 'warn');
+        });
+      }
+      if (this.prefs.lowStock) {
+        s.inventory.filter(i => i.quantity <= i.minStock).slice(0, 2).forEach(i => {
+          BM.Toast.show(`🔔 ${i.name}: Stok az (${i.quantity} ${i.unit})`, 'warn');
+        });
+      }
+    },
+
+    show() {
+      this.load();
+      const p = this.prefs;
+      BM.Modal.open('🔔 Bildirim Tercihleri',
+        `<label style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);margin-bottom:var(--space-2);cursor:pointer"><input type="checkbox" id="np1"${p.varroaHigh ? ' checked' : ''} style="width:auto"><div><div style="font-size:13px;font-weight:600">🦠 Yüksek Varroa</div><div style="font-size:11px;color:var(--text-secondary)">Kovanlarda varroa 6+ olduğunda</div></div></label>
+         <label style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);margin-bottom:var(--space-2);cursor:pointer"><input type="checkbox" id="np2"${p.lowStock ? ' checked' : ''} style="width:auto"><div><div style="font-size:13px;font-weight:600">📦 Düşük Stok</div><div style="font-size:11px;color:var(--text-secondary)">Envanter minimuma düştüğünde</div></div></label>
+         <label style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);margin-bottom:var(--space-2);cursor:pointer"><input type="checkbox" id="np3"${p.queenOld ? ' checked' : ''} style="width:auto"><div><div style="font-size:13px;font-weight:600">👑 Ana Arı Yaşı</div><div style="font-size:11px;color:var(--text-secondary)">Ana arı 3+ yıl olduğunda</div></div></label>
+         <label style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);margin-bottom:var(--space-2);cursor:pointer"><input type="checkbox" id="np4"${p.harvestDue ? ' checked' : ''} style="width:auto"><div><div style="font-size:13px;font-weight:600">🍯 Hasat Zamanı</div><div style="font-size:11px;color:var(--text-secondary)">Son hasattan 30+ gün geçtiğinde</div></div></label>`,
+        () => {
+          this.prefs = {
+            varroaHigh: document.getElementById('np1').checked,
+            lowStock: document.getElementById('np2').checked,
+            queenOld: document.getElementById('np3').checked,
+            harvestDue: document.getElementById('np4').checked
+          };
+          this.save();
+          BM.Toast.show('Bildirim tercihleri kaydedildi ✓', 'success');
+          return true;
+        }
+      );
+    }
+  };
+
+  // ============ PWA ============
+  const pwaModule = {
+    deferredPrompt: null,
+    init() {
+      window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); this.deferredPrompt = e; });
+      window.addEventListener('appinstalled', () => BM.Toast.show('BeeMaster AI yüklendi! 🎉', 'success'));
+    },
+    install() {
+      if (this.deferredPrompt) {
+        this.deferredPrompt.prompt();
+        this.deferredPrompt.userChoice.then(r => {
+          if (r.outcome === 'accepted') BM.Toast.show('Yükleme başladı...', 'info');
+          this.deferredPrompt = null;
+        });
+      } else {
+        BM.Toast.show('Tarayıcı yüklemeyi desteklemiyor veya zaten yüklü', 'info');
+      }
+    }
+  };
+
+  // ============ UTILS extension ============
+  const utilsExt = {
+    useLocation() {
+      if (!navigator.geolocation) { BM.Toast.show('Tarayıcı desteklemiyor', 'error'); return; }
+      navigator.geolocation.getCurrentPosition(
+        pos => BM.Toast.show(`Konum: ${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)}`, 'success'),
+        err => BM.Toast.show('Konum alınamadı', 'error')
+      );
+    }
+  };
+
+  BM.dashboard = dashboardModule;
+  BM.analytics = analyticsModule;
+  BM.reports = reportsModule;
+  BM.settings = settingsModule;
+  BM.onboarding = onboardingModule;
+  BM.notify = notifyModule;
+  BM.pwa = pwaModule;
+  BM.utils = Object.assign(BM.utils || {}, utilsExt);
+  pwaModule.init();
+  notifyModule.load();
+})(window);
+
+/* ===== js/app.js ===== */
+// ============================================================
+// App Controller — Router, navigation, init
+// ============================================================
+(function (global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  const NAV = [
+    { group: 'Genel', items: [
+      { id: 'dashboard', icon: '📊', label: 'Dashboard', view: 'dashboard' },
+      { id: 'apiaries', icon: '📍', label: 'Arı Üsleri', view: 'apiaries' },
+      { id: 'hives', icon: '🏠', label: 'Kovanlar', view: 'hives' }
+    ]},
+    { group: 'Operasyon', items: [
+      { id: 'inspections', icon: '📋', label: 'Muayeneler', view: 'inspections' },
+      { id: 'harvest', icon: '🍯', label: 'Bal Hasadı', view: 'harvest' },
+      { id: 'feeding', icon: '🌾', label: 'Besleme', view: 'feeding' },
+      { id: 'treatments', icon: '💊', label: 'Tedaviler', view: 'treatments' },
+      { id: 'diseases', icon: '🦠', label: 'Hastalıklar', view: 'diseases' }
+    ]},
+    { group: 'Yönetim', items: [
+      { id: 'queens', icon: '👑', label: 'Ana Arılar', view: 'queens' },
+      { id: 'inventory', icon: '📦', label: 'Envanter', view: 'inventory' },
+      { id: 'analytics', icon: '📈', label: 'Analitik', view: 'analytics' },
+      { id: 'reports', icon: '📄', label: 'Raporlar', view: 'reports' },
+      { id: 'settings', icon: '⚙️', label: 'Ayarlar', view: 'settings' }
+    ]}
+  ];
+
+  const App = {
+    currentView: 'dashboard',
+    viewParam: null,
+
+    nav(view, param) {
+      this.currentView = view;
+      this.viewParam = param;
+
+      // Close sidebar on mobile
+      document.getElementById('sidebar').classList.remove('sidebar--open');
+
+      // Update active states
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('view--active'));
+      document.querySelectorAll('[data-view]').forEach(n => n.classList.remove('nav-item--active', 'bottom-nav__item--active'));
+
+      // Special: hive detail
+      if (view === 'hive-detail') {
+        // Render handled by hivesModule.detail
+        return;
+      }
+
+      const viewEl = document.getElementById('view-' + view);
+      if (viewEl) {
+        viewEl.classList.add('view--active');
+        this.render(view);
+      }
+      document.querySelectorAll(`[data-view="${view}"]`).forEach(n => {
+        if (n.classList.contains('nav-item') || n.classList.contains('bottom-nav__item')) {
+          n.classList.add(n.classList.contains('nav-item') ? 'nav-item--active' : 'bottom-nav__item--active');
+        }
+      });
+
+      // Update header
+      const titles = {
+        dashboard: ['Dashboard', 'Genel bakış · Eğil, Diyarbakır'],
+        apiaries: ['Arı Üsleri', BM.Storage.list('apiaries').length + ' üs'],
+        hives: ['Kovanlar', BM.Storage.list('hives').length + ' kovan'],
+        inspections: ['Muayeneler', BM.Storage.list('inspections').length + ' kayıt'],
+        harvest: ['Bal Hasadı', BM.fmt(BM.Storage.list('harvests').reduce((s, h) => s + h.weight, 0)) + ' kg'],
+        feeding: ['Besleme', BM.Storage.list('feedings').length + ' kayıt'],
+        treatments: ['Tedaviler', BM.Storage.list('treatments').length + ' kayıt'],
+        diseases: ['Hastalıklar', BM.Storage.list('diseases').length + ' kayıt'],
+        queens: ['Ana Arılar', BM.Storage.list('queens').length + ' kayıt'],
+        inventory: ['Envanter', BM.Storage.list('inventory').length + ' malzeme'],
+        analytics: ['Analitik', 'Tüm verilerden içgörüler'],
+        reports: ['Raporlar', '6 hazır şablon'],
+        settings: ['Ayarlar', 'Uygulama ve veri']
+      };
+      const t = titles[view] || [view, ''];
+      document.getElementById('page-title').textContent = t[0];
+      document.getElementById('page-subtitle').textContent = t[1];
+
+      // Update URL hash
+      if (param) {
+        location.hash = view + '/' + param;
+      } else if (location.hash !== '#' + view) {
+        location.hash = view;
+      }
+      window.scrollTo(0, 0);
+    },
+
+    render(view) {
+      const m = BM[view];
+      if (m && typeof m.render === 'function') {
+        const el = document.getElementById('view-' + view);
+        if (el) el.innerHTML = m.render(this.viewParam);
+      }
+    },
+
+    toggleTheme() {
+      const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.getElementById('theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
+      try { localStorage.setItem('bm-theme', next); } catch (e) {}
+    },
+
+    quickAdd() {
+      BM.Modal.open('+ Hızlı Ekle',
+        `<div style="display:grid;gap:var(--space-2)">
+          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.hives.add(),200)">🏠 Yeni Kovan</button>
+          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.apiaries.add(),200)">📍 Yeni Üs</button>
+          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.inspections.add(),200)">📋 Yeni Muayene</button>
+          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.harvest.add(),200)">🍯 Yeni Hasat</button>
+          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.feeding.add(),200)">🌾 Yeni Besleme</button>
+          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.treatments.add(),200)">💊 Yeni Tedavi</button>
+          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.queens.add(),200)">👑 Yeni Ana Arı</button>
+          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.inventory.add(),200)">📦 Yeni Malzeme</button>
+        </div>`,
+        () => true
+      );
+    },
+
+    exportData() {
+      const blob = new Blob([JSON.stringify(BM.Storage.state, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'beemaster-backup-' + BM.today() + '.json';
+      a.click();
+      BM.Toast.show('Veri dışa aktarıldı ✓', 'success');
+    },
+
+    importData() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json,application/json';
+      input.onchange = e => {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if (!data.apiaries || !data.hives) throw new Error('Geçersiz format');
+            BM.Modal.confirm('Mevcut veriler değiştirilecek. Devam edilsin mi?', () => {
+              BM.Storage.state = data;
+              BM.Storage.save();
+              BM.Toast.show('Veri içe aktarıldı ✓', 'success');
+              App.render(App.currentView);
+            });
+          } catch (err) {
+            BM.Toast.show('Geçersiz dosya: ' + err.message, 'error');
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    },
+
+    resetData() {
+      BM.Modal.confirm('⚠️ TÜM veriler silinecek ve örnek verilerle değiştirilecek. Bu işlem geri alınamaz!', () => {
+        BM.Storage.reset();
+        BM.Toast.show('Veriler sıfırlandı', 'info');
+        App.nav('dashboard');
+      });
+    },
+
+    buildLayout() {
+      // Sidebar
+      const sb = document.getElementById('sidebar');
+      sb.innerHTML = `
+        <div class="sidebar__brand">
+          <div class="sidebar__brand-mark">🐝</div>
+          <div class="sidebar__brand-name">BeeMaster AI</div>
+        </div>
+        <nav class="sidebar__nav">
+          ${NAV.map(g => `
+            <div class="sidebar__group">${g.group}</div>
+            ${g.items.map(it => `
+              <button type="button" class="nav-item${it.view === App.currentView ? ' nav-item--active' : ''}" data-view="${it.view}" onclick="App.nav('${it.view}')">
+                <span class="nav-item__icon">${it.icon}</span>${it.label}
+              </button>
+            `).join('')}
+          `).join('')}
+        </nav>
+        <div class="sidebar__foot">
+          <div class="user-card" onclick="App.nav('settings')">
+            <div class="user-card__avatar">İÖ</div>
+            <div>
+              <div class="user-card__name">İlker Öcal</div>
+              <div class="user-card__role">Arıcı · Diyarbakır</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Bottom nav (mobile)
+      const bn = document.getElementById('bottom-nav');
+      bn.innerHTML = `
+        <button type="button" class="bottom-nav__item${App.currentView === 'dashboard' ? ' bottom-nav__item--active' : ''}" data-view="dashboard" onclick="App.nav('dashboard')">
+          <span class="bottom-nav__icon">📊</span>Ana Sayfa
+        </button>
+        <button type="button" class="bottom-nav__item" data-view="apiaries" onclick="App.nav('apiaries')">
+          <span class="bottom-nav__icon">📍</span>Üsler
+        </button>
+        <button type="button" class="bottom-nav__item" data-view="hives" onclick="App.nav('hives')">
+          <span class="bottom-nav__icon">🏠</span>Kovan
+        </button>
+        <button type="button" class="bottom-nav__item" data-view="inspections" onclick="App.nav('inspections')">
+          <span class="bottom-nav__icon">📋</span>Muayene
+        </button>
+        <button type="button" class="bottom-nav__item" data-view="harvest" onclick="App.nav('harvest')">
+          <span class="bottom-nav__icon">🍯</span>Bal
+        </button>
+        <button type="button" class="bottom-nav__item" onclick="App.quickAdd()">
+          <span class="bottom-nav__icon">➕</span>Ekle
+        </button>
+      `;
+    },
+
+    init() {
+      // Theme
+      try {
+        const saved = localStorage.getItem('bm-theme');
+        if (saved) {
+          document.documentElement.setAttribute('data-theme', saved);
+          document.getElementById('theme-toggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+        }
+      } catch (e) {}
+
+      // ESC closes modal
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') BM.Modal.close(); });
+
+      // Hash routing
+      window.addEventListener('hashchange', () => {
+        const hash = location.hash.slice(1) || 'dashboard';
+        const [view, param] = hash.split('/');
+        if (view && view !== App.currentView) {
+          if (view === 'hive-detail' && param) {
+            BM.hives.detail(param);
+          } else {
+            App.nav(view, param);
+          }
+        }
+      });
+
+      // Service worker unregister (offline-first native)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+      }
+
+      // Build layout
+      this.buildLayout();
+
+      // Initial route
+      const hash = location.hash.slice(1) || 'dashboard';
+      const [view, param] = hash.split('/');
+      if (view === 'hive-detail' && param) {
+        BM.hives.detail(param);
+      } else {
+        this.nav(view || 'dashboard', param);
+      }
+
+      // Onboarding (ilk kullanım)
+      setTimeout(() => BM.onboarding.init(), 800);
+
+      // Bildirim kontrolü (3 sn sonra)
+      setTimeout(() => BM.notify.check(), 3000);
+
+      console.log('[BeeMaster AI v3.0] Spec-driven PWA · 12 modules · clean architecture');
+    }
+  };
+
+  BM.App = App;
+  global.App = App;
+})(window);
