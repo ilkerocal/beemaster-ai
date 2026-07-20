@@ -2898,7 +2898,7 @@
       this.viewParam = param;
 
       // Close sidebar on mobile
-      document.getElementById('sidebar').classList.remove('sidebar--open');
+      document.getElementById('app-sidebar').classList.remove('sidebar--open');
 
       // Update active states
       document.querySelectorAll('.view').forEach(v => v.classList.remove('view--active'));
@@ -3027,7 +3027,7 @@
 
     buildLayout() {
       // Sidebar
-      const sb = document.getElementById('sidebar');
+      const sb = document.getElementById('app-sidebar');
       sb.innerHTML = `
         <div class="sidebar__brand">
           <div class="sidebar__brand-mark">🐝</div>
@@ -3055,7 +3055,7 @@
       `;
 
       // Bottom nav (mobile)
-      const bn = document.getElementById('bottom-nav');
+      const bn = document.getElementById('app-bottom-nav');
       bn.innerHTML = `
         <button type="button" class="bottom-nav__item${App.currentView === 'dashboard' ? ' bottom-nav__item--active' : ''}" data-view="dashboard" onclick="App.nav('dashboard')">
           <span class="bottom-nav__icon">📊</span>Ana Sayfa
