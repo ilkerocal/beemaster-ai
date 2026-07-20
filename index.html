@@ -1,211 +1,393 @@
 <!DOCTYPE html>
 <html lang="tr" data-theme="dark">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=5"/>
-  <meta name="theme-color" content="#14141C"/>
-  <meta name="color-scheme" content="dark light"/>
-  <meta name="description" content="BeeMaster AI — Kanıta dayalı arıcılık karar destek sistemi. Arıcılık bilgi tabanı, kovan yönetimi, muayene kaydı, hastalık teşhisi."/>
-  <meta name="keywords" content="arıcılık, kovan, muayene, varroa, bal, ana arı, danışman, BeeMaster"/>
-  <meta property="og:title" content="BeeMaster AI — Arıcılık Yönetim Paneli"/>
-  <meta property="og:description" content="Profesyonel arıcılık karar destek sistemi"/>
-
-  <title>BeeMaster AI — Arıcılık Yönetim Paneli</title>
-
-  <link rel="manifest" href="manifest.json"/>
-  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg"/>
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png"/>
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap"/>
-
-  <!-- Lucide icons -->
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="css/tokens.css"/>
-  <link rel="stylesheet" href="css/components.css"/>
-  <link rel="stylesheet" href="css/layout.css"/>
-  <link rel="stylesheet" href="css/routes.css"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BeeMaster AI - Arıcılık Yönetimi</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a0f;--surface:#13131a;--surface2:#1a1a24;--border:#2a2a3a;--text:#e4e4ef;--text-dim:#8888a0;
+  --honey:#F4B400;--honey2:#d99e00;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--purple:#a855f7;
+  --r:12px;--r-sm:8px;--r-lg:16px;--shadow:0 4px 24px rgba(0,0,0,.4);
+}
+html{visibility:visible;opacity:1}
+body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.btn{padding:10px 18px;border:none;border-radius:var(--r-sm);cursor:pointer;font-size:14px;font-weight:600;transition:.2s;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.btn-primary{background:var(--honey);color:#000}.btn-primary:hover{background:var(--honey2)}
+.btn-ghost{background:transparent;color:var(--text-dim);padding:8px}.btn-ghost:hover{color:var(--text);background:var(--surface2)}
+.app{display:grid;grid-template-columns:240px 1fr;grid-template-rows:64px 1fr;min-height:100vh;grid-template-areas:"sidebar header" "sidebar main"}
+.sidebar{grid-area:sidebar;background:var(--surface);border-right:1px solid var(--border);padding:16px 0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{padding:0 20px 20px;display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;white-space:nowrap}
+.logo .bee{font-size:24px}
+.logo .brand{background:linear-gradient(135deg,var(--honey),var(--honey2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sidebar nav{display:flex;flex-direction:column;gap:2px;padding:0 8px;flex:1}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r-sm);cursor:pointer;color:var(--text-dim);font-size:14px;font-weight:500;text-decoration:none;border:none;background:transparent;width:100%;text-align:left;transition:.15s;font-family:inherit}
+.nav-item:hover{color:var(--text);background:var(--surface2)}
+.nav-item.active{background:rgba(244,180,0,.12);color:var(--honey);font-weight:600}
+.nav-item .ico{width:18px;height:18px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
+.sidebar-foot{padding:12px 16px;margin-top:auto}
+.user-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--r);background:var(--surface2)}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--honey),var(--honey2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#000;font-size:14px}
+.user-name{font-size:13px;font-weight:600}.user-role{font-size:11px;color:var(--text-dim)}
+.header{grid-area:header;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
+.page-title h1{font-size:16px;font-weight:700;line-height:1.2}.page-title p{font-size:12px;color:var(--text-dim)}
+.header-actions{display:flex;align-items:center;gap:10px}
+.main{grid-area:main;padding:24px;overflow-x:auto}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;position:relative;overflow:hidden;transition:.2s}
+.stat-card:hover{border-color:var(--honey);transform:translateY(-2px);box-shadow:var(--shadow)}
+.stat-card::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(244,180,0,.05),transparent);pointer-events:none}
+.stat-label{font-size:12px;color:var(--text-dim);font-weight:500;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.stat-value{font-size:32px;font-weight:800;line-height:1;margin:4px 0}
+.stat-change{font-size:11px;font-weight:600;color:var(--green)}
+.stat-change.down{color:var(--red)}.stat-change.neutral{color:var(--text-dim)}
+.stat-icon{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:18px}
+.stat-icon.honey{background:rgba(244,180,0,.12);color:var(--honey)}.stat-icon.info{background:rgba(59,130,246,.12);color:var(--blue)}
+.stat-icon.success{background:rgba(34,197,94,.12);color:var(--green)}.stat-icon.danger{background:rgba(239,68,68,.12);color:var(--red)}
+.stat-icon.warning{background:rgba(245,158,11,.12);color:var(--honey2)}
+.content-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:24px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.card-title{font-size:15px;font-weight:700}
+.card-link{font-size:12px;color:var(--honey);text-decoration:none;cursor:pointer}
+.chart-wrap{height:220px;position:relative;display:flex;align-items:flex-end;gap:10px;padding:0 8px 30px;border-bottom:1px solid var(--border);position:relative}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;min-width:0}
+.bar{width:100%;max-width:32px;border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--honey),var(--honey2));transition:.3s;min-height:4px}
+.bar:hover{filter:brightness(1.2)}
+.bar-label{font-size:10px;color:var(--text-dim);white-space:nowrap}
+.bar-val{font-size:11px;font-weight:600;color:var(--text)}
+.list-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.list-item:last-child{border-bottom:none}
+.list-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-green{background:var(--green)}.dot-yellow{background:var(--honey)}.dot-red{background:var(--red)}
+.list-main{flex:1;min-width:0}
+.list-name{font-size:13px;font-weight:600}.list-info{font-size:11px;color:var(--text-dim)}
+.badge{font-size:10px;padding:2px 8px;border-radius:99px;font-weight:600;display:inline-block}
+.badge.ok{background:rgba(34,197,94,.15);color:var(--green)}.badge.warn{background:rgba(245,158,11,.15);color:var(--honey2)}
+.badge.danger{background:rgba(239,68,68,.15);color:var(--red)}.badge.info{background:rgba(59,130,246,.15);color:var(--blue)}
+.weather-card{background:linear-gradient(135deg,rgba(244,180,0,.08),rgba(245,158,11,.04));border:1px solid rgba(244,180,0,.2)}
+.weather-now{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.weather-icon{font-size:48px}.weather-temp{font-size:36px;font-weight:800}
+.weather-info{font-size:13px;color:var(--text-dim)}
+.flora-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.flora-tag{font-size:11px;padding:4px 10px;border-radius:99px;background:var(--surface2);color:var(--text-dim)}
+.actions-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+.action-btn{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 12px;cursor:pointer;text-align:center;transition:.2s;font-family:inherit}
+.action-btn:hover{border-color:var(--honey);background:var(--surface2);transform:translateY(-2px)}
+.action-ico{font-size:22px;margin-bottom:6px;display:flex;justify-content:center}
+.action-label{font-size:12px;font-weight:600}
+.view{display:none}.view.active{display:block}
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--honey);padding:12px 16px;border-radius:var(--r-sm);box-shadow:var(--shadow);max-width:320px;font-size:13px;animation:slideIn .3s}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.bottom-nav{display:none}
+@media(max-width:1024px){.app{grid-template-columns:1fr;grid-template-areas:"header" "main"}.sidebar{display:none}.bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:100;padding:8px;justify-content:space-around}.bottom-nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;border:none;background:transparent;color:var(--text-dim);font-size:10px;cursor:pointer;font-family:inherit}.bottom-nav-item.active{color:var(--honey)}.bottom-nav-item .ico{font-size:18px}.main{padding-bottom:80px}.stats-grid{grid-template-columns:repeat(2,1fr)}.content-grid{grid-template-columns:1fr}.actions-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.stat-value{font-size:26px}.header{padding:0 16px}.main{padding:16px}}
+</style>
 </head>
 <body>
-  <a class="sr-only" href="#main">İçeriğe geç</a>
-
-  <!-- ============== App Shell ============== -->
-  <div class="app-shell">
-
-    <!-- ============== Sidebar (Desktop) ============== -->
-    <aside class="sidebar" id="sidebar" aria-label="Yan menü">
-      <div class="sidebar-header">
-        <div class="brand">
-          <div class="brand-mark">
-            <i data-lucide="hexagon" aria-hidden="true"></i>
-          </div>
-          <span>BeeMaster</span>
-        </div>
-      </div>
-
-      <nav class="sidebar-nav" aria-label="Birincil gezinme">
-        <div class="nav-section">
-          <div class="nav-section-label">Genel</div>
-          <a href="#/dashboard" class="nav-link" data-route="dashboard">
-            <i data-lucide="layout-dashboard"></i>
-            <span class="nav-link-label">Pano</span>
-          </a>
-          <a href="#/advisor" class="nav-link" data-route="advisor">
-            <i data-lucide="sparkles"></i>
-            <span class="nav-link-label">Danışman</span>
-          </a>
-          <a href="#/reminders" class="nav-link" data-route="reminders">
-            <i data-lucide="bell"></i>
-            <span class="nav-link-label">Hatırlatıcılar</span>
-            <span class="nav-badge" id="reminders-badge" style="display:none">0</span>
-          </a>
-        </div>
-
-        <div class="nav-section">
-          <div class="nav-section-label">Kovanlar</div>
-          <a href="#/hives" class="nav-link" data-route="hives">
-            <i data-lucide="hexagon"></i>
-            <span class="nav-link-label">Kovanlarım</span>
-            <span class="nav-badge" id="hives-badge">0</span>
-          </a>
-          <a href="#/inspections" class="nav-link" data-route="inspections">
-            <i data-lucide="clipboard-list"></i>
-            <span class="nav-link-label">Muayeneler</span>
-          </a>
-          <a href="#/treatments" class="nav-link" data-route="treatments">
-            <i data-lucide="pill"></i>
-            <span class="nav-link-label">Tedaviler</span>
-          </a>
-          <a href="#/harvests" class="nav-link" data-route="harvests">
-            <i data-lucide="drumstick"></i>
-            <span class="nav-link-label">Hasat</span>
-          </a>
-        </div>
-
-        <div class="nav-section">
-          <div class="nav-section-label">Bilgi</div>
-          <a href="#/knowledge" class="nav-link" data-route="knowledge">
-            <i data-lucide="book-open"></i>
-            <span class="nav-link-label">Bilgi Tabanı</span>
-          </a>
-          <a href="#/reports" class="nav-link" data-route="reports">
-            <i data-lucide="file-text"></i>
-            <span class="nav-link-label">Raporlar</span>
-          </a>
-        </div>
-      </nav>
-
-      <div class="sidebar-footer">
-        <button class="btn btn-secondary" style="width:100%" id="btn-settings-desktop">
-          <i data-lucide="settings"></i>
-          Ayarlar
-        </button>
-      </div>
-    </aside>
-
-    <!-- ============== Main Column ============== -->
-    <div style="flex:1; min-width:0; display:flex; flex-direction:column;">
-
-      <!-- ============== Topbar ============== -->
-      <header class="topbar">
-        <div class="topbar-left">
-          <button class="icon-btn" id="theme-toggle" aria-label="Tema değiştir">
-            <i data-lucide="moon" id="theme-icon"></i>
-          </button>
-          <div class="search-wrap">
-            <i data-lucide="search" class="search-icon"></i>
-            <input type="search" id="search-input" class="search-input" placeholder="Ara..." aria-label="Arama"/>
-          </div>
-          <span class="page-title" id="page-title">Pano</span>
-        </div>
-        <div class="topbar-right">
-          <button class="icon-btn" id="btn-region-mobile" aria-label="Bölge değiştir" title="Bölge">
-            <i data-lucide="map-pin"></i>
-          </button>
-          <button class="icon-btn" id="btn-export" aria-label="Dışa aktar" title="Dışa aktar">
-            <i data-lucide="download"></i>
-          </button>
-          <button class="icon-btn" id="btn-import" aria-label="İçe aktar" title="İçe aktar">
-            <i data-lucide="upload"></i>
-          </button>
-          <button class="icon-btn" id="btn-settings" aria-label="Ayarlar" title="Ayarlar">
-            <i data-lucide="settings"></i>
-          </button>
-        </div>
-      </header>
-
-      <!-- ============== Main Content ============== -->
-      <main id="main" class="main" tabindex="-1">
-        <div class="page-content" id="route-outlet" aria-live="polite">
-          <!-- Skeleton loader on first load -->
-          <div class="skeleton skeleton-card" style="height:120px; margin-bottom: 16px;"></div>
-          <div class="stat-grid">
-            <div class="skeleton skeleton-card"></div>
-            <div class="skeleton skeleton-card"></div>
-            <div class="skeleton skeleton-card"></div>
-            <div class="skeleton skeleton-card"></div>
-          </div>
-        </div>
-      </main>
-
-    </div>
-
-    <!-- ============== Bottom Navigation (Mobile) ============== -->
-    <nav class="bottom-nav" aria-label="Alt gezinme">
-      <a href="#/dashboard" class="bottom-nav-link" data-route="dashboard">
-        <i data-lucide="layout-dashboard"></i>
-        <span>Pano</span>
-      </a>
-      <a href="#/hives" class="bottom-nav-link" data-route="hives">
-        <i data-lucide="hexagon"></i>
-        <span>Kovanlar</span>
-        <span class="bottom-nav-badge" id="hives-badge-mobile" style="display:none">0</span>
-      </a>
-      <a href="#/advisor" class="bottom-nav-link" data-route="advisor">
-        <i data-lucide="sparkles"></i>
-        <span>Danışman</span>
-      </a>
-      <a href="#/reminders" class="bottom-nav-link" data-route="reminders">
-        <i data-lucide="bell"></i>
-        <span>Hatırlat.</span>
-        <span class="bottom-nav-badge" id="reminders-badge-mobile" style="display:none">0</span>
-      </a>
-      <a href="#/reports" class="bottom-nav-link" data-route="reports">
-        <i data-lucide="file-text"></i>
-        <span>Raporlar</span>
-      </a>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo"><span class="bee">🐝</span><span class="brand">BeeMaster AI</span></div>
+    <nav id="nav-list">
+      <button class="nav-item active" data-view="dashboard" onclick="App.nav('dashboard')"><span class="ico">📊</span>Dashboard</button>
+      <button class="nav-item" data-view="apiaries" onclick="App.nav('apiaries')"><span class="ico">📍</span>Arı Üsleri</button>
+      <button class="nav-item" data-view="hives" onclick="App.nav('hives')"><span class="ico">🏠</span>Kovanlar</button>
+      <button class="nav-item" data-view="inspections" onclick="App.nav('inspections')"><span class="ico">📋</span>Muayeneler</button>
+      <button class="nav-item" data-view="queens" onclick="App.nav('queens')"><span class="ico">👑</span>Ana Arılar</button>
+      <button class="nav-item" data-view="honey" onclick="App.nav('honey')"><span class="ico">🍯</span>Bal Hasadı</button>
+      <button class="nav-item" data-view="feeding" onclick="App.nav('feeding')"><span class="ico">🌾</span>Besleme</button>
+      <button class="nav-item" data-view="treatments" onclick="App.nav('treatments')"><span class="ico">💊</span>Tedaviler</button>
+      <button class="nav-item" data-view="inventory" onclick="App.nav('inventory')"><span class="ico">📦</span>Envanter</button>
+      <button class="nav-item" data-view="analytics" onclick="App.nav('analytics')"><span class="ico">📈</span>Analitik</button>
+      <button class="nav-item" data-view="reports" onclick="App.nav('reports')"><span class="ico">📄</span>Raporlar</button>
+      <button class="nav-item" data-view="settings" onclick="App.nav('settings')"><span class="ico">⚙️</span>Ayarlar</button>
     </nav>
-  </div>
+    <div class="sidebar-foot">
+      <div class="user-card">
+        <div class="avatar">İÖ</div>
+        <div><div class="user-name">İlker Öcal</div><div class="user-role">Arıcı · Diyarbakır</div></div>
+      </div>
+    </div>
+  </aside>
 
-  <!-- ============== Toast Container ============== -->
-  <div class="toast-stack" id="toast-root" aria-live="polite"></div>
+  <header class="header">
+    <div class="page-title">
+      <h1 id="page-title">Dashboard</h1>
+      <p id="page-subtitle">Genel bakış · Eğil, Diyarbakır</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-ghost btn" onclick="App.toast('Arama yakında')">🔍</button>
+      <button class="btn-ghost btn" onclick="App.toggleTheme()" id="theme-toggle">🌙</button>
+      <button class="btn-ghost btn" onclick="App.toast('Bildirim yok')">🔔</button>
+    </div>
+  </header>
 
-  <!-- ============== Modal Container ============== -->
-  <div id="modal-root"></div>
+  <main class="main" id="main-content">
+    <div id="view-dashboard" class="view active"></div>
+    <div id="view-apiaries" class="view"></div>
+    <div id="view-hives" class="view"></div>
+    <div id="view-inspections" class="view"></div>
+    <div id="view-queens" class="view"></div>
+    <div id="view-honey" class="view"></div>
+    <div id="view-feeding" class="view"></div>
+    <div id="view-treatments" class="view"></div>
+    <div id="view-inventory" class="view"></div>
+    <div id="view-analytics" class="view"></div>
+    <div id="view-reports" class="view"></div>
+    <div id="view-settings" class="view"></div>
+  </main>
+</div>
 
-  <!-- ============== Scripts ============== -->
-  <script src="js/region.js"></script>
-  <script src="js/db.js"></script>
-  <script src="js/risk-engine.js"></script>
-  <script src="js/decision-engine.js"></script>
-  <script src="js/knowledge-bundle.js"></script>
-  <script src="js/reminders.js"></script>
-  <script src="js/learning.js"></script>
-  <script src="js/forum-search.js"></script>
-  <script src="js/media.js"></script>
-  <script src="js/views.js"></script>
-  <script src="js/router.js"></script>
-  <script src="js/app.js"></script>
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="bottom-nav-item active" data-view="dashboard" onclick="App.nav('dashboard')"><span class="ico">📊</span>Dashboard</button>
+  <button class="bottom-nav-item" data-view="hives" onclick="App.nav('hives')"><span class="ico">🏠</span>Kovan</button>
+  <button class="bottom-nav-item" data-view="inspections" onclick="App.nav('inspections')"><span class="ico">📋</span>Muayene</button>
+  <button class="bottom-nav-item" data-view="honey" onclick="App.nav('honey')"><span class="ico">🍯</span>Bal</button>
+  <button class="bottom-nav-item" data-view="analytics" onclick="App.nav('analytics')"><span class="ico">📈</span>Analitik</button>
+</nav>
 
-  <!-- Service worker -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
-    }
-  </script>
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+var Data = {
+  apiaries: [
+    {id:1,name:'Eğil Merkez',location:'Eğil, Diyarbakır',hives:4,status:'active',flora:'Geven, Kekik, Adaçayı'},
+    {id:2,name:'Surlar Üssü',location:'Sur, Diyarbakır',hives:3,status:'active',flora:'Pamuk, Ayçiçeği'}
+  ],
+  hives: [
+    {id:1,apiary:'Eğil Merkez',queen:'Ana Arı #1 (Karniyol)',frames:10,population:'Güçlü',honey:12.5,status:'good',lastInspection:'3 gün önce'},
+    {id:2,apiary:'Eğil Merkez',queen:'Ana Arı #2 (Kafkas)',frames:8,population:'Orta',honey:8.2,status:'warning',lastInspection:'5 gün önce'},
+    {id:3,apiary:'Eğil Merkez',queen:'Ana Arı #3 (Anadolu)',frames:10,population:'Güçlü',honey:15.0,status:'good',lastInspection:'2 gün önce'},
+    {id:4,apiary:'Eğil Merkez',queen:'Ana Arı #4 (Karniyol)',frames:9,population:'Güçlü',honey:11.8,status:'good',lastInspection:'1 gün önce'},
+    {id:5,apiary:'Surlar Üssü',queen:'Ana Arı #5 (Kafkas)',frames:7,population:'Zayıf',honey:3.5,status:'danger',lastInspection:'7 gün önce'},
+    {id:6,apiary:'Surlar Üssü',queen:'Ana Arı #6 (Anadolu)',frames:10,population:'Güçlü',honey:9.7,status:'good',lastInspection:'4 gün önce'},
+    {id:7,apiary:'Surlar Üssü',queen:'Ana Arı #7 (Karpat)',frames:8,population:'Orta',honey:6.4,status:'warning',lastInspection:'6 gün önce'}
+  ],
+  harvests: [
+    {month:'Mayıs',weight:4.5},{month:'Haziran',weight:8.2},{month:'Temmuz',weight:12.8},{month:'Ağustos',weight:9.1},
+    {month:'Eylül',weight:1.6},{month:'Ekim',weight:0}
+  ],
+  inspections: [
+    {date:'18 Tem 2026',hive:'Kovan #1',varroa:1,notes:'Genel durum iyi',status:'ok'},
+    {date:'17 Tem 2026',hive:'Kovan #3',varroa:2,notes:'Yumurta düzenli',status:'ok'},
+    {date:'16 Tem 2026',hive:'Kovan #5',varroa:8,notes:'Varroa yüksek - tedavi gerekiyor',status:'danger'},
+    {date:'15 Tem 2026',hive:'Kovan #2',varroa:4,notes:'Ana arı değişti',status:'warn'},
+    {date:'14 Tem 2026',hive:'Kovan #7',varroa:3,notes:'Çerçeveler azaldı',status:'warn'}
+  ],
+  queens: [
+    {id:1,age:2,breed:'Karniyol',productivity:'Yüksek',status:'active',marked:true},
+    {id:2,age:3,breed:'Kafkas',productivity:'Orta',status:'active',marked:true},
+    {id:3,age:1,breed:'Anadolu',productivity:'Yüksek',status:'active',marked:false},
+    {id:4,age:2,breed:'Karniyol',productivity:'Yüksek',status:'active',marked:true},
+    {id:5,age:4,breed:'Kafkas',productivity:'Düşük',status:'replace',marked:true}
+  ],
+  weather: {temp:28,condition:'Güneşli',humidity:35,wind:12,flora:['Geven','Kekik','Adaçayı','Pamuk','Ayçiçeği']}
+};
+
+var App = {
+  nav: function(view) {
+    document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});
+    document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(function(n){
+      n.classList.toggle('active', n.getAttribute('data-view') === view);
+    });
+    var el = document.getElementById('view-' + view);
+    if (el) el.classList.add('active');
+    var titles = {dashboard:['Dashboard','Genel bakış · Eğil, Diyarbakır'],apiaries:['Arı Üsleri','Tüm üsler'],hives:['Kovanlar','Tüm kovanlar'],inspections:['Muayeneler','Son muayeneler'],queens:['Ana Arılar','Ana arı envanteri'],honey:['Bal Hasadı','Hasat geçmişi'],feeding:['Besleme','Besleme takibi'],treatments:['Tedaviler','Tedavi kayıtları'],inventory:['Envanter','Malzeme envanteri'],analytics:['Analitik','Performans analizi'],reports:['Raporlar','Rapor merkezı'],settings:['Ayarlar','Uygulama ayarları']};
+    var t = titles[view] || titles.dashboard;
+    document.getElementById('page-title').textContent = t[0];
+    document.getElementById('page-subtitle').textContent = t[1];
+    this.render(view);
+    location.hash = view;
+  },
+
+  render: function(view) {
+    view = view || 'dashboard';
+    var fn = this['render_' + view];
+    if (fn) fn.call(this);
+    else this.render_placeholder(view);
+  },
+
+  render_placeholder: function(view) {
+    var el = document.getElementById('view-' + view);
+    if (!el) return;
+    var labels = {settings:'Ayarlar',feeding:'Besleme',treatments:'Tedaviler',inventory:'Envanter',reports:'Raporlar'};
+    el.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--text-dim)"><div style="font-size:48px;margin-bottom:12px">🚧</div><div style="font-size:18px;font-weight:600;margin-bottom:4px;color:var(--text)">'+(labels[view]||view)+'</div><div style="font-size:13px">Bu modül yakında hazır olacak</div></div>';
+  },
+
+  render_dashboard: function() {
+    var d = Data;
+    var totalHives = d.hives.length;
+    var activeApiaries = d.apiaries.filter(function(a){return a.status==='active'}).length;
+    var totalHoney = d.harvests.reduce(function(s,h){return s+h.weight},0);
+    var avgVarroa = d.inspections.length ? (d.inspections.reduce(function(s,i){return s+i.varroa},0)/d.inspections.length).toFixed(1) : 0;
+    var maxHoney = Math.max.apply(null, d.harvests.map(function(h){return h.weight}));
+
+    var stats = [
+      {label:'Toplam Kovan',value:totalHives,change:'+12%',dir:'up',icon:'🏠',type:'honey'},
+      {label:'Aktif Üs',value:activeApiaries,change:'Sabit',dir:'neutral',icon:'📍',type:'info'},
+      {label:'Toplam Bal',value:totalHoney.toFixed(1)+' kg',change:'+8%',dir:'up',icon:'🍯',type:'success'},
+      {label:'Ort. Varroa',value:avgVarroa,change:'-15%',dir:'up',icon:'⚠️',type:parseFloat(avgVarroa)>3?'danger':'warning'}
+    ];
+
+    var html = '<div class="stats-grid">';
+    stats.forEach(function(s){
+      html += '<div class="stat-card"><div class="stat-icon '+s.type+'">'+s.icon+'</div><div class="stat-label">'+s.label+'</div><div class="stat-value">'+s.value+'</div><div class="stat-change '+s.dir+'">'+s.change+'</div></div>';
+    });
+    html += '</div>';
+
+    html += '<div class="actions-grid">';
+    var actions = [['📋','Yeni Muayene'],['🍯','Hasat'],['🌾','Besleme'],['💊','Tedavi'],['➕','Yeni Kovan']];
+    actions.forEach(function(a){
+      html += '<button class="action-btn" onclick="App.toast(\''+a[1]+' eklendi\')"><div class="action-ico">'+a[0]+'</div><div class="action-label">'+a[1]+'</div></button>';
+    });
+    html += '</div>';
+
+    html += '<div class="content-grid"><div><div class="card"><div class="card-head"><div class="card-title">📈 Hasat Performansı</div></div><div class="chart-wrap">';
+    d.harvests.forEach(function(h){
+      var height = maxHoney>0 ? Math.round((h.weight/maxHoney)*100) : 0;
+      html += '<div class="bar-col"><div class="bar-val">'+h.weight+' kg</div><div class="bar" style="height:'+height+'%"></div><div class="bar-label">'+h.month+'</div></div>';
+    });
+    html += '</div></div>';
+
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div class="card-title">📋 Son Muayeneler</div><span class="card-link" onclick="App.nav(\'inspections\')">Tümü →</span></div>';
+    d.inspections.forEach(function(i){
+      var dot = i.status==='ok'?'dot-green':(i.status==='danger'?'dot-red':'dot-yellow');
+      var badge = i.status==='ok'?'ok':(i.status==='danger'?'danger':'warn');
+      html += '<div class="list-item"><div class="list-dot '+dot+'"></div><div class="list-main"><div class="list-name">'+i.hive+'</div><div class="list-info">'+i.date+' · '+i.notes+'</div></div><span class="badge '+badge+'">Varroa: '+i.varroa+'</span></div>';
+    });
+    html += '</div></div>';
+
+    html += '<div><div class="card weather-card"><div class="card-head"><div class="card-title">🌤️ Hava & Flora</div></div><div class="weather-now"><div class="weather-icon">'+(d.weather.condition==='Güneşli'?'☀️':'⛅')+'</div><div><div class="weather-temp">'+d.weather.temp+'°C</div><div class="weather-info">'+d.weather.condition+' · Nem %'+d.weather.humidity+' · Rüzgar '+d.weather.wind+' km</div></div></div><div class="cl">Aktif flora:</div><div class="flora-tags">';
+    d.weather.flora.forEach(function(f){html += '<span class="flora-tag">'+f+'</span>';});
+    html += '</div></div>';
+
+    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div class="card-title">⚠️ Uyarılar</div></div>';
+    var alerts = [['Kovan #5','Varroa çok yüksek (8)','danger'],['Kovan #2','Ana arı değişti','warn'],['Kovan #7','Çerçeve sayısı düştü','warn']];
+    alerts.forEach(function(a){
+      html += '<div class="list-item"><div class="list-dot '+(a[2]==='danger'?'dot-red':'dot-yellow')+'"></div><div class="list-main"><div class="list-name">'+a[0]+'</div><div class="list-info">'+a[1]+'</div></div><span class="badge '+a[2]+'">'+(a[2]==='danger'?'Acil':'Dikkat')+'</span></div>';
+    });
+    html += '</div></div></div>';
+
+    document.getElementById('view-dashboard').innerHTML = html;
+  },
+
+  render_apiaries: function() {
+    var html = '<div class="stats-grid"><div class="stat-card"><div class="stat-icon info">📍</div><div class="stat-label">Toplam Üs</div><div class="stat-value">'+Data.apiaries.length+'</div></div><div class="stat-card"><div class="stat-icon honey">🏠</div><div class="stat-label">Toplam Kovan</div><div class="stat-value">'+Data.hives.length+'</div></div></div>';
+    html += '<div class="card"><div class="card-head"><div class="card-title">Arı Üsleri</div></div>';
+    Data.apiaries.forEach(function(a){
+      html += '<div class="list-item"><div class="list-dot dot-green"></div><div class="list-main"><div class="list-name">'+a.name+'</div><div class="list-info">'+a.location+' · '+a.hives+' kovan · Flora: '+a.flora+'</div></div><span class="badge ok">Aktif</span></div>';
+    });
+    html += '</div>';
+    document.getElementById('view-apiaries').innerHTML = html;
+  },
+
+  render_hives: function() {
+    var html = '<div class="card"><div class="card-head"><div class="card-title">Kovanlar ('+Data.hives.length+')</div></div>';
+    Data.hives.forEach(function(h){
+      var dot = h.status==='good'?'dot-green':(h.status==='danger'?'dot-red':'dot-yellow');
+      var badge = h.status==='good'?'ok':(h.status==='danger'?'danger':'warn');
+      html += '<div class="list-item"><div class="list-dot '+dot+'"></div><div class="list-main"><div class="list-name">Kovan #'+h.id+' · '+h.apiary+'</div><div class="list-info">'+h.queen+' · '+h.frames+' çerçeve · '+h.honey+' kg bal · Son muayene: '+h.lastInspection+'</div></div><span class="badge '+badge+'">'+h.population+'</span></div>';
+    });
+    html += '</div>';
+    document.getElementById('view-hives').innerHTML = html;
+  },
+
+  render_inspections: function() {
+    var html = '<div class="card"><div class="card-head"><div class="card-title">Muayene Geçmişi</div></div>';
+    Data.inspections.forEach(function(i){
+      var dot = i.status==='ok'?'dot-green':(i.status==='danger'?'dot-red':'dot-yellow');
+      var badge = i.status==='ok'?'ok':(i.status==='danger'?'danger':'warn');
+      html += '<div class="list-item"><div class="list-dot '+dot+'"></div><div class="list-main"><div class="list-name">'+i.hive+' · '+i.date+'</div><div class="list-info">'+i.notes+'</div></div><span class="badge '+badge+'">Varroa: '+i.varroa+'</span></div>';
+    });
+    html += '</div>';
+    document.getElementById('view-inspections').innerHTML = html;
+  },
+
+  render_queens: function() {
+    var html = '<div class="card"><div class="card-head"><div class="card-title">Ana Arılar ('+Data.queens.length+')</div></div>';
+    Data.queens.forEach(function(q){
+      var dot = q.status==='active'?'dot-green':'dot-yellow';
+      var badge = q.status==='active'?'ok':'warn';
+      html += '<div class="list-item"><div class="list-dot '+dot+'"></div><div class="list-main"><div class="list-name">Ana Arı #'+q.id+' · '+q.breed+'</div><div class="list-info">Yaş: '+q.age+' yıl · Verim: '+q.productivity+(q.marked?' · İşaretli':' · İşaretsiz')+'</div></div><span class="badge '+badge+'">'+(q.status==='active'?'Aktif':'Değiştir')+'</span></div>';
+    });
+    html += '</div>';
+    document.getElementById('view-queens').innerHTML = html;
+  },
+
+  render_honey: function() {
+    var total = Data.harvests.reduce(function(s,h){return s+h.weight},0);
+    var html = '<div class="stats-grid"><div class="stat-card"><div class="stat-icon success">🍯</div><div class="stat-label">Toplam Hasat</div><div class="stat-value">'+total.toFixed(1)+' kg</div></div><div class="stat-card"><div class="stat-icon honey">📅</div><div class="stat-label">Bu Ay</div><div class="stat-value">'+Data.harvests[2].weight+' kg</div></div></div>';
+    html += '<div class="card"><div class="card-head"><div class="card-title">Hasat Geçmişi</div></div><div class="chart-wrap">';
+    var max = Math.max.apply(null, Data.harvests.map(function(h){return h.weight}));
+    Data.harvests.forEach(function(h){
+      var height = Math.round((h.weight/max)*100);
+      html += '<div class="bar-col"><div class="bar-val">'+h.weight+' kg</div><div class="bar" style="height:'+height+'%"></div><div class="bar-label">'+h.month+'</div></div>';
+    });
+    html += '</div></div>';
+    document.getElementById('view-honey').innerHTML = html;
+  },
+
+  render_analytics: function() {
+    var html = '<div class="card"><div class="card-head"><div class="card-title">Üs Performansı</div></div>';
+    Data.apiaries.forEach(function(a){
+      var hCount = Data.hives.filter(function(h){return h.apiary===a.name}).length;
+      html += '<div class="list-item"><div class="list-dot dot-green"></div><div class="list-main"><div class="list-name">'+a.name+'</div><div class="list-info">'+hCount+' kovan · '+a.hives+' beklenen</div></div><span class="badge ok">Aktif</span></div>';
+    });
+    html += '</div>';
+    document.getElementById('view-analytics').innerHTML = html;
+  },
+
+  toast: function(msg) {
+    var container = document.getElementById('toast-container');
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(function(){el.style.opacity='0';setTimeout(function(){el.remove()},300)},2500);
+  },
+
+  toggleTheme: function() {
+    var html = document.documentElement;
+    var cur = html.getAttribute('data-theme') || 'dark';
+    var next = cur==='dark'?'light':'dark';
+    html.setAttribute('data-theme', next);
+    document.getElementById('theme-toggle').textContent = next==='dark'?'🌙':'☀️';
+    try{localStorage.setItem('bm-theme',next)}catch(e){}
+  }
+};
+
+// Unregister any existing service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    regs.forEach(function(r){r.unregister()});
+  });
+}
+
+// Apply saved theme
+try {
+  var saved = localStorage.getItem('bm-theme');
+  if (saved) {
+    document.documentElement.setAttribute('data-theme', saved);
+    var btn = document.getElementById('theme-toggle');
+    if (btn) btn.textContent = saved==='dark'?'🌙':'☀️';
+  }
+} catch(e){}
+
+// Init immediately
+function init() {
+  var view = (location.hash || '#dashboard').slice(1);
+  App.nav(view);
+  console.log('[BeeMaster AI] Ready. View:', view);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
 </body>
 </html>
