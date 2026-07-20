@@ -2,710 +2,1278 @@
 <html lang="tr" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BeeMaster AI - Arıcılık Yönetimi</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#07080C">
+<meta name="description" content="BeeMaster AI - Yapay zeka destekli arıcılık yönetim platformu">
+<title>🐝 BeeMaster AI - Arıcılık Yönetimi</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#0a0a0f;--surface:#13131a;--surface2:#1a1a24;--border:#2a2a3a;--text:#e4e4ef;--text-dim:#8888a0;
-  --honey:#F4B400;--honey2:#d99e00;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--purple:#a855f7;
-  --r:12px;--r-sm:8px;--r-lg:16px;--shadow:0 4px 24px rgba(0,0,0,.4);
+  --bg:#07080C;--surface:#0F1117;--surface2:#161922;--surface3:#1F2330;
+  --border:#252A3A;--border-strong:#3A4055;
+  --text:#E8EAF2;--text-dim:#8A8FA3;--text-faint:#5C6178;
+  --honey:#F4B400;--honey-2:#D99E00;--honey-3:#B8860B;--honey-soft:rgba(244,180,0,0.12);
+  --green:#22C55E;--green-soft:rgba(34,197,94,0.12);
+  --red:#EF4444;--red-soft:rgba(239,68,68,0.12);
+  --blue:#3B82F6;--blue-soft:rgba(59,130,246,0.12);
+  --purple:#A855F7;--purple-soft:rgba(168,85,247,0.12);
+  --orange:#F97316;--orange-soft:rgba(249,115,22,0.12);
+  --r-xs:4px;--r-sm:8px;--r:12px;--r-lg:16px;--r-xl:24px;
+  --shadow:0 4px 24px rgba(0,0,0,.4);
+  --shadow-lg:0 12px 40px rgba(0,0,0,.6);
+  --t:200ms cubic-bezier(0.4,0,0.2,1);
 }
+[data-theme="light"]{
+  --bg:#FAFAFC;--surface:#FFFFFF;--surface2:#F4F5F9;--surface3:#EAECEF;
+  --border:#E2E5EE;--border-strong:#C5CAD7;
+  --text:#0F1117;--text-dim:#5C6178;--text-faint:#8A8FA3;
+  --shadow:0 4px 24px rgba(0,0,0,.08);
+  --shadow-lg:0 12px 40px rgba(0,0,0,.12);
+}
+html,body{height:100%}
 html{visibility:visible;opacity:1}
-body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;overflow-x:hidden}
-::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-.btn{padding:10px 18px;border:none;border-radius:var(--r-sm);cursor:pointer;font-size:14px;font-weight:600;transition:.2s;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
-.btn-primary{background:var(--honey);color:#000}.btn-primary:hover{background:var(--honey2)}
-.btn-ghost{background:transparent;color:var(--text-dim);padding:8px}.btn-ghost:hover{color:var(--text);background:var(--surface2)}
-.app{display:grid;grid-template-columns:240px 1fr;grid-template-rows:64px 1fr;min-height:100vh;grid-template-areas:"sidebar header" "sidebar main"}
-.sidebar{grid-area:sidebar;background:var(--surface);border-right:1px solid var(--border);padding:16px 0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
-.logo{padding:0 20px 20px;display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;white-space:nowrap}
-.logo .bee{font-size:24px}
-.logo .brand{background:linear-gradient(135deg,var(--honey),var(--honey2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.sidebar nav{display:flex;flex-direction:column;gap:2px;padding:0 8px;flex:1}
-.nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r-sm);cursor:pointer;color:var(--text-dim);font-size:14px;font-weight:500;text-decoration:none;border:none;background:transparent;width:100%;text-align:left;transition:.15s;font-family:inherit}
-.nav-item:hover{color:var(--text);background:var(--surface2)}
-.nav-item.active{background:rgba(244,180,0,.12);color:var(--honey);font-weight:600}
-.nav-item .ico{width:18px;height:18px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
-.sidebar-foot{padding:12px 16px;margin-top:auto}
-.user-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--r);background:var(--surface2)}
-.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--honey),var(--honey2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#000;font-size:14px}
-.user-name{font-size:13px;font-weight:600}.user-role{font-size:11px;color:var(--text-dim)}
-.header{grid-area:header;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50}
-.page-title h1{font-size:16px;font-weight:700;line-height:1.2}.page-title p{font-size:12px;color:var(--text-dim)}
-.header-actions{display:flex;align-items:center;gap:10px}
-.main{grid-area:main;padding:24px;overflow-x:auto}
-.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
-.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;position:relative;overflow:hidden;transition:.2s}
-.stat-card:hover{border-color:var(--honey);transform:translateY(-2px);box-shadow:var(--shadow)}
-.stat-card::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(244,180,0,.05),transparent);pointer-events:none}
-.stat-label{font-size:12px;color:var(--text-dim);font-weight:500;margin-bottom:4px;display:flex;align-items:center;gap:6px}
-.stat-value{font-size:32px;font-weight:800;line-height:1;margin:4px 0}
-.stat-change{font-size:11px;font-weight:600;color:var(--green)}
-.stat-change.down{color:var(--red)}.stat-change.neutral{color:var(--text-dim)}
-.stat-icon{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:18px}
-.stat-icon.honey{background:rgba(244,180,0,.12);color:var(--honey)}.stat-icon.info{background:rgba(59,130,246,.12);color:var(--blue)}
-.stat-icon.success{background:rgba(34,197,94,.12);color:var(--green)}.stat-icon.danger{background:rgba(239,68,68,.12);color:var(--red)}
-.stat-icon.warning{background:rgba(245,158,11,.12);color:var(--honey2)}
-.content-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:24px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px}
-.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-.card-title{font-size:15px;font-weight:700}
-.card-link{font-size:12px;color:var(--honey);text-decoration:none;cursor:pointer}
-.chart-wrap{height:220px;position:relative;display:flex;align-items:flex-end;gap:10px;padding:0 8px 30px;border-bottom:1px solid var(--border);position:relative}
-.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;min-width:0}
-.bar{width:100%;max-width:32px;border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--honey),var(--honey2));transition:.3s;min-height:4px}
-.bar:hover{filter:brightness(1.2)}
-.bar-label{font-size:10px;color:var(--text-dim);white-space:nowrap}
-.bar-val{font-size:11px;font-weight:600;color:var(--text)}
-.list-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
-.list-item:last-child{border-bottom:none}
-.list-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.dot-green{background:var(--green)}.dot-yellow{background:var(--honey)}.dot-red{background:var(--red)}
-.list-main{flex:1;min-width:0}
-.list-name{font-size:13px;font-weight:600}.list-info{font-size:11px;color:var(--text-dim)}
-.badge{font-size:10px;padding:2px 8px;border-radius:99px;font-weight:600;display:inline-block}
-.badge.ok{background:rgba(34,197,94,.15);color:var(--green)}.badge.warn{background:rgba(245,158,11,.15);color:var(--honey2)}
-.badge.danger{background:rgba(239,68,68,.15);color:var(--red)}.badge.info{background:rgba(59,130,246,.15);color:var(--blue)}
-.weather-card{background:linear-gradient(135deg,rgba(244,180,0,.08),rgba(245,158,11,.04));border:1px solid rgba(244,180,0,.2)}
-.weather-now{display:flex;align-items:center;gap:16px;margin-bottom:16px}
-.weather-icon{font-size:48px}.weather-temp{font-size:36px;font-weight:800}
-.weather-info{font-size:13px;color:var(--text-dim)}
-.flora-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-.flora-tag{font-size:11px;padding:4px 10px;border-radius:99px;background:var(--surface2);color:var(--text-dim)}
-.actions-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
-.action-btn{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 12px;cursor:pointer;text-align:center;transition:.2s;font-family:inherit}
-.action-btn:hover{border-color:var(--honey);background:var(--surface2);transform:translateY(-2px)}
-.action-ico{font-size:22px;margin-bottom:6px;display:flex;justify-content:center}
-.action-label{font-size:12px;font-weight:600}
-.view{display:none}.view.active{display:block}
-.toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
-.toast{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--honey);padding:12px 16px;border-radius:var(--r-sm);box-shadow:var(--shadow);max-width:320px;font-size:13px;animation:slideIn .3s}
-@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-.bottom-nav{display:none}
-@media(max-width:1024px){.app{grid-template-columns:1fr;grid-template-areas:"header" "main"}.sidebar{display:none}.bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:100;padding:8px;justify-content:space-around}.bottom-nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;border:none;background:transparent;color:var(--text-dim);font-size:10px;cursor:pointer;font-family:inherit}.bottom-nav-item.active{color:var(--honey)}.bottom-nav-item .ico{font-size:18px}.main{padding-bottom:80px}.stats-grid{grid-template-columns:repeat(2,1fr)}.content-grid{grid-template-columns:1fr}.actions-grid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:640px){.stat-value{font-size:26px}.header{padding:0 16px}.main{padding:16px}}
-
-/* Modal */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center;padding:20px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::selection{background:var(--honey);color:#000}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}::-webkit-scrollbar-thumb:hover{background:var(--border-strong)}
+:focus-visible{outline:2px solid var(--honey);outline-offset:2px;border-radius:var(--r-xs)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--r-sm);cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;transition:var(--t);text-decoration:none;white-space:nowrap}
+.btn:hover{border-color:var(--border-strong);background:var(--surface2)}
+.btn-primary{background:var(--honey);color:#000;border-color:var(--honey)}
+.btn-primary:hover{background:var(--honey-2);border-color:var(--honey-2)}
+.btn-danger{background:var(--red-soft);color:var(--red);border-color:rgba(239,68,68,0.3)}
+.btn-danger:hover{background:var(--red);color:#fff}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--text-dim)}
+.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{padding:8px;min-width:36px;justify-content:center}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--text);background:var(--bg);border:1px solid var(--border);padding:9px 12px;border-radius:var(--r-sm);transition:var(--t);width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--honey);box-shadow:0 0 0 3px rgba(244,180,0,0.15)}
+textarea{resize:vertical;min-height:80px}
+label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--text-dim);font-weight:600}
+.app{display:grid;grid-template-columns:260px 1fr;grid-template-rows:64px 1fr;min-height:100vh;grid-template-areas:"side header" "side main"}
+.sidebar{grid-area:side;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:100}
+.brand{padding:18px 20px;display:flex;align-items:center;gap:10px;font-size:17px;font-weight:800;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:2}
+.brand-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--honey),var(--honey-3));display:flex;align-items:center;justify-content:center;font-size:18px}
+.brand-name{background:linear-gradient(135deg,var(--honey),var(--honey-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.02em}
+.sidebar nav{padding:14px 10px;display:flex;flex-direction:column;gap:1px;flex:1}
+.nav-group{padding:14px 14px 4px;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-faint);font-weight:700}
+.nav{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r-sm);color:var(--text-dim);font-size:13.5px;font-weight:500;cursor:pointer;text-decoration:none;border:none;background:transparent;width:100%;text-align:left;font-family:inherit;transition:var(--t)}
+.nav:hover{color:var(--text);background:var(--surface2)}
+.nav.active{background:var(--honey-soft);color:var(--honey);font-weight:600}
+.nav-ico{font-size:16px;width:20px;text-align:center}
+.sidebar-foot{padding:14px;border-top:1px solid var(--border)}
+.user-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--r);background:var(--surface2);cursor:pointer}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--honey),var(--honey-3));display:flex;align-items:center;justify-content:center;font-weight:700;color:#000;font-size:13px;flex-shrink:0}
+.user-name{font-size:13px;font-weight:600;line-height:1.3}.user-role{font-size:11px;color:var(--text-dim)}
+.header{grid-area:header;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:50;gap:16px}
+.page-info h1{font-size:17px;font-weight:700;line-height:1.2;letter-spacing:-0.01em}
+.page-info p{font-size:12px;color:var(--text-dim);margin-top:1px}
+.header-actions{display:flex;align-items:center;gap:6px}
+.main{grid-area:main;padding:24px 24px 80px;overflow-x:hidden;max-width:100%}
+.view{display:none;animation:fadeUp .3s ease}
+.view.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;position:relative;overflow:hidden;transition:var(--t)}
+.stat:hover{border-color:var(--border-strong);transform:translateY(-2px);box-shadow:var(--shadow)}
+.stat-ico{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:17px}
+.stat-label{font-size:11px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px}
+.stat-val{font-size:28px;font-weight:800;line-height:1;letter-spacing:-0.02em;margin-bottom:6px}
+.stat-meta{font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px}
+.stat-meta.up{color:var(--green)}.stat-meta.down{color:var(--red)}.stat-meta.neutral{color:var(--text-dim)}
+.grid-2{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:18px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;transition:var(--t)}
+.card:hover{border-color:var(--border-strong)}
+.card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px}
+.card-title{font-size:14px;font-weight:700;letter-spacing:-0.01em}
+.card-sub{font-size:11px;color:var(--text-dim);margin-top:2px}
+.link{font-size:12px;color:var(--honey);cursor:pointer;font-weight:600;text-decoration:none}
+.link:hover{color:var(--honey-2)}
+.row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:none}
+.row-main{flex:1;min-width:0}
+.row-name{font-size:13.5px;font-weight:600;line-height:1.3}
+.row-info{font-size:11.5px;color:var(--text-dim);margin-top:2px;line-height:1.4}
+.row-actions{display:flex;gap:5px;flex-shrink:0}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-g{background:var(--green)}.dot-y{background:var(--honey)}.dot-r{background:var(--red)}.dot-b{background:var(--blue)}.dot-p{background:var(--purple)}.dot-o{background:var(--orange)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;padding:3px 8px;border-radius:99px;font-weight:600;letter-spacing:0.02em}
+.badge-ok{background:var(--green-soft);color:var(--green)}.badge-warn{background:var(--honey-soft);color:var(--honey-2)}.badge-danger{background:var(--red-soft);color:var(--red)}.badge-info{background:var(--blue-soft);color:var(--blue)}.badge-purple{background:var(--purple-soft);color:var(--purple)}
+.chart{height:200px;display:flex;align-items:flex-end;gap:10px;padding:0 4px 24px;border-bottom:1px dashed var(--border);position:relative}
+.chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;min-width:0;position:relative}
+.chart-bar{width:100%;max-width:36px;border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--honey),var(--honey-3));transition:var(--t);min-height:4px;position:relative}
+.chart-bar:hover{filter:brightness(1.15)}
+.chart-bar.danger{background:linear-gradient(180deg,var(--red),#B91C1C)}.chart-bar.warn{background:linear-gradient(180deg,var(--orange),#C2410C)}.chart-bar.ok{background:linear-gradient(180deg,var(--green),#15803D)}
+.chart-val{font-size:10.5px;font-weight:600;color:var(--text)}
+.chart-lbl{font-size:10.5px;color:var(--text-dim);white-space:nowrap}
+.frame-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-top:8px}
+.frame{aspect-ratio:2/3;border:2px solid var(--border);border-radius:var(--r-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:var(--t);padding:6px;position:relative}
+.frame:hover{border-color:var(--honey);transform:scale(1.04)}
+.frame.brood{background:rgba(249,115,22,0.12);border-color:rgba(249,115,22,0.4)}.frame.brood .frame-ico{color:var(--orange)}
+.frame.honey{background:rgba(244,180,0,0.15);border-color:rgba(244,180,0,0.4)}.frame.honey .frame-ico{color:var(--honey)}
+.frame.pollen{background:rgba(168,85,247,0.12);border-color:rgba(168,85,247,0.4)}.frame.pollen .frame-ico{color:var(--purple)}
+.frame.foundation{background:var(--surface2);border-color:var(--border-strong)}.frame.foundation .frame-ico{color:var(--text-dim)}
+.frame.empty{background:transparent;border-style:dashed}.frame.empty .frame-ico{color:var(--text-faint)}
+.frame.retired{background:var(--red-soft);border-color:var(--red)}.frame.retired .frame-ico{color:var(--red)}
+.frame-ico{font-size:20px;margin-bottom:3px}.frame-num{font-size:10px;font-weight:700;color:var(--text-dim)}.frame-cycle{font-size:9px;color:var(--text-faint);margin-top:1px}
+.frame-legend{display:flex;flex-wrap:wrap;gap:10px;padding:10px;background:var(--surface2);border-radius:var(--r-sm);margin-top:10px;font-size:11px}
+.legend-item{display:flex;align-items:center;gap:6px;color:var(--text-dim)}.legend-dot{width:12px;height:12px;border-radius:3px}
+.actions-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+.search{flex:1;min-width:200px;max-width:360px;position:relative}
+.search input{padding-left:36px}
+.search-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-faint);font-size:14px}
+.empty-state{padding:40px 16px;text-align:center;color:var(--text-dim)}
+.empty-ico{font-size:40px;margin-bottom:12px;opacity:0.6}
+.empty-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px}
+.empty-sub{font-size:12.5px;margin-bottom:14px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:200;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
 .modal-overlay.active{display:flex;animation:fadeIn .2s}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow)}
-.modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border)}
-.modal-head h3{margin:0;font-size:16px;font-weight:700}
-.modal-close{background:transparent;border:none;color:var(--text-dim);font-size:28px;cursor:pointer;padding:0 8px;line-height:1;font-family:inherit}
-.modal-close:hover{color:var(--text)}
-.modal-body{padding:24px;display:flex;flex-direction:column;gap:14px}
-.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--border);background:var(--surface2)}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-
-/* Form fields */
-.field{display:flex;flex-direction:column;gap:6px}
-.field>span{font-size:12px;color:var(--text-dim);font-weight:600}
-.field input,.field select,.field textarea{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:var(--r-sm);font-size:14px;font-family:inherit;transition:.15s;width:100%;box-sizing:border-box}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--honey);box-shadow:0 0 0 3px rgba(244,180,0,.15)}
-.field textarea{resize:vertical;min-height:60px}
-.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-
-/* List item with action buttons */
-.list-item-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)}
-.list-item-row:last-child{border-bottom:none}
-.list-item-row .list-main{flex:1;min-width:0}
-.actions-mini{display:flex;gap:6px;flex-shrink:0}
-.btn-mini{background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:6px 12px;border-radius:var(--r-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s}
-.btn-mini:hover{background:var(--border);border-color:var(--honey)}
-.btn-mini.danger{color:var(--red)}
-.btn-mini.danger:hover{background:rgba(239,68,68,.15);border-color:var(--red)}
-
-/* Empty state */
-.empty{padding:32px 16px;text-align:center;color:var(--text-dim);font-size:14px}
-.empty .card-link{display:inline-block;margin-top:8px;color:var(--honey);font-weight:600;cursor:pointer}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);width:100%;max-width:520px;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);animation:slideUp .25s cubic-bezier(0.4,0,0.2,1)}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--border);gap:10px}
+.modal-head h3{font-size:16px;font-weight:700;letter-spacing:-0.01em}
+.modal-close{background:transparent;border:none;color:var(--text-dim);font-size:24px;cursor:pointer;padding:4px 8px;line-height:1;font-family:inherit;border-radius:var(--r-xs)}
+.modal-close:hover{color:var(--text);background:var(--surface2)}
+.modal-body{padding:20px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 22px;border-top:1px solid var(--border);background:var(--surface2);border-radius:0 0 var(--r-lg) var(--r-lg)}
+.field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--text-dim);font-weight:600}
+.field>span{font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:300;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--honey);padding:11px 16px;border-radius:var(--r-sm);box-shadow:var(--shadow);max-width:340px;font-size:13px;animation:slideIn .25s;pointer-events:auto}
+.toast.success{border-left-color:var(--green)}.toast.error{border-left-color:var(--red)}.toast.info{border-left-color:var(--blue)}
+@keyframes slideIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+.tab-bar{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto}
+.tab{padding:10px 14px;border:none;background:transparent;color:var(--text-dim);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;transition:var(--t);white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--honey);border-bottom-color:var(--honey)}
+.timeline{padding:4px 0}
+.timeline-item{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);position:relative}
+.timeline-ico{width:32px;height:32px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.timeline-body{flex:1;min-width:0}
+.timeline-title{font-size:13.5px;font-weight:600;margin-bottom:2px}
+.timeline-meta{font-size:11.5px;color:var(--text-dim)}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--surface2);border-radius:var(--r-sm);padding:12px;text-align:center}
+.kpi-val{font-size:22px;font-weight:800;letter-spacing:-0.02em;margin-bottom:2px}
+.kpi-lbl{font-size:11px;color:var(--text-dim);font-weight:600}
+.ai-card{background:linear-gradient(135deg,rgba(244,180,0,0.08),rgba(168,85,247,0.06));border:1px solid rgba(244,180,0,0.2)}
+.ai-item{display:flex;gap:10px;padding:10px;background:var(--surface);border-radius:var(--r-sm);margin-bottom:8px;border:1px solid var(--border)}
+.ai-ico{width:32px;height:32px;border-radius:var(--r-sm);background:var(--honey-soft);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.ai-body{flex:1;font-size:12.5px;line-height:1.5}
+.ai-title{font-weight:700;color:var(--text);margin-bottom:2px}
+.ai-sub{color:var(--text-dim);font-size:11.5px}
+.bottom-nav{display:none}
+@media(max-width:1024px){
+  .app{grid-template-columns:1fr;grid-template-areas:"header" "main"}
+  .sidebar{position:fixed;left:-280px;width:260px;transition:left .3s;box-shadow:var(--shadow-lg)}
+  .sidebar.open{left:0}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .grid-2,.grid-3{grid-template-columns:1fr}
+  .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:90;padding:8px 4px;justify-content:space-around;backdrop-filter:blur(12px);background:rgba(15,17,23,0.92)}
+  [data-theme="light"] .bottom-nav{background:rgba(255,255,255,0.92)}
+  .bnav{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;border:none;background:transparent;color:var(--text-dim);font-size:10px;cursor:pointer;font-family:inherit;border-radius:var(--r-sm);min-width:50px}
+  .bnav.active{color:var(--honey)}
+  .bnav-ico{font-size:18px}
+  .main{padding:16px 16px 90px}
+  .stat-val{font-size:22px}
+}
+@media(max-width:640px){
+  .field-row,.field-row-3{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .header{padding:0 14px}
+  .actions-bar{flex-direction:column;align-items:stretch}
+  .search{max-width:100%}
+}
 </style>
 </head>
 <body>
 <div class="app">
-  <aside class="sidebar">
-    <div class="logo"><span class="bee">🐝</span><span class="brand">BeeMaster AI</span></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">🐝</div>
+      <span class="brand-name">BeeMaster AI</span>
+    </div>
     <nav id="nav-list">
-      <button class="nav-item active" data-view="dashboard" onclick="App.nav('dashboard')"><span class="ico">📊</span>Dashboard</button>
-      <button class="nav-item" data-view="apiaries" onclick="App.nav('apiaries')"><span class="ico">📍</span>Arı Üsleri</button>
-      <button class="nav-item" data-view="hives" onclick="App.nav('hives')"><span class="ico">🏠</span>Kovanlar</button>
-      <button class="nav-item" data-view="inspections" onclick="App.nav('inspections')"><span class="ico">📋</span>Muayeneler</button>
-      <button class="nav-item" data-view="queens" onclick="App.nav('queens')"><span class="ico">👑</span>Ana Arılar</button>
-      <button class="nav-item" data-view="honey" onclick="App.nav('honey')"><span class="ico">🍯</span>Bal Hasadı</button>
-      <button class="nav-item" data-view="feeding" onclick="App.nav('feeding')"><span class="ico">🌾</span>Besleme</button>
-      <button class="nav-item" data-view="treatments" onclick="App.nav('treatments')"><span class="ico">💊</span>Tedaviler</button>
-      <button class="nav-item" data-view="inventory" onclick="App.nav('inventory')"><span class="ico">📦</span>Envanter</button>
-      <button class="nav-item" data-view="analytics" onclick="App.nav('analytics')"><span class="ico">📈</span>Analitik</button>
-      <button class="nav-item" data-view="reports" onclick="App.nav('reports')"><span class="ico">📄</span>Raporlar</button>
-      <button class="nav-item" data-view="settings" onclick="App.nav('settings')"><span class="ico">⚙️</span>Ayarlar</button>
+      <div class="nav-group">Genel</div>
+      <button class="nav active" data-view="dashboard" onclick="App.nav('dashboard')"><span class="nav-ico">📊</span>Dashboard</button>
+      <button class="nav" data-view="apiaries" onclick="App.nav('apiaries')"><span class="nav-ico">📍</span>Arı Üsleri</button>
+      <button class="nav" data-view="hives" onclick="App.nav('hives')"><span class="nav-ico">🏠</span>Kovanlar</button>
+      <div class="nav-group">Operasyon</div>
+      <button class="nav" data-view="inspections" onclick="App.nav('inspections')"><span class="nav-ico">📋</span>Muayeneler</button>
+      <button class="nav" data-view="harvest" onclick="App.nav('harvest')"><span class="nav-ico">🍯</span>Bal Hasadı</button>
+      <button class="nav" data-view="feeding" onclick="App.nav('feeding')"><span class="nav-ico">🌾</span>Besleme</button>
+      <button class="nav" data-view="treatments" onclick="App.nav('treatments')"><span class="nav-ico">💊</span>Tedaviler</button>
+      <button class="nav" data-view="diseases" onclick="App.nav('diseases')"><span class="nav-ico">🦠</span>Hastalıklar</button>
+      <div class="nav-group">Yönetim</div>
+      <button class="nav" data-view="queens" onclick="App.nav('queens')"><span class="nav-ico">👑</span>Ana Arılar</button>
+      <button class="nav" data-view="inventory" onclick="App.nav('inventory')"><span class="nav-ico">📦</span>Envanter</button>
+      <button class="nav" data-view="analytics" onclick="App.nav('analytics')"><span class="nav-ico">📈</span>Analitik</button>
+      <button class="nav" data-view="reports" onclick="App.nav('reports')"><span class="nav-ico">📄</span>Raporlar</button>
+      <button class="nav" data-view="settings" onclick="App.nav('settings')"><span class="nav-ico">⚙️</span>Ayarlar</button>
     </nav>
     <div class="sidebar-foot">
-      <div class="user-card">
+      <div class="user-card" onclick="App.nav('settings')">
         <div class="avatar">İÖ</div>
         <div><div class="user-name">İlker Öcal</div><div class="user-role">Arıcı · Diyarbakır</div></div>
       </div>
     </div>
   </aside>
-
   <header class="header">
-    <div class="page-title">
+    <div class="page-info">
       <h1 id="page-title">Dashboard</h1>
       <p id="page-subtitle">Genel bakış · Eğil, Diyarbakır</p>
     </div>
     <div class="header-actions">
-      <button class="btn-ghost btn" onclick="App.toast('Arama yakında')">🔍</button>
-      <button class="btn-ghost btn" onclick="App.toggleTheme()" id="theme-toggle">🌙</button>
-      <button class="btn-ghost btn" onclick="App.toast('Bildirim yok')">🔔</button>
+      <button class="btn btn-icon btn-ghost" onclick="App.toast('Arama yakında','info')" title="Ara">🔍</button>
+      <button class="btn btn-icon btn-ghost" onclick="App.toggleTheme()" id="theme-toggle" title="Tema">🌙</button>
+      <button class="btn btn-icon btn-ghost" onclick="App.toast('Bildirim yok','info')" title="Bildirimler">🔔</button>
+      <button class="btn btn-primary" onclick="App.quickAdd()">+ Ekle</button>
     </div>
   </header>
-
   <main class="main" id="main-content">
     <div id="view-dashboard" class="view active"></div>
     <div id="view-apiaries" class="view"></div>
     <div id="view-hives" class="view"></div>
+    <div id="view-hive-detail" class="view"></div>
     <div id="view-inspections" class="view"></div>
-    <div id="view-queens" class="view"></div>
-    <div id="view-honey" class="view"></div>
+    <div id="view-harvest" class="view"></div>
     <div id="view-feeding" class="view"></div>
     <div id="view-treatments" class="view"></div>
+    <div id="view-diseases" class="view"></div>
+    <div id="view-queens" class="view"></div>
     <div id="view-inventory" class="view"></div>
     <div id="view-analytics" class="view"></div>
     <div id="view-reports" class="view"></div>
     <div id="view-settings" class="view"></div>
   </main>
 </div>
-
 <nav class="bottom-nav" id="bottom-nav">
-  <button class="bottom-nav-item active" data-view="dashboard" onclick="App.nav('dashboard')"><span class="ico">📊</span>Dashboard</button>
-  <button class="bottom-nav-item" data-view="hives" onclick="App.nav('hives')"><span class="ico">🏠</span>Kovan</button>
-  <button class="bottom-nav-item" data-view="inspections" onclick="App.nav('inspections')"><span class="ico">📋</span>Muayene</button>
-  <button class="bottom-nav-item" data-view="honey" onclick="App.nav('honey')"><span class="ico">🍯</span>Bal</button>
-  <button class="bottom-nav-item" data-view="analytics" onclick="App.nav('analytics')"><span class="ico">📈</span>Analitik</button>
+  <button class="bnav active" data-view="dashboard" onclick="App.nav('dashboard')"><span class="bnav-ico">📊</span>Ana</button>
+  <button class="bnav" data-view="apiaries" onclick="App.nav('apiaries')"><span class="bnav-ico">📍</span>Üsler</button>
+  <button class="bnav" data-view="hives" onclick="App.nav('hives')"><span class="bnav-ico">🏠</span>Kovan</button>
+  <button class="bnav" data-view="inspections" onclick="App.nav('inspections')"><span class="bnav-ico">📋</span>Muayene</button>
+  <button class="bnav" data-view="harvest" onclick="App.nav('harvest')"><span class="bnav-ico">🍯</span>Bal</button>
+  <button class="bnav" onclick="App.quickAdd()"><span class="bnav-ico">➕</span>Ekle</button>
 </nav>
-
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)Modal.close()">
+  <div class="modal" id="modal">
+    <div class="modal-head"><h3 id="modal-title">Başlık</h3><button class="modal-close" onclick="Modal.close()" aria-label="Kapat">×</button></div>
+    <form id="modal-form" onsubmit="return Modal.submit(event)">
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="Modal.close()">İptal</button>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+      </div>
+    </form>
+  </div>
+</div>
 <div class="toast-container" id="toast-container"></div>
-
 <script>
+// BeeMaster AI v2.0 — Spec-Driven (docs/01-16)
 // ============================================================
-// Data — localStorage ile kalici veri
-// ============================================================
-var Data = {
-  load: function() {
-    try {
-      var saved = localStorage.getItem('beemaster-data');
-      if (saved) {
-        var d = JSON.parse(saved);
-        this.apiaries = d.apiaries || [];
-        this.hives = d.hives || [];
-        this.inspections = d.inspections || [];
-        this.queens = d.queens || [];
-        this.harvests = d.harvests || [];
-        return true;
+'use strict';
+const STORAGE_KEY='beemaster-v2';
+
+// DATA
+const Data={
+  state:null,
+  load(){try{const s=localStorage.getItem(STORAGE_KEY);if(s){this.state=JSON.parse(s);return true;}}catch(e){}return false},
+  save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(this.state));}catch(e){}},
+  seed(){
+    const now=new Date().toISOString();
+    const daysAgo=d=>new Date(Date.now()-d*864e5).toISOString().slice(0,10);
+    this.state={apiaries:[],hives:[],queens:[],frames:[],inspections:[],harvests:[],feedings:[],treatments:[],diseases:[],inventory:[]};
+    const a1=uid(),a2=uid();
+    this.state.apiaries.push({id:a1,name:'Eğil Merkez',location:'Eğil, Diyarbakır',lat:38.247,lng:40.135,flora:'Geven, Kekik, Adaçayı, Pamuk',notes:'Ana üs — yayla konumu',createdAt:now,updatedAt:now});
+    this.state.apiaries.push({id:a2,name:'Surlar Üssü',location:'Sur, Diyarbakır',lat:37.915,lng:40.230,flora:'Pamuk, Ayçiçeği, Geven',notes:'Şehir kenarı',createdAt:now,updatedAt:now});
+    const seed=[
+      {n:'Kovan-01',ap:a1,strain:'carniolan',box:'langstroth',fc:10,pop:'very_strong',var:1,qBreed:'Karniyol F1',qAge:2},
+      {n:'Kovan-02',ap:a1,strain:'caucasian',box:'langstroth',fc:10,pop:'strong',var:3,qBreed:'Kafkas Saf',qAge:3},
+      {n:'Kovan-03',ap:a1,strain:'anatolian',box:'langstroth',fc:10,pop:'strong',var:2,qBreed:'Anadolu Yerli',qAge:1},
+      {n:'Kovan-04',ap:a1,strain:'carniolan',box:'langstroth',fc:8,pop:'strong',var:2,qBreed:'Karniyol',qAge:2},
+      {n:'Kovan-05',ap:a2,strain:'caucasian',box:'dadant',fc:7,pop:'weak',var:8,qBreed:'Kafkas',qAge:4},
+      {n:'Kovan-06',ap:a2,strain:'anatolian',box:'langstroth',fc:10,pop:'strong',var:2,qBreed:'Anadolu',qAge:2},
+      {n:'Kovan-07',ap:a2,strain:'hybrid',box:'layens',fc:8,pop:'medium',var:4,qBreed:'Hibrit',qAge:2}
+    ];
+    seed.forEach((s,i)=>{
+      const hid=uid(),qid=uid();
+      const status=s.var>=6?'active':(s.var>=3?'active':(s.pop==='weak'?'weak':'active'));
+      this.state.queens.push({id:qid,hiveId:hid,strain:s.strain,birthDate:new Date(Date.now()-s.qAge*365*864e5).toISOString().slice(0,10),source:'bred',markedColor:['white','yellow','red','green','blue'][(new Date().getFullYear()-s.qAge)%5],status:'active',performanceScore:Math.max(0.3,1-s.var*0.08-(s.pop==='weak'?0.3:0)),notes:'',createdAt:now,updatedAt:now});
+      this.state.hives.push({id:hid,apiaryId:s.ap,name:s.n,status:status,strain:s.strain,boxType:s.box,frameCount:s.fc,positionInApiary:i+1,queenId:qid,nfcTag:'BM-'+Date.now().toString(36).toUpperCase()+'-'+(i+1),installedAt:new Date(Date.now()-(i+1)*30*864e5).toISOString().slice(0,10),notes:'',createdAt:now,updatedAt:now});
+      const ftypes=['brood','brood','brood','honey','honey','pollen','foundation','empty'];
+      for(let p=1;p<=s.fc;p++){
+        this.state.frames.push({id:uid(),hiveId:hid,position:p,frameType:ftypes[(p-1)%ftypes.length]||'empty',foundationType:'wax',status:'in_use',cyclesCompleted:Math.floor(Math.random()*4),waxAgeMonths:Math.floor(Math.random()*24)+1,notes:'',createdAt:now,updatedAt:now});
       }
-    } catch(e) { console.warn('Data load failed', e); }
-    return false;
-  },
-  save: function() {
-    try {
-      localStorage.setItem('beemaster-data', JSON.stringify({
-        apiaries: this.apiaries, hives: this.hives, inspections: this.inspections,
-        queens: this.queens, harvests: this.harvests
-      }));
-    } catch(e) { console.warn('Data save failed', e); }
-  },
-  seed: function() {
-    this.apiaries = [
-      {id:1, name:'Eğil Merkez', location:'Eğil, Diyarbakır', flora:'Geven, Kekik, Adaçayı', note:''},
-      {id:2, name:'Surlar Üssü', location:'Sur, Diyarbakır', flora:'Pamuk, Ayçiçeği', note:''}
+    });
+    const inspSeed=[
+      {hi:0,days:3,var:1,pop:'very_strong',brood:7,honey:2,note:'Sezon başı kontrol'},
+      {hi:1,days:5,var:3,pop:'strong',brood:5,honey:3,note:'Ana arı yumurtluyor'},
+      {hi:2,days:2,var:2,pop:'strong',brood:6,honey:4,note:'Yavru düzeni iyi'},
+      {hi:3,days:1,var:2,pop:'strong',brood:5,honey:3,note:'Hızlı gelişme'},
+      {hi:4,days:7,var:8,pop:'weak',brood:2,honey:1,note:'ACİL: Varroa yüksek'},
+      {hi:5,days:4,var:2,pop:'strong',brood:6,honey:3,note:'Normal kontrol'},
+      {hi:6,days:6,var:4,pop:'medium',brood:4,honey:2,note:'Çerçeve azaldı'}
     ];
-    this.hives = [
-      {id:1, apiaryId:1, name:'Kovan #1', queen:'Ana Arı #1 (Karniyol)', frames:10, population:'Güçlü', honey:12.5, varroa:1, status:'good', lastInspection:'3 gün önce', note:''},
-      {id:2, apiaryId:1, name:'Kovan #2', queen:'Ana Arı #2 (Kafkas)', frames:8, population:'Orta', honey:8.2, varroa:4, status:'warning', lastInspection:'5 gün önce', note:''},
-      {id:3, apiaryId:1, name:'Kovan #3', queen:'Ana Arı #3 (Anadolu)', frames:10, population:'Güçlü', honey:15.0, varroa:2, status:'good', lastInspection:'2 gün önce', note:''},
-      {id:4, apiaryId:1, name:'Kovan #4', queen:'Ana Arı #4 (Karniyol)', frames:9, population:'Güçlü', honey:11.8, varroa:2, status:'good', lastInspection:'1 gün önce', note:''},
-      {id:5, apiaryId:2, name:'Kovan #5', queen:'Ana Arı #5 (Kafkas)', frames:7, population:'Zayıf', honey:3.5, varroa:8, status:'danger', lastInspection:'7 gün önce', note:''},
-      {id:6, apiaryId:2, name:'Kovan #6', queen:'Ana Arı #6 (Anadolu)', frames:10, population:'Güçlü', honey:9.7, varroa:2, status:'good', lastInspection:'4 gün önce', note:''},
-      {id:7, apiaryId:2, name:'Kovan #7', queen:'Ana Arı #7 (Karpat)', frames:8, population:'Orta', honey:6.4, varroa:3, status:'warning', lastInspection:'6 gün önce', note:''}
-    ];
-    this.inspections = [
-      {id:1, hiveId:1, date:'18 Tem 2026', varroa:1, population:'Güçlü', eggs:'Düzenli', brood:8, note:'Genel durum iyi', status:'ok'},
-      {id:2, hiveId:3, date:'17 Tem 2026', varroa:2, population:'Güçlü', eggs:'Düzenli', brood:7, note:'Yumurta düzenli', status:'ok'},
-      {id:3, hiveId:5, date:'16 Tem 2026', varroa:8, population:'Zayıf', eggs:'Düzensiz', brood:4, note:'Varroa yüksek - tedavi gerekli', status:'danger'},
-      {id:4, hiveId:2, date:'15 Tem 2026', varroa:4, population:'Orta', eggs:'Düzenli', brood:6, note:'Ana arı değişti', status:'warn'},
-      {id:5, hiveId:7, date:'14 Tem 2026', varroa:3, population:'Orta', eggs:'Düzenli', brood:5, note:'Çerçeveler azaldı', status:'warn'}
-    ];
-    this.queens = [
-      {id:1, breed:'Karniyol', age:2, productivity:'Yüksek', status:'active', marked:true},
-      {id:2, breed:'Kafkas', age:3, productivity:'Orta', status:'active', marked:true},
-      {id:3, breed:'Anadolu', age:1, productivity:'Yüksek', status:'active', marked:false},
-      {id:4, breed:'Karniyol', age:2, productivity:'Yüksek', status:'active', marked:true},
-      {id:5, breed:'Kafkas', age:4, productivity:'Düşük', status:'replace', marked:true}
-    ];
-    this.harvests = [
-      {month:'Mayıs', weight:4.5}, {month:'Haziran', weight:8.2},
-      {month:'Temmuz', weight:12.8}, {month:'Ağustos', weight:9.1},
-      {month:'Eylül', weight:1.6}, {month:'Ekim', weight:0}
-    ];
+    inspSeed.forEach(s=>{
+      this.state.inspections.push({id:uid(),hiveId:this.state.hives[s.hi].id,date:daysAgo(s.days),varroaCount:s.var,population:s.pop,eggsPattern:'regular',broodFrames:s.brood,honeyFrames:s.honey,queenSeen:true,weather:'sunny',notes:s.note,createdAt:now});
+    });
+    [{h:0,days:90,w:4.2},{h:1,days:60,w:6.5},{h:2,days:30,w:8.8},{h:3,days:15,w:3.2},{h:5,days:25,w:5.4},{h:6,days:45,w:4.1}].forEach(x=>{
+      this.state.harvests.push({id:uid(),hiveId:this.state.hives[x.h].id,apiaryId:this.state.hives[x.h].apiaryId,date:daysAgo(x.days),weight:x.w,quality:'A',frames:Math.floor(x.w/1.5),notes:'',createdAt:now});
+    });
+    this.state.feedings.push({id:uid(),hiveId:this.state.hives[4].id,date:daysAgo(2),type:'sugar_syrup',amountKg:2.5,reason:'weak_colony',status:'completed',notes:'1:1 şurup',createdAt:now});
+    this.state.feedings.push({id:uid(),hiveId:this.state.hives[6].id,date:daysAgo(10),type:'fondant',amountKg:1,reason:'winter_prep',status:'planned',notes:'Kışlık destek',createdAt:now});
+    this.state.treatments.push({id:uid(),hiveId:this.state.hives[4].id,date:daysAgo(1),product:'Apivar',dosage:'2 şerit',duration:'42 gün',varroaBefore:8,varroaAfter:null,status:'in_progress',notes:'Varroa yüksek — acil tedavi',createdAt:now});
+    this.state.diseases.push({id:uid(),hiveId:this.state.hives[4].id,date:daysAgo(1),disease:'varroosis',severity:'high',treatment:'Apivar',status:'treating',notes:'Varroa destructor',createdAt:now});
+    [{n:'Apivar şerit',c:'medication',q:8,u:'adet',m:5,p:85},{n:'Şeker (besleme)',c:'feed',q:25,u:'kg',m:10,p:12},{n:'Çerçeve (boş)',c:'equipment',q:30,u:'adet',m:10,p:35},{n:'Petek temeli',c:'equipment',q:50,u:'adet',m:20,p:8},{n:'Ana arı kafesi',c:'equipment',q:3,u:'adet',m:2,p:25}].forEach(i=>{
+      this.state.inventory.push({id:uid(),name:i.n,category:i.c,quantity:i.q,unit:i.u,minStock:i.m,costTry:i.p,supplier:'',notes:'',createdAt:now});
+    });
     this.save();
   },
-  nextId: function(arr) {
-    if (!arr.length) return 1;
-    return Math.max.apply(null, arr.map(function(i){return i.id||0})) + 1;
+  add(c,d){const id=uid();const o={id,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),...d};this.state[c].push(o);this.save();return o;},
+  update(c,id,d){const i=this.state[c].findIndex(x=>x.id===id);if(i<0)return null;this.state[c][i]={...this.state[c][i],...d,updatedAt:new Date().toISOString()};this.save();return this.state[c][i];},
+  remove(c,id){this.state[c]=this.state[c].filter(x=>x.id!==id);this.save();},
+  get(c,id){return this.state[c].find(x=>x.id===id);},
+  insights(){
+    const out=[];
+    this.state.hives.forEach(h=>{
+      const last=this.state.inspections.filter(i=>i.hiveId===h.id).sort((a,b)=>b.date.localeCompare(a.date))[0];
+      if(last&&last.varroaCount>=6)out.push({type:'danger',icon:'⚠️',title:h.name+' — Acil varroa tedavisi',sub:'Varroa: '+last.varroaCount+' (eşik ≥6). Apivar/Oksalik asit önerilir.'});
+      else if(last&&last.varroaCount>=3)out.push({type:'warn',icon:'⚡',title:h.name+' — Varroa takibi',sub:'Varroa: '+last.varroaCount+'. İzleme önerilir.'});
+      if(last&&last.population==='weak')out.push({type:'warn',icon:'🍯',title:h.name+' — Besleme gerekli',sub:'Zayıf koloni. Şurup/fondant ile destekleyin.'});
+      const q=this.state.queens.find(q=>q.id===h.queenId);
+      if(q){const age=(Date.now()-new Date(q.birthDate).getTime())/(365*864e5);if(age>=3)out.push({type:'info',icon:'👑',title:h.name+' — Ana arı yaşlı',sub:age.toFixed(1)+' yıl. Performans düşebilir.'});}
+    });
+    this.state.inventory.forEach(i=>{if(i.quantity<=i.minStock)out.push({type:'warn',icon:'📦',title:'Stok az: '+i.name,sub:'Mevcut: '+i.quantity+' '+i.unit+', min: '+i.minStock});});
+    if(this.state.harvests.length){const last=this.state.harvests.sort((a,b)=>b.date.localeCompare(a.date))[0];const days=Math.floor((Date.now()-new Date(last.date).getTime())/864e5);if(days>30)out.push({type:'info',icon:'🍯',title:'Hasat zamanı yaklaşıyor',sub:'Son hasattan '+days+' gün geçti.'});}
+    return out.slice(0,8);
+  }
+};
+function uid(){return 'id_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+if(!Data.load())Data.seed();
+
+// HELPERS
+const H={
+  esc:s=>s==null?'':String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
+  fmt:(n,d=1)=>Number(n||0).toFixed(d),
+  statusBadge(s){const m={good:'İYİ',warning:'DİKKAT',danger:'ACİL',active:'AKTİF',weak:'ZAYIF',dead:'ÖLÜ',sold:'SATILDI',merged:'BİRLEŞTİ',treating:'TEDAVİDE',planned:'PLANLI',completed:'TAMAMLANDI',in_progress:'SÜRÜYOR',resolved:'ÇÖZÜLDÜ',superseded:'DEĞİŞTİ',missing:'KAYIP'};const cls=s==='good'||s==='active'||s==='completed'||s==='resolved'?'badge-ok':(s==='danger'||s==='dead'?'badge-danger':'badge-warn');return `<span class="badge ${cls}">${m[s]||s}</span>`},
+  dot(s){return s==='good'||s==='active'||s==='completed'?'dot-g':(s==='danger'||s==='dead'?'dot-r':'dot-y')},
+  strainTr:s=>{return{anatolian:'Anadolu',caucasian:'Kafkas',carniolan:'Karniyol',italian:'İtalyan',hybrid:'Hibrit'}[s]||s},
+  boxTr:s=>{return{langstroth:'Langstroth',dadant:'Dadant',layens:'Layens',flow:'Flow',top_bar:'Top-Bar'}[s]||s},
+  popTr:s=>{return{very_strong:'Çok Güçlü',strong:'Güçlü',medium:'Orta',weak:'Zayıf',very_weak:'Çok Zayıf'}[s]||s},
+  colorTr:s=>{return{white:'Beyaz',yellow:'Sarı',red:'Kırmızı',green:'Yeşil',blue:'Mavi'}[s]||s},
+  frameTr:s=>{return{brood:'Yumurtalık',honey:'Bal',pollen:'Polen',foundation:'Perga',empty:'Boş'}[s]||s},
+  frameIco:s=>{return{brood:'🟠',honey:'🟡',pollen:'🟣',foundation:'⚪',empty:'⚫'}[s]||'⬜'},
+  sourceTr:s=>{return{bred:'Yetiştirildi',purchased:'Satın alındı',swarm:'Oğul',supersedure:'Süpersedür',emergency:'Acil'}[s]||s},
+  reasonTr:s=>{return{weak_colony:'Zayıf koloni',winter_prep:'Kış hazırlığı',drought:'Kuraklık',supplement:'Ek besin',stimulative:'Teşvik'}[s]||s},
+  typeTr:s=>{return{sugar_syrup:'Şeker Şurubu',fondant:'Fondant',pollen_patty:'Polen Keçi',candy:'Kek',honey_water:'Bal+Su'}[s]||s},
+  diseaseTr:s=>{return{varroosis:'Varroosis (Varroa)',nosemosis:'Nosema',foulbrood:'Yavru Çürüğü',chalkbrood:'Kireç Hastalığı',sacbrood:'Torba Hastalığı',small_hive_beetle:'Küçük Kovan Böceği'}[s]||s},
+  diseaseIco:s=>{return{varroosis:'🦠',nosemosis:'🦠',foulbrood:'⚠️',chalkbrood:'⚪',sacbrood:'⚠️',small_hive_beetle:'🪲'}[s]||'⚠️'},
+  inventoryCatTr:s=>{return{medication:'İlaç',feed:'Yem',equipment:'Ekipman',consumable:'Sarf'}[s]||s},
+  dateStr:d=>{if(!d)return'-';try{return new Date(d).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'})}catch(e){return d}},
+  dateAgo:d=>{if(!d)return'-';const ms=Date.now()-new Date(d).getTime();const day=Math.floor(ms/864e5);if(day===0)return'bugün';if(day===1)return'dün';if(day<30)return day+' gün önce';if(day<365)return Math.floor(day/30)+' ay önce';return Math.floor(day/365)+' yıl önce'},
+  today(){return new Date().toISOString().slice(0,10)}
+};
+
+// MODAL
+const Modal={
+  cb:null,
+  open(title,html,onSubmit){document.getElementById('modal-title').textContent=title;document.getElementById('modal-body').innerHTML=html;document.getElementById('modal-overlay').classList.add('active');this.cb=onSubmit;setTimeout(()=>{const f=document.getElementById('modal-body').querySelector('input,select,textarea');if(f)f.focus()},50)},
+  close(){document.getElementById('modal-overlay').classList.remove('active');this.cb=null},
+  submit(e){e.preventDefault();const fd=new FormData(e.target);const d={};fd.forEach((v,k)=>d[k]=v);if(this.cb&&this.cb(d)!==false)Modal.close()},
+  confirm(msg,onYes){Modal.open('Onay',`<div class="empty-state" style="padding:10px 0"><div class="empty-ico">⚠️</div><div class="empty-title">${msg}</div></div>`,()=>{onYes();return true})}
+};
+// CRUD: APIARY
+const Apiary={
+  add(){
+    Modal.open('Yeni Arı Üssü',
+      `<label class="field"><span>Ad *</span><input name="name" required placeholder="Örn: Çınar Üssü"></label>
+       <label class="field"><span>Konum *</span><input name="location" required placeholder="Örn: Çınar, Diyarbakır"></label>
+       <div class="field-row"><label class="field"><span>Enlem</span><input name="lat" type="number" step="0.001" placeholder="38.247"></label>
+       <label class="field"><span>Boylam</span><input name="lng" type="number" step="0.001" placeholder="40.135"></label></div>
+       <label class="field"><span>Flora</span><input name="flora" placeholder="Geven, Kekik, Pamuk"></label>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2"></textarea></label>`,
+      d=>{Data.add('apiaries',d);App.toast('Üs eklendi ✓','success');App.render('apiaries');return true}
+    );
+  },
+  edit(id){
+    const a=Data.get('apiaries',id);if(!a)return;
+    Modal.open('Üs Düzenle',
+      `<label class="field"><span>Ad *</span><input name="name" required value="${H.esc(a.name)}"></label>
+       <label class="field"><span>Konum *</span><input name="location" required value="${H.esc(a.location)}"></label>
+       <div class="field-row"><label class="field"><span>Enlem</span><input name="lat" type="number" step="0.001" value="${a.lat||''}"></label>
+       <label class="field"><span>Boylam</span><input name="lng" type="number" step="0.001" value="${a.lng||''}"></label></div>
+       <label class="field"><span>Flora</span><input name="flora" value="${H.esc(a.flora||'')}"></label>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2">${H.esc(a.notes||'')}</textarea></label>`,
+      d=>{Data.update('apiaries',id,d);App.toast('Üs güncellendi ✓','success');App.render('apiaries');return true}
+    );
+  },
+  del(id){
+    const a=Data.get('apiaries',id);if(!a)return;
+    const hc=Data.state.hives.filter(h=>h.apiaryId===id).length;
+    if(hc>0){App.toast(`Bu üsde ${hc} kovan var. Önce kovanları silin.`,'error');return}
+    Modal.confirm(`"${a.name}" üssünü silmek istiyor musunuz?`,()=>{Data.remove('apiaries',id);App.toast('Üs silindi','info');App.render('apiaries')});
   }
 };
 
-// Veri yoksa seed
-if (!Data.load()) Data.seed();
-
-// ============================================================
-// Modal — form bazlı ekleme/düzenleme
-// ============================================================
-var Modal = {
-  open: function(title, html, onSave) {
-    var m = document.getElementById('modal');
-    if (!m) {
-      m = document.createElement('div');
-      m.id = 'modal';
-      m.className = 'modal-overlay';
-      m.innerHTML = '<div class="modal"><div class="modal-head"><h3 id="modal-title"></h3><button class="modal-close" onclick="Modal.close()">×</button></div><form id="modal-form"><div class="modal-body" id="modal-body"></div><div class="modal-foot"><button type="button" class="btn btn-ghost" onclick="Modal.close()">İptal</button><button type="submit" class="btn btn-primary">Kaydet</button></div></form></div>';
-      document.body.appendChild(m);
-    }
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-body').innerHTML = html;
-    m.classList.add('active');
-    var form = document.getElementById('modal-form');
-    form.onsubmit = function(e) {
-      e.preventDefault();
-      var fd = new FormData(form);
-      var data = {};
-      fd.forEach(function(v,k){ data[k]=v; });
-      if (onSave(data)) Modal.close();
-    };
-    setTimeout(function(){var first = m.querySelector('input,textarea,select'); if(first) first.focus();}, 50);
-  },
-  close: function() {
-    var m = document.getElementById('modal');
-    if (m) m.classList.remove('active');
-  },
-  confirm: function(msg, onYes) {
-    Modal.open('Onay', '<p style="padding:8px 0;color:var(--text-dim)">'+msg+'</p>', function(){onYes(); return true;});
-  }
-};
-
-// ============================================================
-// Yardimcılar
-// ============================================================
-function escapeHtml(s) {
-  if (!s) return '';
-  return String(s).replace(/[&<>"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});
-}
-function statusBadge(s) {
-  var map = {good:'OK', warning:'DİKKAT', danger:'ACİL', ok:'İYİ', warn:'DİKKAT', active:'AKTİF', replace:'DEĞİŞTİR'};
-  var cls = s==='good'||s==='ok'?'ok':(s==='danger'?'danger':'warn');
-  return '<span class="badge '+cls+'">'+(map[s]||s)+'</span>';
-}
-function dotColor(s) {
-  return s==='good'||s==='ok'?'dot-green':(s==='danger'?'dot-red':'dot-yellow');
-}
-
-// ============================================================
-// CRUD — Kovan
-// ============================================================
-function openAddHive() {
-  var apiaryOpts = Data.apiaries.map(function(a){return '<option value="'+a.id+'">'+escapeHtml(a.name)+'</option>';}).join('');
-  Modal.open('Yeni Kovan Ekle',
-    '<label class="field"><span>Kovan Adı *</span><input name="name" required placeholder="Örn: Kovan #8"></label>'+
-    '<label class="field"><span>Ana Arı Irkı *</span><input name="queen" required placeholder="Örn: Karniyol"></label>'+
-    '<label class="field"><span>Arı Üssü *</span><select name="apiaryId" required>'+apiaryOpts+'</select></label>'+
-    '<div class="field-row"><label class="field"><span>Çerçeve</span><input name="frames" type="number" min="0" value="10"></label>'+
-    '<label class="field"><span>Popülasyon</span><select name="population"><option>Güçlü</option><option>Orta</option><option>Zayıf</option></select></label></div>'+
-    '<label class="field"><span>Bal (kg)</span><input name="honey" type="number" step="0.1" value="0"></label>'+
-    '<label class="field"><span>Notlar</span><textarea name="note" rows="2" placeholder="Ek bilgi..."></textarea></label>',
-    function(d){
-      d.id = Data.nextId(Data.hives);
-      d.frames = parseInt(d.frames)||0;
-      d.honey = parseFloat(d.honey)||0;
-      d.varroa = 0;
-      d.status = 'good';
-      d.lastInspection = 'Henüz yok';
-      Data.hives.push(d);
-      Data.save();
-      App.toast('Kovan eklendi ✓');
-      App.render('hives');
-      return true;
-    }
-  );
-}
-function openEditHive(id) {
-  var h = Data.hives.find(function(x){return x.id===id;});
-  if (!h) return;
-  var apiaryOpts = Data.apiaries.map(function(a){return '<option value="'+a.id+'"'+(a.id===h.apiaryId?' selected':'')+'>'+escapeHtml(a.name)+'</option>';}).join('');
-  Modal.open('Kovan Düzenle — '+escapeHtml(h.name),
-    '<label class="field"><span>Kovan Adı *</span><input name="name" required value="'+escapeHtml(h.name)+'"></label>'+
-    '<label class="field"><span>Ana Arı Irkı *</span><input name="queen" required value="'+escapeHtml(h.queen)+'"></label>'+
-    '<label class="field"><span>Arı Üssü *</span><select name="apiaryId" required>'+apiaryOpts+'</select></label>'+
-    '<div class="field-row"><label class="field"><span>Çerçeve</span><input name="frames" type="number" min="0" value="'+h.frames+'"></label>'+
-    '<label class="field"><span>Popülasyon</span><select name="population"><option'+(h.population==='Güçlü'?' selected':'')+'>Güçlü</option><option'+(h.population==='Orta'?' selected':'')+'>Orta</option><option'+(h.population==='Zayıf'?' selected':'')+'>Zayıf</option></select></label></div>'+
-    '<label class="field"><span>Bal (kg)</span><input name="honey" type="number" step="0.1" value="'+h.honey+'"></label>'+
-    '<label class="field"><span>Notlar</span><textarea name="note" rows="2">'+escapeHtml(h.note||'')+'</textarea></label>',
-    function(d){
-      d.frames = parseInt(d.frames)||0;
-      d.honey = parseFloat(d.honey)||0;
-      Object.assign(h, d);
-      Data.save();
-      App.toast('Kovan güncellendi ✓');
-      App.render('hives');
-      return true;
-    }
-  );
-}
-function deleteHive(id) {
-  var h = Data.hives.find(function(x){return x.id===id;});
-  if (!h) return;
-  Modal.confirm('"'+h.name+'" kovanını silmek istiyor musunuz? Bu işlem geri alınamaz.', function(){
-    Data.hives = Data.hives.filter(function(x){return x.id!==id;});
-    Data.inspections = Data.inspections.filter(function(x){return x.hiveId!==id;});
-    Data.save();
-    App.toast('Kovan silindi');
-    App.render('hives');
-  });
-}
-
-// ============================================================
-// CRUD — Muayene
-// ============================================================
-function openAddInspection() {
-  if (!Data.hives.length) { App.toast('Önce kovan ekleyin'); return; }
-  var hiveOpts = Data.hives.map(function(h){return '<option value="'+h.id+'">'+escapeHtml(h.name)+' — '+escapeHtml(h.queen)+'</option>';}).join('');
-  Modal.open('Yeni Muayene Ekle',
-    '<label class="field"><span>Kovan *</span><select name="hiveId" required>'+hiveOpts+'</select></label>'+
-    '<label class="field"><span>Tarih *</span><input name="date" type="date" required value="'+new Date().toISOString().split('T')[0]+'"></label>'+
-    '<div class="field-row"><label class="field"><span>Varroa (adet)</span><input name="varroa" type="number" min="0" value="0"></label>'+
-    '<label class="field"><span>Yavru Çerçeve</span><input name="brood" type="number" min="0" value="6"></label></div>'+
-    '<label class="field"><span>Popülasyon</span><select name="population"><option>Güçlü</option><option selected>Orta</option><option>Zayıf</option></select></label>'+
-    '<label class="field"><span>Yumurta Düzeni</span><select name="eggs"><option>Düzenli</option><option>Düzensiz</option><option>Yok</option></select></label>'+
-    '<label class="field"><span>Notlar</span><textarea name="note" rows="3" placeholder="Muayene notları..."></textarea></label>',
-    function(d){
-      d.id = Data.nextId(Data.inspections);
-      d.varroa = parseInt(d.varroa)||0;
-      d.brood = parseInt(d.brood)||0;
-      d.status = d.varroa>=6?'danger':(d.varroa>=3?'warn':'ok');
-      Data.inspections.push(d);
-      // Kovan'in son muayenesini güncelle
-      var h = Data.hives.find(function(x){return x.id==d.hiveId;});
-      if (h) {
-        h.varroa = d.varroa;
-        h.lastInspection = d.date;
-        h.status = d.status==='danger'?'danger':(d.status==='warn'?'warning':'good');
+// CRUD: HIVE
+const Hive={
+  add(){
+    if(!Data.state.apiaries.length){App.toast('Önce arı üssü ekleyin','error');return}
+    const apOpts=Data.state.apiaries.map(a=>`<option value="${a.id}">${H.esc(a.name)}</option>`).join('');
+    Modal.open('Yeni Kovan',
+      `<label class="field"><span>Kovan Adı *</span><input name="name" required placeholder="Örn: Kovan-08"></label>
+       <label class="field"><span>Arı Üssü *</span><select name="apiaryId" required>${apOpts}</select></label>
+       <div class="field-row"><label class="field"><span>Irk</span><select name="strain"><option value="anatolian">Anadolu</option><option value="caucasian">Kafkas</option><option value="carniolan">Karniyol</option><option value="italian">İtalyan</option><option value="hybrid">Hibrit</option></select></label>
+       <label class="field"><span>Kutu Tipi</span><select name="boxType"><option value="langstroth">Langstroth</option><option value="dadant">Dadant</option><option value="layens">Layens</option><option value="flow">Flow</option><option value="top_bar">Top-Bar</option></select></label></div>
+       <div class="field-row"><label class="field"><span>Çerçeve Sayısı</span><input name="frameCount" type="number" min="1" max="20" value="10"></label>
+       <label class="field"><span>Pozisyon</span><input name="positionInApiary" type="number" min="1" value="${Data.state.hives.length+1}"></label></div>
+       <label class="field"><span>NFC/QR Etiket</span><input name="nfcTag" placeholder="Otomatik oluşturulur"></label>
+       <label class="field"><span>Kurulum Tarihi</span><input name="installedAt" type="date" value="${H.today()}"></label>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2"></textarea></label>`,
+      d=>{
+        const h=Data.add('hives',{...d,status:'active',queenId:null,nfcTag:d.nfcTag||('BM-'+Date.now().toString(36).toUpperCase())});
+        const fc=parseInt(d.frameCount)||10;
+        for(let p=1;p<=fc;p++){
+          Data.state.frames.push({id:uid(),hiveId:h.id,position:p,frameType:p<=3?'brood':(p<=6?'honey':'foundation'),foundationType:'wax',status:'in_use',cyclesCompleted:0,waxAgeMonths:0,notes:'',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+        }
+        Data.save();
+        App.toast('Kovan eklendi ✓','success');
+        App.render('hives');
+        return true;
       }
-      Data.save();
-      App.toast('Muayene eklendi ✓');
-      App.render('inspections');
-      return true;
-    }
-  );
-}
-function openEditInspection(id) {
-  var i = Data.inspections.find(function(x){return x.id===id;});
-  if (!i) return;
-  var hiveOpts = Data.hives.map(function(h){return '<option value="'+h.id+'"'+(h.id===i.hiveId?' selected':'')+'>'+escapeHtml(h.name)+'</option>';}).join('');
-  Modal.open('Muayene Düzenle',
-    '<label class="field"><span>Kovan *</span><select name="hiveId" required>'+hiveOpts+'</select></label>'+
-    '<label class="field"><span>Tarih *</span><input name="date" type="date" required value="'+i.date+'"></label>'+
-    '<div class="field-row"><label class="field"><span>Varroa (adet)</span><input name="varroa" type="number" min="0" value="'+i.varroa+'"></label>'+
-    '<label class="field"><span>Yavru Çerçeve</span><input name="brood" type="number" min="0" value="'+i.brood+'"></label></div>'+
-    '<label class="field"><span>Popülasyon</span><select name="population"><option'+(i.population==='Güçlü'?' selected':'')+'>Güçlü</option><option'+(i.population==='Orta'?' selected':'')+'>Orta</option><option'+(i.population==='Zayıf'?' selected':'')+'>Zayıf</option></select></label>'+
-    '<label class="field"><span>Yumurta Düzeni</span><select name="eggs"><option'+(i.eggs==='Düzenli'?' selected':'')+'>Düzenli</option><option'+(i.eggs==='Düzensiz'?' selected':'')+'>Düzensiz</option><option'+(i.eggs==='Yok'?' selected':'')+'>Yok</option></select></label>'+
-    '<label class="field"><span>Notlar</span><textarea name="note" rows="3">'+escapeHtml(i.note||'')+'</textarea></label>',
-    function(d){
-      d.varroa = parseInt(d.varroa)||0;
-      d.brood = parseInt(d.brood)||0;
-      d.status = d.varroa>=6?'danger':(d.varroa>=3?'warn':'ok');
-      Object.assign(i, d);
-      Data.save();
-      App.toast('Muayene güncellendi ✓');
-      App.render('inspections');
-      return true;
-    }
-  );
-}
-function deleteInspection(id) {
-  var i = Data.inspections.find(function(x){return x.id===id;});
-  if (!i) return;
-  Modal.confirm('Bu muayeneyi silmek istiyor musunuz?', function(){
-    Data.inspections = Data.inspections.filter(function(x){return x.id!==id;});
-    Data.save();
-    App.toast('Muayene silindi');
-    App.render('inspections');
-  });
-}
-
-// ============================================================
-// CRUD — Üs
-// ============================================================
-function openAddApiary() {
-  Modal.open('Yeni Arı Üssü Ekle',
-    '<label class="field"><span>Üs Adı *</span><input name="name" required placeholder="Örn: Çınar Üssü"></label>'+
-    '<label class="field"><span>Konum *</span><input name="location" required placeholder="Örn: Çınar, Diyarbakır"></label>'+
-    '<label class="field"><span>Flora</span><input name="flora" placeholder="Örn: Geven, Kekik"></label>'+
-    '<label class="field"><span>Notlar</span><textarea name="note" rows="2"></textarea></label>',
-    function(d){
-      d.id = Data.nextId(Data.apiaries);
-      Data.apiaries.push(d);
-      Data.save();
-      App.toast('Üs eklendi ✓');
-      App.render('apiaries');
-      return true;
-    }
-  );
-}
-function openEditApiary(id) {
-  var a = Data.apiaries.find(function(x){return x.id===id;});
-  if (!a) return;
-  Modal.open('Üs Düzenle — '+escapeHtml(a.name),
-    '<label class="field"><span>Üs Adı *</span><input name="name" required value="'+escapeHtml(a.name)+'"></label>'+
-    '<label class="field"><span>Konum *</span><input name="location" required value="'+escapeHtml(a.location)+'"></label>'+
-    '<label class="field"><span>Flora</span><input name="flora" value="'+escapeHtml(a.flora||'')+'"></label>'+
-    '<label class="field"><span>Notlar</span><textarea name="note" rows="2">'+escapeHtml(a.note||'')+'</textarea></label>',
-    function(d){
-      Object.assign(a, d);
-      Data.save();
-      App.toast('Üs güncellendi ✓');
-      App.render('apiaries');
-      return true;
-    }
-  );
-}
-function deleteApiary(id) {
-  var a = Data.apiaries.find(function(x){return x.id===id;});
-  if (!a) return;
-  var hiveCount = Data.hives.filter(function(h){return h.apiaryId===id;}).length;
-  if (hiveCount > 0) {
-    App.toast('Bu üsde '+hiveCount+' kovan var. Önce kovanları silin.');
-    return;
-  }
-  Modal.confirm('"'+a.name+'" üssünü silmek istiyor musunuz?', function(){
-    Data.apiaries = Data.apiaries.filter(function(x){return x.id!==id;});
-    Data.save();
-    App.toast('Üs silindi');
-    App.render('apiaries');
-  });
-}
-
-// ============================================================
-// App
-// ============================================================
-var App = {
-  nav: function(view) {
-    document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});
-    document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(function(n){
-      n.classList.toggle('active', n.getAttribute('data-view') === view);
-    });
-    var el = document.getElementById('view-' + view);
-    if (el) el.classList.add('active');
-    var titles = {
-      dashboard:['Dashboard','Genel bakış · Eğil, Diyarbakır'],
-      apiaries:['Arı Üsleri',Data.apiaries.length+' üs'],
-      hives:['Kovanlar',Data.hives.length+' kovan'],
-      inspections:['Muayeneler',Data.inspections.length+' kayıt'],
-      queens:['Ana Arılar',Data.queens.length+' ana arı'],
-      honey:['Bal Hasadı',Data.harvests.reduce(function(s,h){return s+h.weight},0).toFixed(1)+' kg toplam']
-    };
-    var t = titles[view] || [view,''];
-    document.getElementById('page-title').textContent = t[0];
-    document.getElementById('page-subtitle').textContent = t[1];
-    this.render(view);
-    if (history.pushState) history.pushState(null, '', '#'+view);
+    );
   },
-
-  render: function(view) {
-    view = view || 'dashboard';
-    var fn = this['render_' + view];
-    if (fn) fn.call(this);
+  edit(id){
+    const h=Data.get('hives',id);if(!h)return;
+    const apOpts=Data.state.apiaries.map(a=>`<option value="${a.id}"${a.id===h.apiaryId?' selected':''}>${H.esc(a.name)}</option>`).join('');
+    Modal.open('Kovan Düzenle',
+      `<label class="field"><span>Kovan Adı *</span><input name="name" required value="${H.esc(h.name)}"></label>
+       <label class="field"><span>Arı Üssü *</span><select name="apiaryId" required>${apOpts}</select></label>
+       <div class="field-row"><label class="field"><span>Irk</span><select name="strain">${['anatolian','caucasian','carniolan','italian','hybrid'].map(s=>`<option value="${s}"${h.strain===s?' selected':''}>${H.strainTr(s)}</option>`).join('')}</select></label>
+       <label class="field"><span>Kutu Tipi</span><select name="boxType">${['langstroth','dadant','layens','flow','top_bar'].map(b=>`<option value="${b}"${h.boxType===b?' selected':''}>${H.boxTr(b)}</option>`).join('')}</select></label></div>
+       <div class="field-row"><label class="field"><span>Çerçeve</span><input name="frameCount" type="number" min="1" max="20" value="${h.frameCount}"></label>
+       <label class="field"><span>Durum</span><select name="status">${['active','weak','dead','sold','merged'].map(s=>`<option value="${s}"${h.status===s?' selected':''}>${s}</option>`).join('')}</select></label></div>
+       <label class="field"><span>NFC/QR Etiket</span><input name="nfcTag" value="${H.esc(h.nfcTag||'')}"></label>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2">${H.esc(h.notes||'')}</textarea></label>`,
+      d=>{Data.update('hives',id,d);App.toast('Kovan güncellendi ✓','success');App.render('hives');return true}
+    );
   },
-
-  render_dashboard: function() {
-    var d = Data;
-    var totalHives = d.hives.length;
-    var activeApiaries = d.apiaries.length;
-    var totalHoney = d.harvests.reduce(function(s,h){return s+h.weight},0);
-    var avgVarroa = d.inspections.length ? (d.inspections.reduce(function(s,i){return s+i.varroa},0)/d.inspections.length).toFixed(1) : 0;
-    var maxHoney = Math.max.apply(null, d.harvests.map(function(h){return h.weight}).concat([1]));
-
-    var stats = [
-      {label:'Toplam Kovan',value:totalHives,change:'Canlı',dir:'up',icon:'🏠',type:'honey'},
-      {label:'Aktif Üs',value:activeApiaries,change:'Tümü',dir:'neutral',icon:'📍',type:'info'},
-      {label:'Toplam Bal',value:totalHoney.toFixed(1)+' kg',change:'Hasat',dir:'up',icon:'🍯',type:'success'},
-      {label:'Ort. Varroa',value:avgVarroa,change:'Son muayeneler',dir:parseFloat(avgVarroa)>3?'down':'up',icon:'⚠️',type:parseFloat(avgVarroa)>3?'danger':'warning'}
-    ];
-
-    var html = '<div class="stats-grid">';
-    stats.forEach(function(s){
-      html += '<div class="stat-card"><div class="stat-icon '+s.type+'">'+s.icon+'</div><div class="stat-label">'+s.label+'</div><div class="stat-value">'+s.value+'</div><div class="stat-change '+s.dir+'">'+s.change+'</div></div>';
+  del(id){
+    const h=Data.get('hives',id);if(!h)return;
+    Modal.confirm(`"${h.name}" kovanını silmek istiyor musunuz? Tüm ilişkili kayıtlar da silinecek.`,()=>{
+      ['frames','inspections','harvests','feedings','treatments','diseases'].forEach(c=>Data.state[c]=Data.state[c].filter(x=>x.hiveId!==id));
+      Data.state.queens=Data.state.queens.filter(q=>q.hiveId!==id);
+      Data.remove('hives',id);
+      App.toast('Kovan silindi','info');
+      App.render('hives');
     });
-    html += '</div>';
-
-    html += '<div class="actions-grid">';
-    var actions = [
-      ['📋','Yeni Muayene','openAddInspection()'],
-      ['🍯','Hasat',"App.toast('Hasat modülü yakında')"],
-      ['🌾','Besleme',"App.toast('Besleme modülü yakında')"],
-      ['💊','Tedavi',"App.toast('Tedavi modülü yakında')"],
-      ['➕','Yeni Kovan','openAddHive()']
-    ];
-    actions.forEach(function(a){
-      html += '<button class="action-btn" onclick="'+a[2]+'"><div class="action-ico">'+a[0]+'</div><div class="action-label">'+a[1]+'</div></button>';
-    });
-    html += '</div>';
-
-    html += '<div class="content-grid"><div><div class="card"><div class="card-head"><div class="card-title">📈 Hasat Performansı</div></div><div class="chart-wrap">';
-    d.harvests.forEach(function(h){
-      var height = Math.round((h.weight/maxHoney)*100);
-      html += '<div class="bar-col"><div class="bar-val">'+h.weight+' kg</div><div class="bar" style="height:'+height+'%"></div><div class="bar-label">'+h.month+'</div></div>';
-    });
-    html += '</div></div>';
-
-    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div class="card-title">📋 Son Muayeneler</div><a class="card-link" onclick="App.nav(\'inspections\')">Tümü →</a></div>';
-    var recent = d.inspections.slice().sort(function(a,b){return (b.id||0)-(a.id||0)}).slice(0,5);
-    if (!recent.length) {
-      html += '<div class="empty">Henüz muayene yok. <a class="card-link" onclick="openAddInspection()">İlk muayeneyi ekle →</a></div>';
+  },
+  detail(id){
+    const h=Data.get('hives',id);if(!h)return;
+    const apiary=Data.get('apiaries',h.apiaryId);
+    const queen=Data.state.queens.find(q=>q.id===h.queenId);
+    const frames=Data.state.frames.filter(f=>f.hiveId===id).sort((a,b)=>a.position-b.position);
+    const inspections=Data.state.inspections.filter(i=>i.hiveId===id).sort((a,b)=>b.date.localeCompare(a.date));
+    const harvests=Data.state.harvests.filter(hv=>hv.hiveId===id).sort((a,b)=>b.date.localeCompare(a.date));
+    const feedings=Data.state.feedings.filter(f=>f.hiveId===id).sort((a,b)=>b.date.localeCompare(a.date));
+    const treatments=Data.state.treatments.filter(t=>t.hiveId===id).sort((a,b)=>b.date.localeCompare(a.date));
+    const diseases=Data.state.diseases.filter(d=>d.hiveId===id).sort((a,b)=>b.date.localeCompare(a.date));
+    const totalHoney=harvests.reduce((s,h)=>s+h.weight,0);
+    const lastInsp=inspections[0];
+    const strength=lastInsp?lastInsp.population:'medium';
+    const varroa=lastInsp?lastInsp.varroaCount:0;
+    const queenAge=queen?((Date.now()-new Date(queen.birthDate).getTime())/(365*864e5)).toFixed(1):'-';
+    const html=`
+      <div class="actions-bar" style="margin-bottom:16px">
+        <div>
+          <a class="link" onclick="App.nav('hives')">← Kovanlar</a>
+          <h1 style="font-size:24px;font-weight:800;margin-top:6px">${H.esc(h.name)}</h1>
+          <p style="color:var(--text-dim);font-size:13px">${H.esc(apiary?apiary.name:'Atanmamış')} · ${H.strainTr(h.strain)} · ${H.boxTr(h.boxType)} · NFC: ${H.esc(h.nfcTag||'-')}</p>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn" onclick="Hive.edit('${id}')">Düzenle</button>
+          <button class="btn btn-primary" onclick="Inspection.add('${id}')">+ Muayene</button>
+          <button class="btn btn-danger" onclick="Hive.del('${id}')">Sil</button>
+        </div>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-val">${H.popTr(strength)}</div><div class="kpi-lbl">Koloni Gücü</div></div>
+        <div class="kpi"><div class="kpi-val">${varroa}</div><div class="kpi-lbl">Son Varroa</div></div>
+        <div class="kpi"><div class="kpi-val">${H.fmt(totalHoney)} kg</div><div class="kpi-lbl">Toplam Bal</div></div>
+        <div class="kpi"><div class="kpi-val">${queenAge} yıl</div><div class="kpi-lbl">Ana Arı Yaşı</div></div>
+      </div>
+      <div class="tab-bar">
+        <button class="tab active" data-tab="frames" onclick="Hive.detailTab('${id}','frames',this)">Çerçeveler (${frames.length})</button>
+        <button class="tab" data-tab="queen" onclick="Hive.detailTab('${id}','queen',this)">Ana Arı</button>
+        <button class="tab" data-tab="history" onclick="Hive.detailTab('${id}','history',this)">Geçmiş (${inspections.length+harvests.length+feedings.length+treatments.length+diseases.length})</button>
+      </div>
+      <div id="hive-tab-content"></div>
+    `;
+    document.getElementById('view-hive-detail').innerHTML=html;
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-hive-detail').classList.add('active');
+    document.querySelectorAll('.nav,.bnav').forEach(n=>n.classList.remove('active'));
+    document.getElementById('page-title').textContent=h.name;
+    document.getElementById('page-subtitle').textContent=H.esc(apiary?apiary.name:'');
+    window.scrollTo(0,0);
+    Hive.detailTab(id,'frames');
+  },
+  detailTab(id,tab,btn){
+    if(btn)document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    if(btn)btn.classList.add('active');
+    const el=document.getElementById('hive-tab-content');
+    if(tab==='frames'){
+      const frames=Data.state.frames.filter(f=>f.hiveId===id).sort((a,b)=>a.position-b.position);
+      const summary={brood:0,honey:0,pollen:0,foundation:0,empty:0};
+      frames.forEach(f=>summary[f.frameType]=(summary[f.frameType]||0)+1);
+      el.innerHTML=`
+        <div class="card">
+          <div class="card-h"><div><div class="card-title">Çerçeve Haritası</div><div class="card-sub">Petek döngüsü ve durum</div></div>
+          <div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="Frame.resetAll('${id}')">Sezonu Sıfırla</button><button class="btn btn-sm" onclick="Frame.exportCSV('${id}')">CSV</button></div></div>
+          <div class="frame-grid">
+            ${frames.map(f=>`<div class="frame ${f.frameType}${f.cyclesCompleted>=5?' retired':''}" onclick="Frame.edit('${f.id}','${id}')"><div class="frame-ico">${H.frameIco(f.frameType)}</div><div class="frame-num">#${f.position}</div><div class="frame-cycle">×${f.cyclesCompleted}</div></div>`).join('')}
+          </div>
+          <div class="frame-legend">
+            <div class="legend-item"><span class="legend-dot" style="background:rgba(249,115,22,0.4)"></span>${summary.brood||0} Yumurtalık</div>
+            <div class="legend-item"><span class="legend-dot" style="background:rgba(244,180,0,0.4)"></span>${summary.honey||0} Bal</div>
+            <div class="legend-item"><span class="legend-dot" style="background:rgba(168,85,247,0.4)"></span>${summary.pollen||0} Polen</div>
+            <div class="legend-item"><span class="legend-dot" style="background:var(--surface3)"></span>${summary.foundation||0} Perga</div>
+            <div class="legend-item"><span class="legend-dot" style="background:transparent;border:1px dashed var(--border-strong)"></span>${summary.empty||0} Boş</div>
+            <div class="legend-item" style="margin-left:auto;color:var(--red)"><span class="legend-dot" style="background:var(--red)"></span>🔴 Değişim (≥5 döngü)</div>
+          </div>
+        </div>
+      `;
+    } else if(tab==='queen'){
+      const q=Data.state.queens.find(q=>q.id===Data.get('hives',id).queenId);
+      el.innerHTML=`
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-h"><div class="card-title">Ana Arı Bilgileri</div><button class="btn btn-sm" onclick="Queen.edit('${q?q.id:''}')">Düzenle</button></div>
+            ${q?`
+              <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+                <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--honey),var(--honey-3));display:flex;align-items:center;justify-content:center;font-size:30px">👑</div>
+                <div>
+                  <div style="font-size:16px;font-weight:700">${H.esc(q.strain)}</div>
+                  <div style="font-size:12px;color:var(--text-dim)">İşaret: <strong>${H.colorTr(q.markedColor)}</strong> · Kaynak: ${H.sourceTr(q.source)}</div>
+                </div>
+              </div>
+              <div class="row"><div class="row-main"><div class="row-name">Doğum</div><div class="row-info">${H.dateStr(q.birthDate)}</div></div></div>
+              <div class="row"><div class="row-main"><div class="row-name">Yaş</div><div class="row-info">${((Date.now()-new Date(q.birthDate).getTime())/(365*864e5)).toFixed(1)} yıl</div></div></div>
+              <div class="row"><div class="row-main"><div class="row-name">Performans Skoru</div><div class="row-info">${(q.performanceScore*100).toFixed(0)}%</div></div></div>
+              <div class="row"><div class="row-main"><div class="row-name">Durum</div><div class="row-info">${H.statusBadge(q.status)}</div></div></div>
+              ${q.supplier?`<div class="row"><div class="row-main"><div class="row-name">Tedarikçi</div><div class="row-info">${H.esc(q.supplier)}</div></div></div>`:''}
+            `:'<div class="empty-state">Bu kovanda henüz ana arı kaydı yok.<br><button class="btn btn-primary" onclick="Queen.add(\''+id+'\')" style="margin-top:10px">Ana Arı Ekle</button></div>'}
+          </div>
+          <div class="card">
+            <div class="card-title">📊 Performans Skoru</div>
+            <div style="margin-top:14px;padding:20px;background:var(--surface2);border-radius:var(--r);text-align:center">
+              <div style="font-size:48px;font-weight:800;color:var(--honey)">${q?(q.performanceScore*100).toFixed(0):0}%</div>
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Mevcut Skor (0-100)</div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if(tab==='history'){
+      const events=[];
+      inspections.forEach(i=>events.push({date:i.date,icon:'📋',title:'Muayene',sub:`Varroa: ${i.varroaCount}, ${H.popTr(i.population)}, Yavru: ${i.broodFrames} çerçeve${i.notes?' — '+i.notes:''}`,type:'inspection',id:i.id}));
+      harvests.forEach(h=>events.push({date:h.date,icon:'🍯',title:'Bal Hasadı',sub:`${h.weight} kg · ${h.quality} kalite · ${h.frames} çerçeve`,type:'harvest',id:h.id}));
+      feedings.forEach(f=>events.push({date:f.date,icon:'🌾',title:'Besleme',sub:`${H.typeTr(f.type)} · ${f.amountKg} kg · ${H.reasonTr(f.reason)}`,type:'feeding',id:f.id}));
+      treatments.forEach(t=>events.push({date:t.date,icon:'💊',title:'Tedavi',sub:`${t.product} · ${t.dosage} · ${t.duration}`,type:'treatment',id:t.id}));
+      diseases.forEach(d=>events.push({date:d.date,icon:'🦠',title:'Hastalık',sub:`${H.diseaseTr(d.disease)} · Şiddet: ${d.severity}`,type:'disease',id:d.id}));
+      events.sort((a,b)=>b.date.localeCompare(a.date));
+      el.innerHTML=`
+        <div class="card">
+          <div class="card-h"><div class="card-title">Zaman Çizelgesi</div><div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-primary" onclick="Inspection.add('${id}')">+ Muayene</button>
+            <button class="btn btn-sm" onclick="Harvest.add('${id}')">+ Hasat</button>
+            <button class="btn btn-sm" onclick="Feeding.add('${id}')">+ Besleme</button>
+            <button class="btn btn-sm" onclick="Treatment.add('${id}')">+ Tedavi</button>
+          </div></div>
+          ${!events.length?'<div class="empty-state"><div class="empty-ico">📅</div><div class="empty-title">Henüz kayıt yok</div></div>':''}
+          ${events.length?`<div class="timeline">${events.map(e=>`<div class="timeline-item"><div class="timeline-ico">${e.icon}</div><div class="timeline-body"><div class="timeline-title">${e.title}</div><div class="timeline-meta">${H.dateStr(e.date)} · ${H.esc(e.sub)}</div></div></div>`).join('')}</div>`:''}
+        </div>
+      `;
     }
-    recent.forEach(function(i){
-      var hive = d.hives.find(function(h){return h.id===i.hiveId;});
-      var hname = hive?hive.name:'Kovan #'+i.hiveId;
-      html += '<div class="list-item"><div class="list-dot '+dotColor(i.status)+'"></div><div class="list-main"><div class="list-name">'+escapeHtml(hname)+' · '+i.date+'</div><div class="list-info">'+escapeHtml(i.note||'-')+'</div></div>'+statusBadge(i.status)+'</div>';
-    });
-    html += '</div></div>';
-
-    html += '<div><div class="card weather-card"><div class="card-head"><div class="card-title">🌤️ Hava & Flora</div></div><div class="weather-now"><div class="weather-icon">☀️</div><div><div class="weather-temp">28°C</div><div class="weather-info">Güneşli · Nem %35 · Rüzgar 12 km</div></div></div><div class="cl">Aktif flora:</div><div class="flora-tags"><span class="flora-tag">Geven</span><span class="flora-tag">Kekik</span><span class="flora-tag">Adaçayı</span><span class="flora-tag">Pamuk</span><span class="flora-tag">Ayçiçeği</span></div></div>';
-
-    html += '<div class="card" style="margin-top:16px"><div class="card-head"><div class="card-title">⚠️ Uyarılar</div></div>';
-    var dangers = d.hives.filter(function(h){return h.status==='danger'||h.varroa>=6;});
-    var warns = d.hives.filter(function(h){return h.status==='warning'||(h.varroa>=3&&h.varroa<6);});
-    if (!dangers.length && !warns.length) {
-      html += '<div class="empty">Aktif uyarı yok 🎉</div>';
-    } else {
-      dangers.forEach(function(h){
-        html += '<div class="list-item"><div class="list-dot dot-red"></div><div class="list-main"><div class="list-name">'+escapeHtml(h.name)+'</div><div class="list-info">Varroa '+h.varroa+' — acil tedavi</div></div><span class="badge danger">ACİL</span></div>';
-      });
-      warns.slice(0,3).forEach(function(h){
-        html += '<div class="list-item"><div class="list-dot dot-yellow"></div><div class="list-main"><div class="list-name">'+escapeHtml(h.name)+'</div><div class="list-info">Varroa '+h.varroa+' — izle</div></div><span class="badge warn">DİKKAT</span></div>';
-      });
-    }
-    html += '</div></div></div>';
-
-    document.getElementById('view-dashboard').innerHTML = html;
-  },
-
-  render_apiaries: function() {
-    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="color:var(--text-dim);font-size:13px">'+Data.apiaries.length+' üs</div><button class="btn btn-primary" onclick="openAddApiary()">+ Yeni Üs</button></div>';
-    html += '<div class="card"><div class="card-head"><div class="card-title">Arı Üsleri</div></div>';
-    if (!Data.apiaries.length) {
-      html += '<div class="empty">Henüz üs yok. <a class="card-link" onclick="openAddApiary()">İlk üssü ekle →</a></div>';
-    }
-    Data.apiaries.forEach(function(a){
-      var hiveCount = Data.hives.filter(function(h){return h.apiaryId===a.id;}).length;
-      html += '<div class="list-item-row"><div class="list-dot dot-green"></div><div class="list-main"><div class="list-name">'+escapeHtml(a.name)+'</div><div class="list-info">'+escapeHtml(a.location)+' · '+hiveCount+' kovan · Flora: '+escapeHtml(a.flora||'-')+(a.note?' · '+escapeHtml(a.note):'')+'</div></div><div class="actions-mini"><button class="btn-mini" onclick="openEditApiary('+a.id+')">Düzenle</button><button class="btn-mini danger" onclick="deleteApiary('+a.id+')">Sil</button></div></div>';
-    });
-    html += '</div>';
-    document.getElementById('view-apiaries').innerHTML = html;
-  },
-
-  render_hives: function() {
-    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="color:var(--text-dim);font-size:13px">'+Data.hives.length+' kovan</div><button class="btn btn-primary" onclick="openAddHive()">+ Yeni Kovan</button></div>';
-    html += '<div class="card"><div class="card-head"><div class="card-title">Kovanlar</div></div>';
-    if (!Data.hives.length) {
-      html += '<div class="empty">Henüz kovan yok. <a class="card-link" onclick="openAddHive()">İlk kovanı ekle →</a></div>';
-    }
-    Data.hives.forEach(function(h){
-      var apiary = Data.apiaries.find(function(a){return a.id===h.apiaryId;});
-      var apiaryName = apiary?apiary.name:'Atanmamış';
-      html += '<div class="list-item-row"><div class="list-dot '+dotColor(h.status)+'"></div><div class="list-main"><div class="list-name">'+escapeHtml(h.name)+' — '+escapeHtml(apiaryName)+'</div><div class="list-info">'+escapeHtml(h.queen)+' · '+h.frames+' çerçeve · '+h.honey+' kg bal · Varroa: '+h.varroa+' · Son: '+escapeHtml(h.lastInspection||'-')+'</div></div><div class="actions-mini"><button class="btn-mini" onclick="openEditHive('+h.id+')">Düzenle</button><button class="btn-mini danger" onclick="deleteHive('+h.id+')">Sil</button></div></div>';
-    });
-    html += '</div>';
-    document.getElementById('view-hives').innerHTML = html;
-  },
-
-  render_inspections: function() {
-    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="color:var(--text-dim);font-size:13px">'+Data.inspections.length+' kayıt</div><button class="btn btn-primary" onclick="openAddInspection()">+ Yeni Muayene</button></div>';
-    html += '<div class="card"><div class="card-head"><div class="card-title">Muayene Geçmişi</div></div>';
-    if (!Data.inspections.length) {
-      html += '<div class="empty">Henüz muayene yok. <a class="card-link" onclick="openAddInspection()">İlk muayeneyi ekle →</a></div>';
-    }
-    var sorted = Data.inspections.slice().sort(function(a,b){return (b.id||0)-(a.id||0)});
-    sorted.forEach(function(i){
-      var hive = Data.hives.find(function(h){return h.id===i.hiveId;});
-      var hname = hive?hive.name:'Kovan #'+i.hiveId;
-      html += '<div class="list-item-row"><div class="list-dot '+dotColor(i.status)+'"></div><div class="list-main"><div class="list-name">'+escapeHtml(hname)+' — '+i.date+'</div><div class="list-info">'+escapeHtml(i.note||'-')+' · '+i.population+' · Yavru: '+i.brood+' çerçeve · Yumurta: '+escapeHtml(i.eggs||'-')+'</div></div><div class="actions-mini"><button class="btn-mini" onclick="openEditInspection('+i.id+')">Düzenle</button><button class="btn-mini danger" onclick="deleteInspection('+i.id+')">Sil</button></div></div>';
-    });
-    html += '</div>';
-    document.getElementById('view-inspections').innerHTML = html;
-  },
-
-  render_queens: function() {
-    var html = '<div class="card"><div class="card-head"><div class="card-title">Ana Arılar ('+Data.queens.length+')</div></div>';
-    Data.queens.forEach(function(q){
-      html += '<div class="list-item-row"><div class="list-dot '+(q.status==='active'?'dot-green':'dot-yellow')+'"></div><div class="list-main"><div class="list-name">Ana Arı #'+q.id+' — '+escapeHtml(q.breed)+'</div><div class="list-info">Yaş: '+q.age+' yıl · Verim: '+q.productivity+(q.marked?' · İşaretli':'')+'</div></div>'+statusBadge(q.status)+'</div>';
-    });
-    html += '</div>';
-    document.getElementById('view-queens').innerHTML = html;
-  },
-
-  render_honey: function() {
-    var total = Data.harvests.reduce(function(s,h){return s+h.weight},0);
-    var html = '<div class="stats-grid"><div class="stat-card"><div class="stat-icon success">🍯</div><div class="stat-label">Toplam Hasat</div><div class="stat-value">'+total.toFixed(1)+' kg</div></div></div>';
-    html += '<div class="card"><div class="card-head"><div class="card-title">Hasat Geçmişi</div></div><div class="chart-wrap">';
-    var max = Math.max.apply(null, Data.harvests.map(function(h){return h.weight}).concat([1]));
-    Data.harvests.forEach(function(h){
-      var height = Math.round((h.weight/max)*100);
-      html += '<div class="bar-col"><div class="bar-val">'+h.weight+' kg</div><div class="bar" style="height:'+height+'%"></div><div class="bar-label">'+h.month+'</div></div>';
-    });
-    html += '</div></div>';
-    document.getElementById('view-honey').innerHTML = html;
-  },
-
-  toast: function(msg) {
-    var container = document.getElementById('toast-container');
-    var el = document.createElement('div');
-    el.className = 'toast';
-    el.textContent = msg;
-    container.appendChild(el);
-    setTimeout(function(){el.style.opacity='0';setTimeout(function(){el.remove()},300)},2500);
-  },
-
-  toggleTheme: function() {
-    var html = document.documentElement;
-    var cur = html.getAttribute('data-theme') || 'dark';
-    var next = cur==='dark'?'light':'dark';
-    html.setAttribute('data-theme', next);
-    document.getElementById('theme-toggle').textContent = next==='dark'?'🌙':'☀️';
-    try{localStorage.setItem('bm-theme',next)}catch(e){}
   }
 };
 
-// ESC ile modal kapat
-document.addEventListener('keydown', function(e){ if (e.key==='Escape') Modal.close(); });
+// FRAME
+const Frame={
+  edit(frameId,hiveId){
+    const f=Data.state.frames.find(x=>x.id===frameId);if(!f)return;
+    Modal.open('Çerçeve #'+f.position,
+      `<div class="field"><span>Tip</span><select name="frameType">${['brood','honey','pollen','foundation','empty'].map(t=>`<option value="${t}"${f.frameType===t?' selected':''}>${H.frameTr(t)}</option>`).join('')}</select></div>
+       <div class="field-row"><label class="field"><span>Temel Tipi</span><select name="foundationType"><option value="wax"${f.foundationType==='wax'?' selected':''}>Mum</option><option value="plastic"${f.foundationType==='plastic'?' selected':''}>Plastik</option><option value="foundationless"${f.foundationType==='foundationless'?' selected':''}>Temesiz</option></select></label>
+       <label class="field"><span>Durum</span><select name="status">${['in_use','extracted','cleaning','stored','retired'].map(s=>`<option value="${s}"${f.status===s?' selected':''}>${s}</option>`).join('')}</select></label></div>
+       <div class="field-row"><label class="field"><span>Döngü</span><input name="cyclesCompleted" type="number" min="0" value="${f.cyclesCompleted}"></label>
+       <label class="field"><span>Yaş (ay)</span><input name="waxAgeMonths" type="number" min="0" value="${f.waxAgeMonths||0}"></label></div>
+       <label class="field"><span>Son Hasat</span><input name="lastExtractedAt" type="date" value="${f.lastExtractedAt||''}"></label>`,
+      d=>{Data.update('frames',frameId,d);App.toast('Çerçeve güncellendi ✓','success');Hive.detailTab(hiveId,'frames');return true}
+    );
+  },
+  resetAll(hiveId){
+    Modal.confirm('Tüm çerçeveler sıfırlanacak. Onaylıyor musunuz?',()=>{
+      Data.state.frames.filter(f=>f.hiveId===hiveId).forEach(f=>{f.frameType='foundation';f.cyclesCompleted=0;f.waxAgeMonths=0;f.updatedAt=new Date().toISOString();});
+      Data.save();App.toast('Sezon sıfırlandı','success');Hive.detailTab(hiveId,'frames');
+    });
+  },
+  exportCSV(hiveId){
+    const frames=Data.state.frames.filter(f=>f.hiveId===hiveId);
+    let csv='Pozisyon,Tip,Temel,Durum,Dongu,Yas(ay)\n';
+    frames.forEach(f=>csv+=`${f.position},${H.frameTr(f.frameType)},${f.foundationType},${f.status},${f.cyclesCompleted},${f.waxAgeMonths||0}\n`);
+    const blob=new Blob([csv],{type:'text/csv'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='kovan-'+hiveId+'-cerceveler.csv';
+    a.click();
+    App.toast('CSV indirildi','success');
+  }
+};
 
-// Unregister SW
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister();});});
-}
+// INSPECTION
+const Inspection={
+  add(presetHiveId){
+    if(!Data.state.hives.length){App.toast('Önce kovan ekleyin','error');return}
+    const hOpts=Data.state.hives.map(h=>`<option value="${h.id}"${presetHiveId===h.id?' selected':''}>${H.esc(h.name)}</option>`).join('');
+    Modal.open('Yeni Muayene',
+      `<label class="field"><span>Kovan *</span><select name="hiveId" required>${hOpts}</select></label>
+       <label class="field"><span>Tarih *</span><input name="date" type="date" required value="${H.today()}"></label>
+       <div class="field-row-3">
+         <label class="field"><span>Varroa</span><input name="varroaCount" type="number" min="0" value="0"></label>
+         <label class="field"><span>Yavru Çer.</span><input name="broodFrames" type="number" min="0" value="6"></label>
+         <label class="field"><span>Bal Çer.</span><input name="honeyFrames" type="number" min="0" value="2"></label>
+       </div>
+       <div class="field-row">
+         <label class="field"><span>Popülasyon</span><select name="population"><option value="very_strong">Çok Güçlü</option><option value="strong" selected>Güçlü</option><option value="medium">Orta</option><option value="weak">Zayıf</option><option value="very_weak">Çok Zayıf</option></select></label>
+         <label class="field"><span>Yumurta</span><select name="eggsPattern"><option value="regular">Düzenli</option><option value="irregular">Düzensiz</option><option value="absent">Yok</option></select></label>
+       </div>
+       <div class="field-row">
+         <label class="field"><span>Ana Arı</span><select name="queenSeen"><option value="true">Görüldü</option><option value="false">Görülmedi</option></select></label>
+         <label class="field"><span>Hava</span><select name="weather"><option value="sunny">Güneşli</option><option value="cloudy">Bulutlu</option><option value="rainy">Yağmurlu</option></select></label>
+       </div>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="3" placeholder="Muayene notları..."></textarea></label>`,
+      d=>{
+        d.varroaCount=parseInt(d.varroaCount)||0;
+        d.broodFrames=parseInt(d.broodFrames)||0;
+        d.honeyFrames=parseInt(d.honeyFrames)||0;
+        d.queenSeen=d.queenSeen==='true';
+        Data.add('inspections',d);
+        if(d.varroaCount>=6)App.toast(`⚠️ Varroa ${d.varroaCount}! Tedavi önerilir.`,'warn');
+        else App.toast('Muayene eklendi ✓','success');
+        App.render('inspections');
+        if(App.currentView==='hive-detail')Hive.detail(App.currentHiveId);
+        return true;
+      }
+    );
+  },
+  edit(id){
+    const i=Data.get('inspections',id);if(!i)return;
+    const hOpts=Data.state.hives.map(h=>`<option value="${h.id}"${h.id===i.hiveId?' selected':''}>${H.esc(h.name)}</option>`).join('');
+    Modal.open('Muayene Düzenle',
+      `<label class="field"><span>Kovan *</span><select name="hiveId" required>${hOpts}</select></label>
+       <label class="field"><span>Tarih *</span><input name="date" type="date" required value="${i.date}"></label>
+       <div class="field-row-3">
+         <label class="field"><span>Varroa</span><input name="varroaCount" type="number" min="0" value="${i.varroaCount||0}"></label>
+         <label class="field"><span>Yavru Çer.</span><input name="broodFrames" type="number" min="0" value="${i.broodFrames||0}"></label>
+         <label class="field"><span>Bal Çer.</span><input name="honeyFrames" type="number" min="0" value="${i.honeyFrames||0}"></label>
+       </div>
+       <div class="field-row">
+         <label class="field"><span>Popülasyon</span><select name="population">${['very_strong','strong','medium','weak','very_weak'].map(s=>`<option value="${s}"${i.population===s?' selected':''}>${H.popTr(s)}</option>`).join('')}</select></label>
+         <label class="field"><span>Yumurta</span><select name="eggsPattern"><option value="regular"${i.eggsPattern==='regular'?' selected':''}>Düzenli</option><option value="irregular"${i.eggsPattern==='irregular'?' selected':''}>Düzensiz</option><option value="absent"${i.eggsPattern==='absent'?' selected':''}>Yok</option></select></label>
+       </div>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="3">${H.esc(i.notes||'')}</textarea></label>`,
+      d=>{d.varroaCount=parseInt(d.varroaCount)||0;d.broodFrames=parseInt(d.broodFrames)||0;d.honeyFrames=parseInt(d.honeyFrames)||0;d.queenSeen=d.queenSeen==='true';Data.update('inspections',id,d);App.toast('Muayene güncellendi ✓','success');App.render('inspections');return true}
+    );
+  },
+  del(id){
+    Modal.confirm('Bu muayeneyi silmek istiyor musunuz?',()=>{Data.remove('inspections',id);App.toast('Muayene silindi','info');App.render('inspections')});
+  }
+};
+// HARVEST
+const Harvest={
+  add(presetHiveId){
+    if(!Data.state.hives.length){App.toast('Önce kovan ekleyin','error');return}
+    const hOpts=Data.state.hives.map(h=>`<option value="${h.id}"${presetHiveId===h.id?' selected':''}>${H.esc(h.name)}</option>`).join('');
+    Modal.open('Yeni Hasat',
+      `<label class="field"><span>Kovan *</span><select name="hiveId" required>${hOpts}</select></label>
+       <label class="field"><span>Tarih *</span><input name="date" type="date" required value="${H.today()}"></label>
+       <div class="field-row-3">
+         <label class="field"><span>Ağırlık (kg) *</span><input name="weight" type="number" step="0.1" min="0" required value="2.5"></label>
+         <label class="field"><span>Kalite</span><select name="quality"><option value="A">A (Premium)</option><option value="B" selected>B (Standart)</option><option value="C">C (Endüstri)</option></select></label>
+         <label class="field"><span>Çerçeve</span><input name="frames" type="number" min="0" value="2"></label>
+       </div>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2"></textarea></label>`,
+      d=>{
+        d.weight=parseFloat(d.weight)||0;
+        d.frames=parseInt(d.frames)||0;
+        const h=Data.get('hives',d.hiveId);if(h)d.apiaryId=h.apiaryId;
+        Data.add('harvests',d);
+        App.toast('Hasat kaydedildi ✓','success');
+        App.render('harvest');
+        return true;
+      }
+    );
+  },
+  edit(id){
+    const h=Data.get('harvests',id);if(!h)return;
+    const hOpts=Data.state.hives.map(x=>`<option value="${x.id}"${x.id===h.hiveId?' selected':''}>${H.esc(x.name)}</option>`).join('');
+    Modal.open('Hasat Düzenle',
+      `<label class="field"><span>Kovan *</span><select name="hiveId" required>${hOpts}</select></label>
+       <label class="field"><span>Tarih *</span><input name="date" type="date" required value="${h.date}"></label>
+       <div class="field-row-3">
+         <label class="field"><span>Ağırlık (kg) *</span><input name="weight" type="number" step="0.1" required value="${h.weight}"></label>
+         <label class="field"><span>Kalite</span><select name="quality">${['A','B','C'].map(q=>`<option value="${q}"${h.quality===q?' selected':''}>${q}</option>`).join('')}</select></label>
+         <label class="field"><span>Çerçeve</span><input name="frames" type="number" value="${h.frames||0}"></label>
+       </div>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2">${H.esc(h.notes||'')}</textarea></label>`,
+      d=>{d.weight=parseFloat(d.weight)||0;d.frames=parseInt(d.frames)||0;Data.update('harvests',id,d);App.toast('Hasat güncellendi ✓','success');App.render('harvest');return true}
+    );
+  },
+  del(id){
+    Modal.confirm('Bu hasat kaydını silmek istiyor musunuz?',()=>{Data.remove('harvests',id);App.toast('Hasat silindi','info');App.render('harvest')});
+  }
+};
 
-// Apply saved theme
-try { var saved = localStorage.getItem('bm-theme'); if (saved) { document.documentElement.setAttribute('data-theme', saved); } } catch(e){}
+// FEEDING
+const Feeding={
+  add(presetHiveId){
+    if(!Data.state.hives.length){App.toast('Önce kovan ekleyin','error');return}
+    const hOpts=Data.state.hives.map(h=>`<option value="${h.id}"${presetHiveId===h.id?' selected':''}>${H.esc(h.name)}</option>`).join('');
+    Modal.open('Yeni Besleme',
+      `<label class="field"><span>Kovan *</span><select name="hiveId" required>${hOpts}</select></label>
+       <label class="field"><span>Tarih *</span><input name="date" type="date" required value="${H.today()}"></label>
+       <div class="field-row">
+         <label class="field"><span>Tip *</span><select name="type" required>${['sugar_syrup','fondant','pollen_patty','candy','honey_water'].map(t=>`<option value="${t}">${H.typeTr(t)}</option>`).join('')}</select></label>
+         <label class="field"><span>Miktar (kg) *</span><input name="amountKg" type="number" step="0.1" min="0" required value="1.0"></label>
+       </div>
+       <div class="field-row">
+         <label class="field"><span>Sebep</span><select name="reason">${['weak_colony','winter_prep','drought','supplement','stimulative'].map(r=>`<option value="${r}">${H.reasonTr(r)}</option>`).join('')}</select></label>
+         <label class="field"><span>Durum</span><select name="status"><option value="planned">Planlı</option><option value="in_progress">Sürüyor</option><option value="completed" selected>Tamamlandı</option></select></label>
+       </div>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2"></textarea></label>`,
+      d=>{d.amountKg=parseFloat(d.amountKg)||0;Data.add('feedings',d);App.toast('Besleme kaydedildi ✓','success');App.render('feeding');return true}
+    );
+  },
+  edit(id){
+    const f=Data.get('feedings',id);if(!f)return;
+    const hOpts=Data.state.hives.map(h=>`<option value="${h.id}"${h.id===f.hiveId?' selected':''}>${H.esc(h.name)}</option>`).join('');
+    Modal.open('Besleme Düzenle',
+      `<label class="field"><span>Kovan *</span><select name="hiveId" required>${hOpts}</select></label>
+       <label class="field"><span>Tarih *</span><input name="date" type="date" required value="${f.date}"></label>
+       <div class="field-row">
+         <label class="field"><span>Tip</span><select name="type">${['sugar_syrup','fondant','pollen_patty','candy','honey_water'].map(t=>`<option value="${t}"${f.type===t?' selected':''}>${H.typeTr(t)}</option>`).join('')}</select></label>
+         <label class="field"><span>Miktar (kg)</span><input name="amountKg" type="number" step="0.1" value="${f.amountKg}"></label>
+       </div>
+       <div class="field-row">
+         <label class="field"><span>Sebep</span><select name="reason">${['weak_colony','winter_prep','drought','supplement','stimulative'].map(r=>`<option value="${r}"${f.reason===r?' selected':''}>${H.reasonTr(r)}</option>`).join('')}</select></label>
+         <label class="field"><span>Durum</span><select name="status">${['planned','in_progress','completed'].map(s=>`<option value="${s}"${f.status===s?' selected':''}>${s}</option>`).join('')}</select></label>
+       </div>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2">${H.esc(f.notes||'')}</textarea></label>`,
+      d=>{d.amountKg=parseFloat(d.amountKg)||0;Data.update('feedings',id,d);App.toast('Besleme güncellendi ✓','success');App.render('feeding');return true}
+    );
+  },
+  del(id){
+    Modal.confirm('Bu besleme kaydını silmek istiyor musunuz?',()=>{Data.remove('feedings',id);App.toast('Besleme silindi','info');App.render('feeding')});
+  }
+};
 
-// Init
-function init() {
-  var view = (location.hash || '#dashboard').slice(1);
-  App.nav(view);
-  console.log('[BeeMaster AI] Ready. View:', view);
-}
+// TREATMENT
+const Treatment={
+  add(presetHiveId){
+    if(!Data.state.hives.length){App.toast('Önce kovan ekleyin','error');return}
+    const hOpts=Data.state.hives.map(h=>`<option value="${h.id}"${presetHiveId===h.id?' selected':''}>${H.esc(h.name)}</option>`).join('');
+    Modal.open('Yeni Tedavi',
+      `<label class="field"><span>Kovan *</span><select name="hiveId" required>${hOpts}</select></label>
+       <label class="field"><span>Tarih *</span><input name="date" type="date" required value="${H.today()}"></label>
+       <div class="field-row">
+         <label class="field"><span>Ürün *</span><input name="product" required placeholder="Örn: Apivar"></label>
+         <label class="field"><span>Dozaj</span><input name="dosage" placeholder="2 şerit"></label>
+       </div>
+       <label class="field"><span>Süre</span><input name="duration" placeholder="42 gün"></label>
+       <div class="field-row">
+         <label class="field"><span>Varroa Önce</span><input name="varroaBefore" type="number" min="0" value="0"></label>
+         <label class="field"><span>Durum</span><select name="status"><option value="planned">Planlı</option><option value="in_progress" selected>Sürüyor</option><option value="completed">Tamamlandı</option></select></label>
+       </div>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2"></textarea></label>`,
+      d=>{d.varroaBefore=parseInt(d.varroaBefore)||0;Data.add('treatments',d);App.toast('Tedavi kaydedildi ✓','success');App.render('treatments');return true}
+    );
+  },
+  edit(id){
+    const t=Data.get('treatments',id);if(!t)return;
+    const hOpts=Data.state.hives.map(h=>`<option value="${h.id}"${h.id===t.hiveId?' selected':''}>${H.esc(h.name)}</option>`).join('');
+    Modal.open('Tedavi Düzenle',
+      `<label class="field"><span>Kovan *</span><select name="hiveId" required>${hOpts}</select></label>
+       <label class="field"><span>Tarih *</span><input name="date" type="date" required value="${t.date}"></label>
+       <div class="field-row">
+         <label class="field"><span>Ürün</span><input name="product" required value="${H.esc(t.product)}"></label>
+         <label class="field"><span>Dozaj</span><input name="dosage" value="${H.esc(t.dosage||'')}"></label>
+       </div>
+       <label class="field"><span>Süre</span><input name="duration" value="${H.esc(t.duration||'')}"></label>
+       <div class="field-row-3">
+         <label class="field"><span>Önce</span><input name="varroaBefore" type="number" value="${t.varroaBefore||0}"></label>
+         <label class="field"><span>Sonra</span><input name="varroaAfter" type="number" value="${t.varroaAfter||''}"></label>
+         <label class="field"><span>Durum</span><select name="status">${['planned','in_progress','completed'].map(s=>`<option value="${s}"${t.status===s?' selected':''}>${s}</option>`).join('')}</select></label>
+       </div>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2">${H.esc(t.notes||'')}</textarea></label>`,
+      d=>{d.varroaBefore=parseInt(d.varroaBefore)||0;d.varroaAfter=d.varroaAfter?parseInt(d.varroaAfter):null;Data.update('treatments',id,d);App.toast('Tedavi güncellendi ✓','success');App.render('treatments');return true}
+    );
+  },
+  del(id){
+    Modal.confirm('Bu tedavi kaydını silmek istiyor musunuz?',()=>{Data.remove('treatments',id);App.toast('Tedavi silindi','info');App.render('treatments')});
+  }
+};
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
-</script></script>
+// DISEASE
+const Disease={
+  add(presetHiveId){
+    if(!Data.state.hives.length){App.toast('Önce kovan ekleyin','error');return}
+    const hOpts=Data.state.hives.map(h=>`<option value="${h.id}"${presetHiveId===h.id?' selected':''}>${H.esc(h.name)}</option>`).join('');
+    Modal.open('Hastalık Kaydı',
+      `<label class="field"><span>Kovan *</span><select name="hiveId" required>${hOpts}</select></label>
+       <label class="field"><span>Tarih *</span><input name="date" type="date" required value="${H.today()}"></label>
+       <div class="field-row">
+         <label class="field"><span>Hastalık *</span><select name="disease" required>${['varroosis','nosemosis','foulbrood','chalkbrood','sacbrood','small_hive_beetle'].map(d=>`<option value="${d}">${H.diseaseTr(d)}</option>`).join('')}</select></label>
+         <label class="field"><span>Şiddet *</span><select name="severity" required><option value="low">Düşük</option><option value="medium" selected>Orta</option><option value="high">Yüksek</option></select></label>
+       </div>
+       <label class="field"><span>Tedavi</span><input name="treatment" placeholder="Uygulanan tedavi"></label>
+       <div class="field-row">
+         <label class="field"><span>Durum</span><select name="status"><option value="active">Aktif</option><option value="treating" selected>Tedavide</option><option value="resolved">Çözüldü</option></select></label>
+       </div>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2"></textarea></label>`,
+      d=>{Data.add('diseases',d);App.toast('Hastalık kaydı eklendi ✓','success');App.render('diseases');return true}
+    );
+  },
+  edit(id){
+    const d=Data.get('diseases',id);if(!d)return;
+    const hOpts=Data.state.hives.map(h=>`<option value="${h.id}"${h.id===d.hiveId?' selected':''}>${H.esc(h.name)}</option>`).join('');
+    Modal.open('Hastalık Düzenle',
+      `<label class="field"><span>Kovan *</span><select name="hiveId" required>${hOpts}</select></label>
+       <label class="field"><span>Tarih *</span><input name="date" type="date" required value="${d.date}"></label>
+       <div class="field-row">
+         <label class="field"><span>Hastalık</span><select name="disease">${['varroosis','nosemosis','foulbrood','chalkbrood','sacbrood','small_hive_beetle'].map(x=>`<option value="${x}"${d.disease===x?' selected':''}>${H.diseaseTr(x)}</option>`).join('')}</select></label>
+         <label class="field"><span>Şiddet</span><select name="severity">${['low','medium','high'].map(s=>`<option value="${s}"${d.severity===s?' selected':''}>${s}</option>`).join('')}</select></label>
+       </div>
+       <label class="field"><span>Tedavi</span><input name="treatment" value="${H.esc(d.treatment||'')}"></label>
+       <label class="field"><span>Durum</span><select name="status">${['active','treating','resolved'].map(s=>`<option value="${s}"${d.status===s?' selected':''}>${s}</option>`).join('')}</select></label>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2">${H.esc(d.notes||'')}</textarea></label>`,
+      d=>{Data.update('diseases',id,d);App.toast('Hastalık güncellendi ✓','success');App.render('diseases');return true}
+    );
+  },
+  del(id){
+    Modal.confirm('Bu hastalık kaydını silmek istiyor musunuz?',()=>{Data.remove('diseases',id);App.toast('Kayıt silindi','info');App.render('diseases')});
+  }
+};
+
+// QUEEN
+const Queen={
+  add(presetHiveId){
+    if(!Data.state.hives.length){App.toast('Önce kovan ekleyin','error');return}
+    const hOpts=Data.state.hives.map(h=>`<option value="${h.id}"${presetHiveId===h.id?' selected':''}>${H.esc(h.name)}</option>`).join('');
+    Modal.open('Yeni Ana Arı',
+      `<label class="field"><span>Kovan *</span><select name="hiveId" required>${hOpts}</select></label>
+       <div class="field-row">
+         <label class="field"><span>Irk *</span><select name="strain" required>${['anatolian','caucasian','carniolan','italian','hybrid'].map(s=>`<option value="${s}">${H.strainTr(s)}</option>`).join('')}</select></label>
+         <label class="field"><span>İşaret</span><select name="markedColor">${['white','yellow','red','green','blue'].map(c=>`<option value="${c}">${H.colorTr(c)}</option>`).join('')}</select></label>
+       </div>
+       <div class="field-row">
+         <label class="field"><span>Doğum *</span><input name="birthDate" type="date" required value="${H.today()}"></label>
+         <label class="field"><span>Kaynak</span><select name="source">${['bred','purchased','swarm','supersedure','emergency'].map(s=>`<option value="${s}">${H.sourceTr(s)}</option>`).join('')}</select></label>
+       </div>
+       <div class="field-row">
+         <label class="field"><span>Tedarikçi</span><input name="supplier"></label>
+         <label class="field"><span>Maliyet (₺)</span><input name="costTry" type="number" min="0" placeholder="0"></label>
+       </div>
+       <label class="field"><span>Performans (0-100)</span><input name="performanceScore" type="number" min="0" max="100" value="80"></label>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2"></textarea></label>`,
+      d=>{
+        d.performanceScore=Math.max(0,Math.min(1,parseInt(d.performanceScore||80)/100));
+        if(d.costTry)d.costTry=parseFloat(d.costTry);
+        const q=Data.add('queens',{...d,status:'active'});
+        const h=Data.get('hives',d.hiveId);
+        if(h){h.queenId=q.id;Data.update('hives',h.id,h);}
+        App.toast('Ana arı eklendi ✓','success');
+        App.render('queens');
+        return true;
+      }
+    );
+  },
+  edit(id){
+    const q=Data.get('queens',id);if(!q)return;
+    const hOpts=Data.state.hives.map(h=>`<option value="${h.id}"${h.id===q.hiveId?' selected':''}>${H.esc(h.name)}</option>`).join('');
+    Modal.open('Ana Arı Düzenle',
+      `<label class="field"><span>Kovan *</span><select name="hiveId" required>${hOpts}</select></label>
+       <div class="field-row">
+         <label class="field"><span>Irk</span><select name="strain">${['anatolian','caucasian','carniolan','italian','hybrid'].map(s=>`<option value="${s}"${q.strain===s?' selected':''}>${H.strainTr(s)}</option>`).join('')}</select></label>
+         <label class="field"><span>İşaret</span><select name="markedColor">${['white','yellow','red','green','blue'].map(c=>`<option value="${c}"${q.markedColor===c?' selected':''}>${H.colorTr(c)}</option>`).join('')}</select></label>
+       </div>
+       <div class="field-row">
+         <label class="field"><span>Doğum</span><input name="birthDate" type="date" required value="${q.birthDate}"></label>
+         <label class="field"><span>Kaynak</span><select name="source">${['bred','purchased','swarm','supersedure','emergency'].map(s=>`<option value="${s}"${q.source===s?' selected':''}>${H.sourceTr(s)}</option>`).join('')}</select></label>
+       </div>
+       <div class="field-row">
+         <label class="field"><span>Tedarikçi</span><input name="supplier" value="${H.esc(q.supplier||'')}"></label>
+         <label class="field"><span>Maliyet (₺)</span><input name="costTry" type="number" value="${q.costTry||''}"></label>
+       </div>
+       <label class="field"><span>Performans</span><input name="performanceScore" type="number" min="0" max="100" value="${(q.performanceScore*100).toFixed(0)}"></label>
+       <label class="field"><span>Durum</span><select name="status">${['active','superseded','dead','sold','missing'].map(s=>`<option value="${s}"${q.status===s?' selected':''}>${s}</option>`).join('')}</select></label>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2">${H.esc(q.notes||'')}</textarea></label>`,
+      d=>{d.performanceScore=Math.max(0,Math.min(1,parseInt(d.performanceScore||80)/100));if(d.costTry)d.costTry=parseFloat(d.costTry);Data.update('queens',id,d);App.toast('Ana arı güncellendi ✓','success');App.render('queens');return true}
+    );
+  },
+  del(id){
+    Modal.confirm('Bu ana arıyı silmek istiyor musunuz?',()=>{Data.remove('queens',id);App.toast('Ana arı silindi','info');App.render('queens')});
+  }
+};
+
+// INVENTORY
+const Inventory={
+  add(){
+    Modal.open('Yeni Envanter Kalemi',
+      `<label class="field"><span>Malzeme *</span><input name="name" required placeholder="Örn: Apivar şerit"></label>
+       <div class="field-row">
+         <label class="field"><span>Kategori</span><select name="category">${['medication','feed','equipment','consumable'].map(c=>`<option value="${c}">${H.inventoryCatTr(c)}</option>`).join('')}</select></label>
+         <label class="field"><span>Birim</span><select name="unit"><option>adet</option><option>kg</option><option>litre</option><option>paket</option><option>kutu</option></select></label>
+       </div>
+       <div class="field-row-3">
+         <label class="field"><span>Miktar *</span><input name="quantity" type="number" step="0.1" required value="1"></label>
+         <label class="field"><span>Min Stok</span><input name="minStock" type="number" value="5"></label>
+         <label class="field"><span>Fiyat (₺)</span><input name="costTry" type="number" step="0.01" value="0"></label>
+       </div>
+       <label class="field"><span>Tedarikçi</span><input name="supplier"></label>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2"></textarea></label>`,
+      d=>{d.quantity=parseFloat(d.quantity)||0;d.minStock=parseFloat(d.minStock)||0;d.costTry=parseFloat(d.costTry)||0;Data.add('inventory',d);App.toast('Envanter eklendi ✓','success');App.render('inventory');return true}
+    );
+  },
+  edit(id){
+    const i=Data.get('inventory',id);if(!i)return;
+    Modal.open('Envanter Düzenle',
+      `<label class="field"><span>Malzeme *</span><input name="name" required value="${H.esc(i.name)}"></label>
+       <div class="field-row">
+         <label class="field"><span>Kategori</span><select name="category">${['medication','feed','equipment','consumable'].map(c=>`<option value="${c}"${i.category===c?' selected':''}>${H.inventoryCatTr(c)}</option>`).join('')}</select></label>
+         <label class="field"><span>Birim</span><select name="unit">${['adet','kg','litre','paket','kutu'].map(u=>`<option${i.unit===u?' selected':''}>${u}</option>`).join('')}</select></label>
+       </div>
+       <div class="field-row-3">
+         <label class="field"><span>Miktar</span><input name="quantity" type="number" step="0.1" value="${i.quantity}"></label>
+         <label class="field"><span>Min</span><input name="minStock" type="number" value="${i.minStock||0}"></label>
+         <label class="field"><span>Fiyat (₺)</span><input name="costTry" type="number" step="0.01" value="${i.costTry||0}"></label>
+       </div>
+       <label class="field"><span>Tedarikçi</span><input name="supplier" value="${H.esc(i.supplier||'')}"></label>
+       <label class="field"><span>Notlar</span><textarea name="notes" rows="2">${H.esc(i.notes||'')}</textarea></label>`,
+      d=>{d.quantity=parseFloat(d.quantity)||0;d.minStock=parseFloat(d.minStock)||0;d.costTry=parseFloat(d.costTry)||0;Data.update('inventory',id,d);App.toast('Envanter güncellendi ✓','success');App.render('inventory');return true}
+    );
+  },
+  del(id){
+    Modal.confirm('Bu kalemi silmek istiyor musunuz?',()=>{Data.remove('inventory',id);App.toast('Silindi','info');App.render('inventory')});
+  }
+};
+// RENDERERS
+const Renderers={
+  dashboard(){
+    const s=Data.state;
+    const totalHives=s.hives.length;
+    const totalApiaries=s.apiaries.length;
+    const totalHoney=s.harvests.reduce((sum,h)=>sum+h.weight,0);
+    const inspCount=s.inspections.length;
+    const avgVarroa=inspCount?(s.inspections.reduce((s,i)=>s+i.varroaCount,0)/inspCount).toFixed(1):0;
+    const recentInsp=s.inspections.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+    const insights=Data.insights();
+    const apiariesWithCoords=s.apiaries.filter(a=>a.lat&&a.lng);
+    return `
+      <div class="stats">
+        <div class="stat"><div class="stat-ico" style="background:var(--honey-soft);color:var(--honey)">🏠</div><div class="stat-label">Toplam Kovan</div><div class="stat-val">${totalHives}</div><div class="stat-meta neutral">${totalApiaries} üste dağılmış</div></div>
+        <div class="stat"><div class="stat-ico" style="background:var(--green-soft);color:var(--green)">🍯</div><div class="stat-label">Toplam Bal</div><div class="stat-val">${H.fmt(totalHoney)} kg</div><div class="stat-meta up">${s.harvests.length} hasat</div></div>
+        <div class="stat"><div class="stat-ico" style="background:var(--blue-soft);color:var(--blue)">📋</div><div class="stat-label">Bu Ay Muayene</div><div class="stat-val">${s.inspections.filter(i=>{const d=new Date(i.date);const n=new Date();return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();}).length}</div><div class="stat-meta neutral">${inspCount} toplam</div></div>
+        <div class="stat"><div class="stat-ico" style="background:${parseFloat(avgVarroa)>3?'var(--red-soft)':'var(--orange-soft)'};color:${parseFloat(avgVarroa)>3?'var(--red)':'var(--orange)'}">⚠️</div><div class="stat-label">Ort. Varroa</div><div class="stat-val">${avgVarroa}</div><div class="stat-meta ${parseFloat(avgVarroa)>3?'down':'up'}">${parseFloat(avgVarroa)>3?'⚠️ Yüksek':'✓ Stabil'}</div></div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <div class="card">
+            <div class="card-h"><div class="card-title">📈 Aylık Hasat Trendi</div><div class="card-sub">Son 6 ay</div></div>
+            ${this._renderHarvestChart()}
+          </div>
+          <div class="card ai-card" style="margin-top:14px">
+            <div class="card-h"><div><div class="card-title">🤖 AI Önerileri</div><div class="card-sub">Kural tabanlı içgörüler</div></div></div>
+            ${insights.length?insights.map(i=>`<div class="ai-item"><div class="ai-ico">${i.icon}</div><div class="ai-body"><div class="ai-title">${H.esc(i.title)}</div><div class="ai-sub">${H.esc(i.sub)}</div></div></div>`).join(''):'<div class="empty-state"><div class="empty-ico">✨</div><div class="empty-title">Aktif uyarı yok</div><div class="empty-sub">Her şey yolunda 🎉</div></div>'}
+          </div>
+          <div class="card" style="margin-top:14px">
+            <div class="card-h"><div class="card-title">📋 Son Muayeneler</div><a class="link" onclick="App.nav('inspections')">Tümü →</a></div>
+            ${recentInsp.length?recentInsp.map(i=>{const h=Data.get('hives',i.hiveId);return `<div class="row"><div class="dot ${H.dot(i.varroaCount>=6?'danger':(i.varroaCount>=3?'warning':'good'))}"></div><div class="row-main"><div class="row-name">${H.esc(h?h.name:'?')} · ${H.popTr(i.population)}</div><div class="row-info">${H.dateStr(i.date)} · Varroa: ${i.varroaCount}${i.notes?' · '+H.esc((i.notes||'').slice(0,40)):''}</div></div></div>`;}).join(''):'<div class="empty-state">Henüz muayene yok</div>'}
+          </div>
+        </div>
+        <div>
+          <div class="card" style="background:linear-gradient(135deg,rgba(244,180,0,0.08),rgba(168,85,247,0.06));border:1px solid rgba(244,180,0,0.2)">
+            <div class="card-h"><div class="card-title">🌤️ Hava & Flora</div><div class="card-sub">Eğil, Diyarbakır</div></div>
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+              <div style="font-size:42px">☀️</div>
+              <div><div style="font-size:32px;font-weight:800">28°C</div><div style="font-size:12px;color:var(--text-dim)">Güneşli · Nem 35% · Rüzgar 12 km</div></div>
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);font-weight:600;text-transform:uppercase;margin-bottom:6px">Aktif Flora</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">${(s.apiaries[0]?(s.apiaries[0].flora||'Geven, Kekik, Adaçayı'):'Geven, Kekik, Adaçayı').split(',').map(f=>`<span style="background:var(--surface2);padding:4px 10px;border-radius:99px;font-size:11px">${H.esc(f.trim())}</span>`).join('')}</div>
+          </div>
+          <div class="card" style="margin-top:14px">
+            <div class="card-h"><div class="card-title">📍 Üs Konumları</div></div>
+            ${apiariesWithCoords.length?`<div style="position:relative;height:200px;background:linear-gradient(135deg,rgba(59,130,246,0.06),rgba(34,197,94,0.06));border-radius:var(--r);overflow:hidden;border:1px solid var(--border)">${apiariesWithCoords.map((a,i)=>`<div style="position:absolute;left:${20+(i*40)}px;top:${40+(i*30)}px;background:var(--honey);color:#000;padding:4px 10px;border-radius:var(--r-sm);font-size:11px;font-weight:600;box-shadow:var(--shadow);cursor:pointer" onclick="App.nav('apiaries')" title="${H.esc(a.name)}">📍 ${H.esc(a.name)}</div>`).join('')}<div style="position:absolute;bottom:6px;right:8px;font-size:10px;color:var(--text-faint)">GPS: ${apiariesWithCoords.length}/${s.apiaries.length} üs</div></div>`:'<div class="empty-state" style="padding:20px"><div class="empty-ico">📍</div><div class="empty-sub">Üs koordinatları ekleyince harita görünecek</div></div>'}
+          </div>
+          <div class="card" style="margin-top:14px">
+            <div class="card-h"><div class="card-title">⚡ Hızlı İşlemler</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <button class="btn" onclick="Inspection.add()" style="justify-content:flex-start;padding:10px">📋 Muayene</button>
+              <button class="btn" onclick="Harvest.add()" style="justify-content:flex-start;padding:10px">🍯 Hasat</button>
+              <button class="btn" onclick="Feeding.add()" style="justify-content:flex-start;padding:10px">🌾 Besleme</button>
+              <button class="btn" onclick="Treatment.add()" style="justify-content:flex-start;padding:10px">💊 Tedavi</button>
+              <button class="btn" onclick="Hive.add()" style="justify-content:flex-start;padding:10px">➕ Kovan</button>
+              <button class="btn" onclick="Apiary.add()" style="justify-content:flex-start;padding:10px">📍 Üs</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+  _renderHarvestChart(){
+    const harvests=Data.state.harvests;
+    if(!harvests.length)return'<div class="empty-state">Hasat verisi yok</div>';
+    const byMonth={};
+    harvests.forEach(h=>{const m=h.date.slice(0,7);byMonth[m]=(byMonth[m]||0)+h.weight;});
+    const months=Object.keys(byMonth).sort().slice(-6);
+    const max=Math.max(...months.map(m=>byMonth[m]),1);
+    const monthNames=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+    return `<div class="chart">${months.map(m=>{const v=byMonth[m];const height=Math.max(4,(v/max)*100);const label=monthNames[parseInt(m.split('-')[1])-1];return `<div class="chart-col"><div class="chart-val">${H.fmt(v)}kg</div><div class="chart-bar" style="height:${height}%"></div><div class="chart-lbl">${label}</div></div>`;}).join('')}</div>`;
+  },
+  apiaries(){
+    const list=Data.state.apiaries;
+    return `
+      <div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Arı Üsleri</h2><div style="color:var(--text-dim);font-size:12px;margin-top:2px">${list.length} üs · ${Data.state.hives.length} kovan</div></div><button class="btn btn-primary" onclick="Apiary.add()">+ Yeni Üs</button></div>
+      ${!list.length?'<div class="card"><div class="empty-state"><div class="empty-ico">📍</div><div class="empty-title">Henüz üs yok</div><button class="btn btn-primary" onclick="Apiary.add()">+ Yeni Üs</button></div></div>':list.map(a=>{const hc=Data.state.hives.filter(h=>h.apiaryId===a.id).length;const totalHoney=Data.state.harvests.filter(h=>h.apiaryId===a.id).reduce((s,h)=>s+h.weight,0);return `<div class="card" style="margin-bottom:10px"><div class="row" style="border:none;padding:0"><div class="dot dot-g"></div><div class="row-main"><div class="row-name">${H.esc(a.name)} <span class="badge badge-info">${hc} kovan</span></div><div class="row-info">📍 ${H.esc(a.location)}${a.lat&&a.lng?' · GPS: '+a.lat.toFixed(3)+', '+a.lng.toFixed(3):''}${a.flora?' · 🌸 '+H.esc(a.flora):''}</div>${a.notes?`<div class="row-info" style="font-style:italic;margin-top:4px">"${H.esc(a.notes)}"</div>`:''}</div><div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--honey)">${H.fmt(totalHoney)} kg</div><div style="font-size:10px;color:var(--text-dim)">toplam bal</div></div><div class="row-actions"><button class="btn btn-sm" onclick="App.nav('hives')">Kovanlar</button><button class="btn btn-sm" onclick="Apiary.edit('${a.id}')">Düzenle</button><button class="btn btn-sm btn-danger" onclick="Apiary.del('${a.id}')">Sil</button></div></div></div>`;}).join('')}
+    `;
+  },
+  hives(){
+    const list=Data.state.hives;
+    return `
+      <div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Kovanlar</h2><div style="color:var(--text-dim);font-size:12px;margin-top:2px">${list.length} kovan · ${Data.state.queens.length} ana arı</div></div><button class="btn btn-primary" onclick="Hive.add()">+ Yeni Kovan</button></div>
+      ${!list.length?'<div class="card"><div class="empty-state"><div class="empty-ico">🏠</div><div class="empty-title">Henüz kovan yok</div><button class="btn btn-primary" onclick="Hive.add()">+ Yeni Kovan</button></div></div>':`<div class="grid-3">${list.map(h=>{const apiary=Data.get('apiaries',h.apiaryId);const lastInsp=Data.state.inspections.filter(i=>i.hiveId===h.id).sort((a,b)=>b.date.localeCompare(a.date))[0];const pop=lastInsp?lastInsp.population:'medium';const varroa=lastInsp?lastInsp.varroaCount:0;const frameCount=Data.state.frames.filter(f=>f.hiveId===h.id).length;return `<div class="card" style="cursor:pointer;position:relative" onclick="Hive.detail('${h.id}')"><div style="position:absolute;top:12px;right:12px">${H.statusBadge(h.status)}</div><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><div style="width:42px;height:42px;border-radius:var(--r);background:linear-gradient(135deg,var(--honey),var(--honey-3));display:flex;align-items:center;justify-content:center;font-size:20px">🏠</div><div><div style="font-size:15px;font-weight:700">${H.esc(h.name)}</div><div style="font-size:11px;color:var(--text-dim)">${H.esc(apiary?apiary.name:'Atanmamış')}</div></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"><div style="background:var(--surface2);padding:8px;border-radius:var(--r-sm)"><div style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase">Irk</div><div style="font-size:13px;font-weight:600">${H.strainTr(h.strain)}</div></div><div style="background:var(--surface2);padding:8px;border-radius:var(--r-sm)"><div style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase">Çerçeve</div><div style="font-size:13px;font-weight:600">${frameCount}</div></div><div style="background:var(--surface2);padding:8px;border-radius:var(--r-sm)"><div style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase">Güç</div><div style="font-size:13px;font-weight:600">${H.popTr(pop)}</div></div><div style="background:var(--surface2);padding:8px;border-radius:var(--r-sm)"><div style="font-size:10px;color:var(--text-dim);font-weight:uppercase">Varroa</div><div style="font-size:13px;font-weight:600;color:${varroa>=6?'var(--red)':(varroa>=3?'var(--orange)':'var(--green)')}">${varroa}</div></div></div><div style="display:flex;gap:6px;margin-top:12px"><button class="btn btn-sm" onclick="event.stopPropagation();Inspection.add('${h.id}')">+ Muayene</button><button class="btn btn-sm" onclick="event.stopPropagation();Hive.edit('${h.id}')">Düzenle</button><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();Hive.del('${h.id}')">Sil</button></div></div>`;}).join('')}</div>`}
+    `;
+  },
+  inspections(){
+    const list=Data.state.inspections.slice().sort((a,b)=>b.date.localeCompare(a.date));
+    return `<div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Muayeneler</h2><div style="color:var(--text-dim);font-size:12px;margin-top:2px">${list.length} kayıt</div></div><button class="btn btn-primary" onclick="Inspection.add()">+ Yeni Muayene</button></div>${!list.length?'<div class="card"><div class="empty-state"><div class="empty-ico">📋</div><div class="empty-title">Henüz muayene yok</div><button class="btn btn-primary" onclick="Inspection.add()">+ İlk Muayene</button></div></div>':`<div class="card"><div class="timeline">${list.map(i=>{const h=Data.get('hives',i.hiveId);return `<div class="timeline-item"><div class="timeline-ico">📋</div><div class="timeline-body"><div class="timeline-title">${H.esc(h?h.name:'?')} <span class="badge ${i.varroaCount>=6?'badge-danger':(i.varroaCount>=3?'badge-warn':'badge-ok')}">Varroa: ${i.varroaCount}</span></div><div class="timeline-meta">${H.dateStr(i.date)} · ${H.popTr(i.population)} · Yavru: ${i.broodFrames} çerçeve · Bal: ${i.honeyFrames} çerçeve${i.queenSeen?' · 👑':''}</div>${i.notes?`<div class="timeline-meta" style="margin-top:4px;color:var(--text-dim)">"${H.esc(i.notes)}"</div>`:''}</div><div class="row-actions"><button class="btn btn-sm" onclick="Inspection.edit('${i.id}')">Düzenle</button><button class="btn btn-sm btn-danger" onclick="Inspection.del('${i.id}')">Sil</button></div></div>`;}).join('')}</div></div>`}`;
+  },
+  harvest(){
+    const list=Data.state.harvests.slice().sort((a,b)=>b.date.localeCompare(a.date));
+    const total=list.reduce((s,h)=>s+h.weight,0);
+    return `<div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Bal Hasadı</h2><div style="color:var(--text-dim);font-size:12px;margin-top:2px">${H.fmt(total)} kg · ${list.length} kayıt</div></div><button class="btn btn-primary" onclick="Harvest.add()">+ Yeni Hasat</button></div><div class="card" style="margin-bottom:14px"><div class="card-h"><div class="card-title">Aylık Hasat</div></div>${this._renderHarvestChart()}</div>${!list.length?'<div class="card"><div class="empty-state"><div class="empty-ico">🍯</div><div class="empty-title">Henüz hasat yok</div><button class="btn btn-primary" onclick="Harvest.add()">+ İlk Hasat</button></div></div>':`<div class="card"><div class="timeline">${list.map(h=>{const hive=Data.get('hives',h.hiveId);return `<div class="timeline-item"><div class="timeline-ico" style="background:var(--honey-soft);color:var(--honey)">🍯</div><div class="timeline-body"><div class="timeline-title">${H.esc(hive?hive.name:'?')} · ${h.weight} kg <span class="badge badge-info">Kalite ${h.quality}</span></div><div class="timeline-meta">${H.dateStr(h.date)} · ${h.frames||0} çerçeve${h.notes?' · '+H.esc(h.notes):''}</div></div><div class="row-actions"><button class="btn btn-sm" onclick="Harvest.edit('${h.id}')">Düzenle</button><button class="btn btn-sm btn-danger" onclick="Harvest.del('${h.id}')">Sil</button></div></div>`;}).join('')}</div></div>`}`;
+  },
+  feeding(){
+    const list=Data.state.feedings.slice().sort((a,b)=>b.date.localeCompare(a.date));
+    return `<div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Besleme</h2><div style="color:var(--text-dim);font-size:12px;margin-top:2px">${list.length} kayıt</div></div><button class="btn btn-primary" onclick="Feeding.add()">+ Yeni Besleme</button></div>${!list.length?'<div class="card"><div class="empty-state"><div class="empty-ico">🌾</div><div class="empty-title">Henüz besleme kaydı yok</div><button class="btn btn-primary" onclick="Feeding.add()">+ İlk Besleme</button></div></div>':`<div class="card"><div class="timeline">${list.map(f=>{const h=Data.get('hives',f.hiveId);return `<div class="timeline-item"><div class="timeline-ico" style="background:var(--orange-soft);color:var(--orange)">🌾</div><div class="timeline-body"><div class="timeline-title">${H.esc(h?h.name:'?')} · ${f.amountKg} kg ${H.typeTr(f.type)} ${H.statusBadge(f.status)}</div><div class="timeline-meta">${H.dateStr(f.date)} · ${H.reasonTr(f.reason)}${f.notes?' · '+H.esc(f.notes):''}</div></div><div class="row-actions"><button class="btn btn-sm" onclick="Feeding.edit('${f.id}')">Düzenle</button><button class="btn btn-sm btn-danger" onclick="Feeding.del('${f.id}')">Sil</button></div></div>`;}).join('')}</div></div>`}`;
+  },
+  treatments(){
+    const list=Data.state.treatments.slice().sort((a,b)=>b.date.localeCompare(a.date));
+    return `<div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Tedaviler</h2><div style="color:var(--text-dim);font-size:12px;margin-top:2px">${list.length} kayıt</div></div><button class="btn btn-primary" onclick="Treatment.add()">+ Yeni Tedavi</button></div>${!list.length?'<div class="card"><div class="empty-state"><div class="empty-ico">💊</div><div class="empty-title">Henüz tedavi kaydı yok</div><button class="btn btn-primary" onclick="Treatment.add()">+ İlk Tedavi</button></div></div>':`<div class="card"><div class="timeline">${list.map(t=>{const h=Data.get('hives',t.hiveId);return `<div class="timeline-item"><div class="timeline-ico" style="background:var(--purple-soft);color:var(--purple)">💊</div><div class="timeline-body"><div class="timeline-title">${H.esc(h?h.name:'?')} · ${H.esc(t.product)} ${H.statusBadge(t.status)}</div><div class="timeline-meta">${H.dateStr(t.date)} · ${H.esc(t.dosage||'-')} · ${H.esc(t.duration||'')}${t.varroaBefore!=null?' · Varroa önce: '+t.varroaBefore:''}${t.varroaAfter!=null?' → sonra: '+t.varroaAfter:''}</div>${t.notes?`<div class="timeline-meta" style="margin-top:4px;color:var(--text-dim)">${H.esc(t.notes)}</div>`:''}</div><div class="row-actions"><button class="btn btn-sm" onclick="Treatment.edit('${t.id}')">Düzenle</button><button class="btn btn-sm btn-danger" onclick="Treatment.del('${t.id}')">Sil</button></div></div>`;}).join('')}</div></div>`}`;
+  },
+  diseases(){
+    const list=Data.state.diseases.slice().sort((a,b)=>b.date.localeCompare(a.date));
+    return `<div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Hastalıklar</h2><div style="color:var(--text-dim);font-size:12px;margin-top:2px">${list.length} kayıt</div></div><button class="btn btn-primary" onclick="Disease.add()">+ Yeni Kayıt</button></div>${!list.length?'<div class="card"><div class="empty-state"><div class="empty-ico">🦠</div><div class="empty-title">Aktif hastalık yok 🎉</div><button class="btn btn-primary" onclick="Disease.add()">+ Kayıt Ekle</button></div></div>':`<div class="card"><div class="timeline">${list.map(d=>{const h=Data.get('hives',d.hiveId);const sev=d.severity==='high'?'danger':(d.severity==='medium'?'warn':'info');return `<div class="timeline-item"><div class="timeline-ico" style="background:var(--red-soft);color:var(--red)">${H.diseaseIco(d.disease)}</div><div class="timeline-body"><div class="timeline-title">${H.esc(h?h.name:'?')} · ${H.diseaseTr(d.disease)} <span class="badge badge-${sev}">${d.severity}</span></div><div class="timeline-meta">${H.dateStr(d.date)} · ${H.statusBadge(d.status)}${d.treatment?' · Tedavi: '+H.esc(d.treatment):''}</div>${d.notes?`<div class="timeline-meta" style="margin-top:4px;color:var(--text-dim)">${H.esc(d.notes)}</div>`:''}</div><div class="row-actions"><button class="btn btn-sm" onclick="Disease.edit('${d.id}')">Düzenle</button><button class="btn btn-sm btn-danger" onclick="Disease.del('${d.id}')">Sil</button></div></div>`;}).join('')}</div></div>`}`;
+  },
+  queens(){
+    const list=Data.state.queens;
+    return `<div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Ana Arılar</h2><div style="color:var(--text-dim);font-size:12px;margin-top:2px">${list.length} kayıt</div></div><button class="btn btn-primary" onclick="Queen.add()">+ Yeni Ana Arı</button></div>${!list.length?'<div class="card"><div class="empty-state"><div class="empty-ico">👑</div><div class="empty-title">Henüz ana arı kaydı yok</div><button class="btn btn-primary" onclick="Queen.add()">+ İlk Ana Arı</button></div></div>':`<div class="grid-3">${list.map(q=>{const h=Data.get('hives',q.hiveId);const age=((Date.now()-new Date(q.birthDate).getTime())/(365*864e5)).toFixed(1);return `<div class="card"><div style="display:flex;align-items:center;gap:12px;margin-bottom:14px"><div style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--honey),var(--honey-3));display:flex;align-items:center;justify-content:center;font-size:26px">👑</div><div style="flex:1"><div style="font-size:14px;font-weight:700">${H.strainTr(q.strain)}</div><div style="font-size:11px;color:var(--text-dim)">${H.esc(h?h.name:'Atanmamış')} · ${H.statusBadge(q.status)}</div></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="background:var(--surface2);padding:8px;border-radius:var(--r-sm)"><div style="font-size:10px;color:var(--text-dim);font-weight:600">YAŞ</div><div style="font-size:13px;font-weight:600">${age} yıl</div></div><div style="background:var(--surface2);padding:8px;border-radius:var(--r-sm)"><div style="font-size:10px;color:var(--text-dim);font-weight:600">PERFORMANS</div><div style="font-size:13px;font-weight:600;color:${q.performanceScore>=0.7?'var(--green)':(q.performanceScore>=0.5?'var(--honey)':'var(--red)')}">${(q.performanceScore*100).toFixed(0)}%</div></div><div style="background:var(--surface2);padding:8px;border-radius:var(--r-sm)"><div style="font-size:10px;color:var(--text-dim);font-weight:600">RENK</div><div style="font-size:13px;font-weight:600">${H.colorTr(q.markedColor)}</div></div><div style="background:var(--surface2);padding:8px;border-radius:var(--r-sm)"><div style="font-size:10px;color:var(--text-dim);font-weight:600">KAYNAK</div><div style="font-size:13px;font-weight:600">${H.sourceTr(q.source)}</div></div></div><div style="display:flex;gap:6px;margin-top:12px"><button class="btn btn-sm" onclick="Queen.edit('${q.id}')">Düzenle</button><button class="btn btn-sm btn-danger" onclick="Queen.del('${q.id}')">Sil</button></div></div>`;}).join('')}</div>`}`;
+  },
+  inventory(){
+    const list=Data.state.inventory;
+    const lowStock=list.filter(i=>i.quantity<=i.minStock);
+    const totalValue=list.reduce((s,i)=>s+(i.quantity*(i.costTry||0)),0);
+    return `<div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Envanter</h2><div style="color:var(--text-dim);font-size:12px;margin-top:2px">${list.length} kalem · ₺${H.fmt(totalValue,0)} değer${lowStock.length?' · '+lowStock.length+' düşük stok':''}</div></div><button class="btn btn-primary" onclick="Inventory.add()">+ Yeni Malzeme</button></div>${!list.length?'<div class="card"><div class="empty-state"><div class="empty-ico">📦</div><div class="empty-title">Envanter boş</div><button class="btn btn-primary" onclick="Inventory.add()">+ İlk Malzeme</button></div></div>':`<div class="card"><div style="display:flex;flex-direction:column">${list.map(i=>{const low=i.quantity<=i.minStock;return `<div class="row" style="${low?'background:var(--red-soft);margin:0 -18px;padding:11px 18px':''}"><div class="dot ${low?'dot-r':'dot-g'}"></div><div class="row-main"><div class="row-name">${H.esc(i.name)} <span class="badge badge-info">${H.inventoryCatTr(i.category)}</span>${low?' <span class="badge badge-danger">Düşük Stok</span>':''}</div><div class="row-info">${i.quantity} ${i.unit} / min ${i.minStock}${i.supplier?' · '+H.esc(i.supplier):''}${i.costTry?' · ₺'+H.fmt(i.costTry,2)+'/'+i.unit:''}</div></div><div style="text-align:right"><div style="font-size:14px;font-weight:700">${i.quantity} ${i.unit}</div><div style="font-size:10px;color:var(--text-dim)">₺${H.fmt(i.quantity*(i.costTry||0),0)}</div></div><div class="row-actions"><button class="btn btn-sm" onclick="Inventory.edit('${i.id}')">Düzenle</button><button class="btn btn-sm btn-danger" onclick="Inventory.del('${i.id}')">Sil</button></div></div>`;}).join('')}</div></div>`}`;
+  },
+  analytics(){
+    const s=Data.state;
+    const inspCount=s.inspections.length;
+    const avgVarroa=inspCount?(s.inspections.reduce((s,i)=>s+i.varroaCount,0)/inspCount).toFixed(1):0;
+    const totalHoney=s.harvests.reduce((s,h)=>s+h.weight,0);
+    const avgHoney=s.hives.length?(totalHoney/s.hives.length).toFixed(1):0;
+    const activeTreat=s.treatments.filter(t=>t.status==='in_progress').length;
+    const lowStock=s.inventory.filter(i=>i.quantity<=i.minStock).length;
+    return `
+      <div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Analitik</h2><div style="color:var(--text-dim);font-size:12px;margin-top:2px">Tüm verilerden içgörüler</div></div></div>
+      <div class="stats">
+        <div class="stat"><div class="stat-ico" style="background:var(--honey-soft);color:var(--honey)">🍯</div><div class="stat-label">Kovan Başına</div><div class="stat-val">${avgHoney} kg</div><div class="stat-meta neutral">${s.hives.length} kovan</div></div>
+        <div class="stat"><div class="stat-ico" style="background:var(--red-soft);color:var(--red)">⚠️</div><div class="stat-label">Aktif Tedavi</div><div class="stat-val">${activeTreat}</div><div class="stat-meta ${activeTreat>0?'down':'up'}">${activeTreat>0?'Sürüyor':'Yok'}</div></div>
+        <div class="stat"><div class="stat-ico" style="background:var(--orange-soft);color:var(--orange)">📦</div><div class="stat-label">Düşük Stok</div><div class="stat-val">${lowStock}</div><div class="stat-meta ${lowStock>0?'down':'up'}">${lowStock>0?'Sipariş':'Tam'}</div></div>
+        <div class="stat"><div class="stat-ico" style="background:var(--blue-soft);color:var(--blue)">📋</div><div class="stat-label">Muayene</div><div class="stat-val">${inspCount}</div><div class="stat-meta neutral">toplam</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card"><div class="card-h"><div class="card-title">Varroa Dağılımı</div></div>${this._renderVarroaChart()}</div>
+        <div class="card"><div class="card-h"><div class="card-title">Üs Performansı</div></div>${this._renderApiaryChart()}</div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="card-h"><div class="card-title">Kovan Performans Tablosu</div></div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr style="background:var(--surface2)">
+              <th style="padding:10px;text-align:left;font-weight:600">Kovan</th>
+              <th style="padding:10px;text-align:left">Üs</th>
+              <th style="padding:10px;text-align:left">Irk</th>
+              <th style="padding:10px;text-align:right">Bal</th>
+              <th style="padding:10px;text-align:right">Varroa</th>
+              <th style="padding:10px;text-align:right">Skor</th>
+              <th style="padding:10px;text-align:center">Son Muayene</th>
+            </tr></thead>
+            <tbody>${s.hives.map(h=>{const a=Data.get('apiaries',h.apiaryId);const q=s.queens.find(q=>q.id===h.queenId);const honey=s.harvests.filter(hv=>hv.hiveId===h.id).reduce((s,hv)=>s+hv.weight,0);const last=s.inspections.filter(i=>i.hiveId===h.id).sort((a,b)=>b.date.localeCompare(a.date))[0];return `<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="Hive.detail('${h.id}')"><td style="padding:10px;font-weight:600">${H.esc(h.name)}</td><td style="padding:10px;color:var(--text-dim)">${H.esc(a?a.name:'-')}</td><td style="padding:10px">${H.strainTr(h.strain)}</td><td style="padding:10px;text-align:right;font-weight:600;color:var(--honey)">${H.fmt(honey)}</td><td style="padding:10px;text-align:right;font-weight:600;color:${last&&last.varroaCount>=6?'var(--red)':(last&&last.varroaCount>=3?'var(--orange)':'var(--green)')}">${last?last.varroaCount:'-'}</td><td style="padding:10px;text-align:right;color:${q&&q.performanceScore>=0.7?'var(--green)':(q&&q.performanceScore>=0.5?'var(--honey)':'var(--red)')}">${q?(q.performanceScore*100).toFixed(0)+'%':'-'}</td><td style="padding:10px;text-align:center;color:var(--text-dim)">${last?H.dateAgo(last.date):'-'}</td></tr>`;}).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  },
+  _renderVarroaChart(){
+    const s=Data.state;
+    if(!s.hives.length)return'<div class="empty-state">Veri yok</div>';
+    const hivesWith=s.hives.map(h=>{const last=s.inspections.filter(i=>i.hiveId===h.id).sort((a,b)=>b.date.localeCompare(a.date))[0];return{name:h.name,varroa:last?last.varroaCount:0};}).sort((a,b)=>b.varroa-a.varroa);
+    const max=Math.max(...hivesWith.map(h=>h.varroa),1);
+    return `<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${hivesWith.map(h=>{const pct=Math.max(4,(h.varroa/max)*100);const cls=h.varroa>=6?'danger':(h.varroa>=3?'warn':'ok');return `<div style="display:flex;align-items:center;gap:10px"><div style="font-size:12px;font-weight:600;width:80px;color:var(--text-dim)">${H.esc(h.name)}</div><div style="flex:1;background:var(--surface2);height:24px;border-radius:var(--r-sm);overflow:hidden;position:relative"><div class="chart-bar ${cls}" style="height:100%;width:${pct}%;max-width:none;border-radius:0"></div></div><div style="font-size:13px;font-weight:700;width:40px;text-align:right;color:${h.varroa>=6?'var(--red)':(h.varroa>=3?'var(--orange)':'var(--green)')}">${h.varroa}</div></div>`;}).join('')}</div>`;
+  },
+  _renderApiaryChart(){
+    const s=Data.state;
+    if(!s.apiaries.length)return'<div class="empty-state">Veri yok</div>';
+    const data=s.apiaries.map(a=>{const hives=s.hives.filter(h=>h.apiaryId===a.id);const honey=s.harvests.filter(h=>h.apiaryId===a.id).reduce((s,h)=>s+h.weight,0);return{name:a.name,honey,kovan:hives.length};});
+    const max=Math.max(...data.map(d=>d.honey),1);
+    return `<div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">${data.map(d=>`<div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;font-weight:600">${H.esc(d.name)} <span style="color:var(--text-dim);font-weight:400">(${d.kovan} kovan)</span></span><span style="font-size:13px;font-weight:700;color:var(--honey)">${H.fmt(d.honey)} kg</span></div><div style="background:var(--surface2);height:18px;border-radius:var(--r-sm);overflow:hidden"><div style="background:linear-gradient(90deg,var(--honey),var(--honey-3));height:100%;width:${Math.max(4,(d.honey/max)*100)}%;transition:var(--t)"></div></div></div>`).join('')}</div>`;
+  },
+  reports(){
+    const s=Data.state;
+    const templates=[
+      {icon:'📊',name:'Aylık Performans',desc:'Tüm kovanların aylık özeti',color:'var(--honey)'},
+      {icon:'⚠️',name:'Sağlık Raporu',desc:'Varroa, hastalık ve tedavi durumu',color:'var(--red)'},
+      {icon:'👑',name:'Ana Arı Performans',desc:'Tüm ana arıların karşılaştırması',color:'var(--purple)'},
+      {icon:'📦',name:'Envanter Raporu',desc:'Stok durumu ve uyarılar',color:'var(--blue)'},
+      {icon:'💰',name:'Gelir/Gider Analizi',desc:'Maliyet ve verim özeti',color:'var(--green)'},
+      {icon:'📅',name:'Sezonluk Özet',desc:'Tüm yılın performansı',color:'var(--orange)'}
+    ];
+    return `<div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Raporlar</h2><div style="color:var(--text-dim);font-size:12px;margin-top:2px">Hazır şablonlar</div></div></div><div class="grid-3">${templates.map(t=>`<div class="card" style="cursor:pointer;text-align:center" onclick="Reports.show('${t.name}')"><div style="font-size:42px;margin-bottom:10px">${t.icon}</div><div style="font-size:14px;font-weight:700;margin-bottom:4px">${t.name}</div><div style="font-size:11.5px;color:var(--text-dim)">${t.desc}</div></div>`).join('')}</div>`;
+  },
+  settings(){
+    const settings=[{icon:'👤',name:'Kullanıcı',desc:'Profil, şifre'},{icon:'🌍',name:'Bölge & Konum',desc:'Eğil, Diyarbakır'},{icon:'🔔',name:'Bildirimler',desc:'Hatırlatıcılar'},{icon:'📡',name:'Senkronizasyon',desc:'Bulut yedekleme'},{icon:'🎨',name:'Tema & Görünüm',desc:'Koyu/Açık mod'},{icon:'💾',name:'Veri',desc:'Dışa/içe aktar, sıfırla'},{icon:'ℹ️',name:'Hakkında',desc:'BeeMaster AI v2.0'}];
+    return `<div class="actions-bar"><div><h2 style="font-size:18px;font-weight:700">Ayarlar</h2><div style="color:var(--text-dim);font-size:12px;margin-top:2px">Uygulama ve hesap ayarları</div></div></div><div class="grid-3">${settings.map(s=>`<div class="card" style="cursor:pointer"><div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:var(--r);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:20px">${s.icon}</div><div><div style="font-size:14px;font-weight:700">${s.name}</div><div style="font-size:11.5px;color:var(--text-dim)">${s.desc}</div></div></div></div>`).join('')}</div><div class="card" style="margin-top:14px"><div class="card-title">Veri Yönetimi</div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn" onclick="App.exportData()">📥 Dışa Aktar (JSON)</button><button class="btn" onclick="App.importData()">📤 İçe Aktar</button><button class="btn btn-danger" onclick="App.resetData()">🗑️ Tüm Veriyi Sıfırla</button></div></div>`;
+  }
+};
+
+// REPORTS
+const Reports={
+  show(type){
+    const s=Data.state;
+    let html='';
+    if(type==='Aylık Performans'){
+      html=`<div style="padding:20px"><h2 style="margin-bottom:14px">Aylık Performans — ${new Date().toLocaleDateString('tr-TR',{month:'long',year:'numeric'})}</h2><div class="kpi-row"><div class="kpi"><div class="kpi-val">${s.hives.length}</div><div class="kpi-lbl">Aktif Kovan</div></div><div class="kpi"><div class="kpi-val">${s.harvests.reduce((s,h)=>s+h.weight,0).toFixed(1)} kg</div><div class="kpi-lbl">Toplam Bal</div></div><div class="kpi"><div class="kpi-val">${s.inspections.length}</div><div class="kpi-lbl">Muayene</div></div><div class="kpi"><div class="kpi-val">${s.treatments.filter(t=>t.status==='in_progress').length}</div><div class="kpi-lbl">Aktif Tedavi</div></div></div><h3 style="margin:18px 0 8px">Üs Bazında Verim</h3>${s.apiaries.map(a=>{const honey=s.harvests.filter(h=>h.apiaryId===a.id).reduce((s,h)=>s+h.weight,0);return `<div class="row"><div class="row-main"><div class="row-name">${H.esc(a.name)}</div><div class="row-info">${s.hives.filter(h=>h.apiaryId===a.id).length} kovan</div></div><div style="font-weight:700;color:var(--honey)">${honey.toFixed(1)} kg</div></div>`;}).join('')}</div>`;
+    } else if(type==='Sağlık Raporu'){
+      const dangers=s.hives.filter(h=>{const last=s.inspections.filter(i=>i.hiveId===h.id).sort((a,b)=>b.date.localeCompare(a.date))[0];return last&&last.varroaCount>=6;});
+      html=`<div style="padding:20px"><h2 style="margin-bottom:14px">Sağlık Raporu — ${H.today()}</h2><div class="kpi-row"><div class="kpi"><div class="kpi-val" style="color:var(--red)">${dangers.length}</div><div class="kpi-lbl">⚠️ Kritik</div></div><div class="kpi"><div class="kpi-val" style="color:var(--orange)">${s.inspections.filter(i=>{const last=s.inspections.filter(x=>x.hiveId===i.hiveId).sort((a,b)=>b.date.localeCompare(a.date))[0];return last===i&&i.varroaCount>=3&&i.varroaCount<6;}).length}</div><div class="kpi-lbl">İzleme</div></div><div class="kpi"><div class="kpi-val">${s.diseases.length}</div><div class="kpi-lbl">Hastalık</div></div><div class="kpi"><div class="kpi-val">${s.treatments.filter(t=>t.status==='in_progress').length}</div><div class="kpi-lbl">Aktif Tedavi</div></div></div>${dangers.length?'<h3 style="margin-top:18px;color:var(--red)">⚠️ Acil Müdahale</h3>'+dangers.map(h=>{const last=s.inspections.filter(i=>i.hiveId===h.id).sort((a,b)=>b.date.localeCompare(a.date))[0];return `<div class="row"><div class="dot dot-r"></div><div class="row-main"><div class="row-name">${H.esc(h.name)}</div><div class="row-info">Son varroa: ${last.varroaCount} (${H.dateStr(last.date)})</div></div></div>`;}).join(''):''}</div>`;
+    } else if(type==='Ana Arı Performans'){
+      html=`<div style="padding:20px"><h2 style="margin-bottom:14px">Ana Arı Performans</h2>${s.queens.map(q=>{const h=Data.get('hives',q.hiveId);const age=((Date.now()-new Date(q.birthDate).getTime())/(365*864e5)).toFixed(1);const honey=s.harvests.filter(hv=>hv.hiveId===q.hiveId).reduce((s,hv)=>s+hv.weight,0);return `<div class="card" style="margin-bottom:10px"><div class="row" style="padding:0;border:none"><div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--honey),var(--honey-3));display:flex;align-items:center;justify-content:center;font-size:24px">👑</div><div class="row-main"><div class="row-name">${H.esc(h?h.name:'?')} — ${H.strainTr(q.strain)}</div><div class="row-info">Yaş: ${age} yıl · Verim: ${honey.toFixed(1)} kg</div></div><div style="text-align:right"><div style="font-size:24px;font-weight:800;color:${q.performanceScore>=0.7?'var(--green)':(q.performanceScore>=0.5?'var(--honey)':'var(--red)')}">${(q.performanceScore*100).toFixed(0)}%</div><div style="font-size:10px;color:var(--text-dim)">performans</div></div></div></div>`;}).join('')}</div>`;
+    } else if(type==='Envanter Raporu'){
+      const total=s.inventory.reduce((s,i)=>s+(i.quantity*(i.costTry||0)),0);
+      const low=s.inventory.filter(i=>i.quantity<=i.minStock);
+      html=`<div style="padding:20px"><h2 style="margin-bottom:14px">Envanter Raporu</h2><div class="kpi-row"><div class="kpi"><div class="kpi-val">${s.inventory.length}</div><div class="kpi-lbl">Kalem</div></div><div class="kpi"><div class="kpi-val">₺${total.toFixed(0)}</div><div class="kpi-lbl">Değer</div></div><div class="kpi"><div class="kpi-val" style="color:var(--red)">${low.length}</div><div class="kpi-lbl">Düşük</div></div></div>${low.length?'<h3 style="margin-top:18px;color:var(--red)">⚠️ Düşük Stok</h3>'+low.map(i=>`<div class="row"><div class="dot dot-r"></div><div class="row-main"><div class="row-name">${H.esc(i.name)}</div><div class="row-info">${i.quantity} ${i.unit} / min ${i.minStock}</div></div></div>`).join(''):''}<h3 style="margin-top:18px">Tüm Stok</h3>${s.inventory.map(i=>`<div class="row"><div class="dot ${i.quantity<=i.minStock?'dot-r':'dot-g'}"></div><div class="row-main"><div class="row-name">${H.esc(i.name)}</div><div class="row-info">${H.inventoryCatTr(i.category)} · ₺${i.costTry||0}/${i.unit}</div></div><div style="font-weight:700">${i.quantity} ${i.unit}</div></div>`).join('')}</div>`;
+    } else if(type==='Gelir/Gider Analizi'){
+      const treatCost=s.treatments.length*85;
+      const feedCost=s.feedings.reduce((s,f)=>s+f.amountKg*12,0);
+      const honey=s.harvests.reduce((s,h)=>s+h.weight,0);
+      const revenue=honey*250;
+      html=`<div style="padding:20px"><h2 style="margin-bottom:14px">Gelir/Gider Analizi</h2><div class="kpi-row"><div class="kpi"><div class="kpi-val" style="color:var(--green)">₺${revenue.toFixed(0)}</div><div class="kpi-lbl">Tahmini Gelir</div></div><div class="kpi"><div class="kpi-val" style="color:var(--red)">₺${(treatCost+feedCost).toFixed(0)}</div><div class="kpi-lbl">Tahmini Gider</div></div><div class="kpi"><div class="kpi-val">₺${(revenue-treatCost-feedCost).toFixed(0)}</div><div class="kpi-lbl">Net</div></div></div><div class="card" style="margin-top:14px"><div class="row"><div class="row-main"><div class="row-name">Bal Hasadı</div><div class="row-info">${honey.toFixed(1)} kg × ₺250</div></div><div style="color:var(--green);font-weight:700">+₺${revenue.toFixed(0)}</div></div><div class="row"><div class="row-main"><div class="row-name">Tedavi</div><div class="row-info">${s.treatments.length} işlem × ₺85</div></div><div style="color:var(--red);font-weight:700">-₺${treatCost.toFixed(0)}</div></div><div class="row"><div class="row-main"><div class="row-name">Besleme</div><div class="row-info">${s.feedings.reduce((s,f)=>s+f.amountKg,0).toFixed(1)} kg × ₺12</div></div><div style="color:var(--red);font-weight:700">-₺${feedCost.toFixed(0)}</div></div></div></div>`;
+    } else if(type==='Sezonluk Özet'){
+      const totalHoney=s.harvests.reduce((s,h)=>s+h.weight,0);
+      const totalInsp=s.inspections.length;
+      const months=new Set(s.harvests.map(h=>h.date.slice(0,7))).size;
+      html=`<div style="padding:20px"><h2 style="margin-bottom:14px">Sezonluk Özet — 2026</h2><div class="kpi-row"><div class="kpi"><div class="kpi-val">${totalHoney.toFixed(1)} kg</div><div class="kpi-lbl">Toplam Bal</div></div><div class="kpi"><div class="kpi-val">${totalInsp}</div><div class="kpi-lbl">Muayene</div></div><div class="kpi"><div class="kpi-val">${months}</div><div class="kpi-lbl">Aktif Ay</div></div><div class="kpi"><div class="kpi-val">${(totalHoney/Math.max(months,1)).toFixed(1)}</div><div class="kpi-lbl">kg/Ay</div></div></div>${Renderers._renderHarvestChart()}</div>`;
+    }
+    App.showReport(html);
+  }
+};
+
+// APP
+const App={
+  currentView:'dashboard',
+  currentHiveId:null,
+  nav(view){
+    this.currentView=view;
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.querySelectorAll('.nav,.bnav').forEach(n=>n.classList.remove('active'));
+    const el=document.getElementById('view-'+view);
+    if(el)el.classList.add('active');
+    document.querySelectorAll(`[data-view="${view}"]`).forEach(n=>{if(n.classList.contains('nav')||n.classList.contains('bnav'))n.classList.add('active');});
+    const titles={dashboard:['Dashboard','Genel bakış · Eğil, Diyarbakır'],apiaries:['Arı Üsleri',Data.state.apiaries.length+' üs · '+Data.state.hives.length+' kovan'],hives:['Kovanlar',Data.state.hives.length+' aktif kovan'],inspections:['Muayeneler',Data.state.inspections.length+' kayıt'],harvest:['Bal Hasadı',Data.state.harvests.reduce((s,h)=>s+h.weight,0).toFixed(1)+' kg'],feeding:['Besleme',Data.state.feedings.length+' kayıt'],treatments:['Tedaviler',Data.state.treatments.length+' kayıt'],diseases:['Hastalıklar',Data.state.diseases.length+' kayıt'],queens:['Ana Arılar',Data.state.queens.length+' ana arı'],inventory:['Envanter',Data.state.inventory.length+' malzeme'],analytics:['Analitik','Tüm verilerden içgörüler'],reports:['Raporlar','Hazır şablonlar'],settings:['Ayarlar','Uygulama ve veri yönetimi']};
+    const t=titles[view]||[view,''];
+    document.getElementById('page-title').textContent=t[0];
+    document.getElementById('page-subtitle').textContent=t[1];
+    this.render(view);
+    if(history.pushState)history.pushState({view},'','#'+view);
+    window.scrollTo(0,0);
+  },
+  render(view){
+    const r=Renderers[view];
+    if(r){const el=document.getElementById('view-'+view);if(el)el.innerHTML=r.call(Renderers);}
+  },
+  toast(msg,type='info'){
+    const c=document.getElementById('toast-container');
+    const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;
+    c.appendChild(t);
+    setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},3000);
+  },
+  toggleTheme(){
+    const cur=document.documentElement.getAttribute('data-theme')||'dark';
+    const next=cur==='dark'?'light':'dark';
+    document.documentElement.setAttribute('data-theme',next);
+    document.getElementById('theme-toggle').textContent=next==='dark'?'🌙':'☀️';
+    try{localStorage.setItem('bm-theme',next)}catch(e){}
+  },
+  quickAdd(){
+    Modal.open('Hızlı Ekle','<div style="display:grid;gap:8px"><button class="btn" onclick="Modal.close();setTimeout(()=>Hive.add(),200)">🏠 Yeni Kovan</button><button class="btn" onclick="Modal.close();setTimeout(()=>Apiary.add(),200)">📍 Yeni Üs</button><button class="btn" onclick="Modal.close();setTimeout(()=>Inspection.add(),200)">📋 Yeni Muayene</button><button class="btn" onclick="Modal.close();setTimeout(()=>Harvest.add(),200)">🍯 Yeni Hasat</button><button class="btn" onclick="Modal.close();setTimeout(()=>Feeding.add(),200)">🌾 Yeni Besleme</button><button class="btn" onclick="Modal.close();setTimeout(()=>Treatment.add(),200)">💊 Yeni Tedavi</button><button class="btn" onclick="Modal.close();setTimeout(()=>Queen.add(),200)">👑 Yeni Ana Arı</button><button class="btn" onclick="Modal.close();setTimeout(()=>Inventory.add(),200)">📦 Yeni Malzeme</button></div>',()=>true);
+  },
+  showReport(html){Modal.open('Rapor',html,()=>true);},
+  exportData(){
+    const blob=new Blob([JSON.stringify(Data.state,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='beemaster-backup-'+H.today()+'.json';
+    a.click();
+    this.toast('Veri dışa aktarıldı ✓','success');
+  },
+  importData(){
+    const input=document.createElement('input');input.type='file';input.accept='.json,application/json';
+    input.onchange=e=>{
+      const file=e.target.files[0];if(!file)return;
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        try{
+          const data=JSON.parse(ev.target.result);
+          if(!data.apiaries||!data.hives)throw new Error('Geçersiz format');
+          Modal.confirm('Mevcut veriler değiştirilecek. Devam edilsin mi?',()=>{Data.state=data;Data.save();this.toast('Veri içe aktarıldı ✓','success');this.render(this.currentView);});
+        }catch(err){this.toast('Geçersiz dosya: '+err.message,'error');}
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  },
+  resetData(){
+    Modal.confirm('⚠️ TÜM veriler silinecek ve örnek verilerle değiştirilecek. Bu işlem geri alınamaz!',()=>{
+      localStorage.removeItem(STORAGE_KEY);Data.seed();
+      this.toast('Veriler sıfırlandı','info');this.nav('dashboard');
+    });
+  }
+};
+
+// INIT
+(function(){
+  if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(regs=>regs.forEach(r=>r.unregister()));}
+  try{const saved=localStorage.getItem('bm-theme');if(saved){document.documentElement.setAttribute('data-theme',saved);const btn=document.getElementById('theme-toggle');if(btn)btn.textContent=saved==='dark'?'🌙':'☀️';}}catch(e){}
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')Modal.close();});
+  window.addEventListener('popstate',e=>{const h=location.hash.slice(1);if(h)App.nav(h);});
+  const h=location.hash.slice(1);
+  App.nav(h||'dashboard');
+  console.log('[BeeMaster AI v2.0] Spec-driven PWA · 12 modules · offline-first');
+})();
+
+</script>
 </body>
 </html>
