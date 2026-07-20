@@ -1659,7 +1659,7 @@
           </div>
         </div>`;
       }).join('')}</div></div>`}`;
-    }
+    },
     handlePhotos(event) {
       const files = Array.from(event.target.files || []);
       const s = this._state;
