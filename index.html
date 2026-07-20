@@ -13,9 +13,9 @@
   <meta http-equiv="Expires" content="0">
 
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json?v=5">
-  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg?v=5">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=5">
+  <link rel="manifest" href="manifest.json?v=6">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg?v=6">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -23,10 +23,15 @@
   <meta name="application-name" content="BeeMaster AI">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="css/app.css?v=5">
+  <link rel="stylesheet" href="css/app.css?v=6">
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+
+  <!-- Google Fonts: Poppins + Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
 
   <!-- Boot screen (CSS inline, instantly visible) -->
   <style>
@@ -47,10 +52,7 @@
     .boot-screen__bar { height: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b); width: 30%; animation: slide 1.5s ease-in-out infinite; }
     @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
     @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
-    noscript {
-      display: flex; align-items: center; justify-content: center; height: 100vh;
-      background: #07080C; color: #E8EAF2; font-family: system-ui; text-align: center; padding: 20px;
-    }
+    noscript { display: flex; align-items: center; justify-content: center; height: 100vh; background: #07080C; color: #E8EAF2; font-family: system-ui; text-align: center; padding: 20px; }
   </style>
 </head>
 <body>
@@ -71,7 +73,7 @@
 
   <!-- App shell -->
   <div class="app">
-    <aside class="app__sidebar" id="app-sidebar"></aside>
+    <aside id="app-sidebar"></aside>
 
     <header class="app__header">
       <div class="page-title">
@@ -106,7 +108,7 @@
     </main>
   </div>
 
-  <nav class="app__bottom-nav" id="app-bottom-nav"></nav>
+  <nav id="app-bottom-nav"></nav>
 
   <!-- Modal -->
   <div class="modal-overlay" id="modal-overlay">
@@ -132,7 +134,7 @@
        SINGLE BUNDLE — All BM modules + App controller
        Loaded with defer to ensure DOM ready before execution
        ============================================================ -->
-  <script src="js/app.bundle.js?v=5" defer></script>
+  <script src="js/app.bundle.js?v=6" defer></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous" defer></script>
 
   <!-- Init script — runs AFTER bundle (DOMContentLoaded) -->
@@ -174,7 +176,7 @@
       }
       try {
         App.init();
-        console.log('[BeeMaster AI v3.5] Ready');
+        console.log('[BeeMaster AI v3.6] Ready');
         setTimeout(hideBootScreen, 300);
       } catch (e) {
         console.error('Init failed:', e);

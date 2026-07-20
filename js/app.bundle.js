@@ -1461,7 +1461,7 @@
       BM.Wizard.open('🔬 Muayene Sihirbazı', steps, (s) => {
         s.queenSeen = s.queenSeen === 'seen' || s.queenSeen === 'cell' || s.queenSeen === 'new';
         s.aiAnomalies = this.detectAnomalies(s).length;
-        BM.Storage.add('inspections', s);
+        s.photos = this._state.photos || []; BM.Storage.add('inspections', s);
         const anomalies = this.detectAnomalies(s);
         if (anomalies.filter(a => a.severity === 'high').length > 0) {
           BM.Toast.show(`Muayene kaydedildi. ${anomalies.length} anomali!`, 'warn');
@@ -1660,6 +1660,28 @@
         </div>`;
       }).join('')}</div></div>`}`;
     }
+    handlePhotos(event) {
+      const files = Array.from(event.target.files || []);
+      const s = this._state;
+      if (!s.photos) s.photos = [];
+      files.forEach(f => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          s.photos.push(e.target.result);
+          App.render();
+        };
+        reader.readAsDataURL(f);
+      });
+    },
+
+    removePhoto(i) {
+      const s = this._state;
+      if (s.photos && s.photos[i]) {
+        s.photos.splice(i, 1);
+        App.render();
+      }
+    },
+
   };
 
   BM.inspections = inspectionsModule;
@@ -2747,13 +2769,15 @@
       const name = get('input[name="name"]').value.trim();
       const location = get('input[name="location"]').value.trim();
       if (!name || !location) { BM.Toast.show('Ad ve konum gerekli', 'error'); return; }
-      BM.Storage.add('apiaries', {
+      const newApiary = {
         name, location,
         lat: parseFloat(get('input[name="lat"]').value) || null,
         lng: parseFloat(get('input[name="lng"]').value) || null,
         flora: get('input[name="flora"]').value.trim(),
         notes: ''
-      });
+      };
+      const apiaryId = BM.Storage.add('apiaries', newApiary);
+      BM.Storage.state.activeApiaryId = apiaryId;
       localStorage.setItem('bm-onboarded', '1');
       BM.Toast.show('İlk üs oluşturuldu ✓', 'success');
       BM.Modal.close();
@@ -3122,7 +3146,7 @@
       }
 
       // Onboarding (ilk kullanım)
-      setTimeout(() => BM.onboarding.init(), 800);
+      if (!localStorage.getItem('bm-onboarded')) { setTimeout(() => BM.onboarding.init(), 800); }
 
       // Bildirim kontrolü (3 sn sonra)
       setTimeout(() => BM.notify.check(), 3000);

@@ -1,7 +1,6 @@
 /* ============================================================
  * BeeMaster AI — Spec-Driven CSS (docs/03_UI_UX_Design_System.md)
- * Design tokens + primitive + domain components
- * Class names match HTML exactly
+ * Design tokens + primitive + domain components — FIXED layout & UX issues
  * ============================================================ */
 
 /* === DESIGN TOKENS (Spec 03 §2) === */
@@ -269,13 +268,16 @@ ul, ol { list-style: none; }
   background: var(--bg-secondary); border-bottom: 1px solid var(--n-800);
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 var(--space-6); position: sticky; top: 0; z-index: 50; gap: var(--space-4);
+  height: var(--header-h);
 }
+.page-title { display: flex; flex-direction: column; min-width: 0; }
 .page-title__h1 {
   font-family: var(--font-heading);
   font-size: 17px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.page-title__sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
-.header__actions { display: flex; align-items: center; gap: var(--space-1); }
+.page-title__sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header__actions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
 
 /* Main — HTML uses .app__main */
 .app__main {
@@ -459,11 +461,25 @@ ul, ol { list-style: none; }
 .timeline__title { font-size: 14px; font-weight: 600; margin-bottom: 2px; display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .timeline__meta { font-size: 12px; color: var(--text-secondary); }
 
+/* Photo upload (for inspections wizard) */
+.photo-upload { border: 2px dashed var(--n-800); border-radius: var(--radius-lg); padding: var(--space-6); text-align: center; transition: var(--t); cursor: pointer; }
+.photo-upload:hover, .photo-upload.drag-over { border-color: var(--honey-500); background: rgba(245,158,11,0.05); }
+.photo-upload__icon { font-size: 32px; margin-bottom: var(--space-2); }
+.photo-upload__text { font-size: 13px; color: var(--text-secondary); margin-bottom: var(--space-1); }
+.photo-upload__hint { font-size: 11px; color: var(--text-muted); }
+.photo-preview { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+.photo-preview__item { position: relative; width: 80px; height: 80px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--n-800); }
+.photo-preview__item img { width: 100%; height: 100%; object-fit: cover; }
+.photo-preview__remove { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.7); color: white; font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
 /* === MOBILE (Spec 10 §3, 1024px breakpoint) === */
 @media (max-width: 1024px) {
   :root { --sidebar-w: 0px; }
   .app { grid-template-columns: 1fr; grid-template-areas: "app-header" "app-main"; }
-  #app-sidebar { position: fixed; left: -280px; top: 0; width: 260px; height: 100vh; transition: left var(--t-slow); z-index: 200; box-shadow: var(--shadow-lg); }
+  #app-sidebar {
+    position: fixed; left: -280px; top: 0; width: 260px; height: 100vh;
+    transition: left var(--t-slow); z-index: 200; box-shadow: var(--shadow-lg);
+  }
   #app-sidebar.sidebar--open { left: 0; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
@@ -478,12 +494,14 @@ ul, ol { list-style: none; }
   .stat__value { font-size: 22px; }
 }
 
-/* Print styles for reports */
-@media print {
-  #app-sidebar, .app__header, #app-bottom-nav, .modal-overlay, .toast-container { display: none !important; }
-  .app { grid-template-columns: 1fr; grid-template-areas: "app-main"; }
-  .app__main { padding: 0; }
-  .card, .stat, .hive-card { break-inside: avoid; }
-  .btn, .action-grid__btn { display: none; }
-  body { background: white; color: black; }
-}
+/* Boot screen (inline in HTML, but here for reference) */
+.boot-screen { position: fixed; inset: 0; z-index: 99999; background: #07080C; color: #E8EAF2; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; transition: opacity 0.4s ease; }
+.boot-screen.hidden { opacity: 0; pointer-events: none; }
+.boot-screen__logo { font-size: 72px; margin-bottom: 16px; animation: pulse 2s ease-in-out infinite; }
+.boot-screen__title { font-size: 26px; font-weight: 800; margin-bottom: 8px; background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: -0.02em; }
+.boot-screen__sub { font-size: 13px; color: #8A8FA3; margin-bottom: 32px; }
+.boot-screen__loader { width: 220px; height: 3px; background: #1F2330; border-radius: 2px; overflow: hidden; }
+.boot-screen__bar { height: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b); width: 30%; animation: slide 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+@keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
+noscript { display: flex; align-items: center; justify-content: center; height: 100vh; background: #07080C; color: #E8EAF2; font-family: system-ui; text-align: center; padding: 20px; }
