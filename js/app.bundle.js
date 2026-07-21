@@ -1297,7 +1297,8 @@
     // Multi-step wizard (IN-01)
     add(presetHiveId) {
       if (!BM.Storage.list('hives').length) {
-        BM.Toast.show('Önce kovan ekleyin', 'error');
+        BM.Toast.show('Önce kovan ekleyin. Yönlendiriliyor...', 'info');
+        setTimeout(() => BM.hives.add(), 800);
         return;
       }
       const state = {
@@ -1336,7 +1337,9 @@
         },
         {
           label: 'Kovan & Tarih',
-          render: (s) => `
+          render: (s) => {
+            if (!s.date) s.date = BM.today();
+            return `
             <label class="field"><span class="field-label">Kovan *</span>
               <select class="select" id="w-hiveId">${hOpts}</select></label>
             <label class="field"><span class="field-label">Tarih *</span>
@@ -1348,14 +1351,21 @@
                 <option value="rainy"${s.weather === 'rainy' ? ' selected' : ''}>🌧 Yağmurlu</option>
                 <option value="windy"${s.weather === 'windy' ? ' selected' : ''}>💨 Rüzgarlı</option>
               </select></label>
-          `,
+          `;
+          },
           onNext: (s) => {
             const get = id => document.getElementById(id);
             s.hiveId = get('w-hiveId').value;
             s.date = get('w-date').value;
             s.weather = get('w-weather').value;
           },
-          validate: (s) => s.hiveId ? true : (BM.Toast.show('Kovan seçin', 'error'), false)
+          validate: (s) => {
+            if (!s.hiveId) {
+              BM.Toast.show('Lütfen listeden kovan seçin', 'error');
+              return false;
+            }
+            return true;
+          }
         },
         {
           label: 'Detaylar',
