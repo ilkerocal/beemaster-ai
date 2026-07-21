@@ -1752,7 +1752,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
         const summary = {brood:0,honey:0,pollen:0,foundation:0,empty:0};
         frames.forEach(f => { if (summary[f.frameType] !== undefined) summary[f.frameType]++; });
         const frameIcon = t => ({brood:'🟠',honey:'🟡',pollen:'🟣',foundation:'⚪',empty:'⚫'}[t] || '⬜');
-        const frameLabel = t => ({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',foundation:'Perga',empty:'Boş'}[t] || t);
+        const frameLabel = t => ({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',foundation:'Ham Petek',empty:'Boş'}[t] || t);
 
         el.innerHTML = `
           <div class="card">
@@ -1852,7 +1852,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
     },
 
     bulkMark(hiveId, type) {
-      if (!confirm(`Tüm çerçeveleri "${type === 'brood' ? 'Yavru' : type === 'honey' ? 'Bal' : type === 'empty' ? 'Boş' : 'Perga'}" olarak işaretle?`)) return;
+      if (!confirm(`Tüm çerçeveleri "${type === 'brood' ? 'Yavru' : type === 'honey' ? 'Bal' : type === 'empty' ? 'Boş' : 'Ham Petek'}" olarak işaretle?`)) return;
       BM.Storage.list('frames').filter(f => f.hiveId === hiveId).forEach(f => {
         BM.Storage.update('frames', f.id, { frameType: type });
       });
@@ -1929,7 +1929,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
         </div>
         <label class="field"><span class="field-label">Tip</span>
           <select class="select" name="frameType">
-            ${['brood','honey','pollen','foundation','empty'].map(t => `<option value="${t}"${f.frameType === t ? ' selected' : ''}>${({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',foundation:'Perga',empty:'Boş'})[t]}</option>`).join('')}
+            ${['brood','honey','pollen','foundation','empty'].map(t => `<option value="${t}"${f.frameType === t ? ' selected' : ''}>${({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',foundation:'Ham Petek',empty:'Boş'})[t]}</option>`).join('')}
           </select></label>
         <div class="field-row">
           <label class="field"><span class="field-label">Temel</span>
