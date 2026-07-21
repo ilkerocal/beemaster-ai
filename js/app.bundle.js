@@ -1427,14 +1427,14 @@
             <div style="background:var(--bg-tertiary);padding:var(--space-3);border-radius:var(--radius-md);margin-bottom:var(--space-3);font-size:12px;color:var(--text-secondary)">
               💡 Bu adım isteğe bağlıdır. Fotoğraf ve/veya sesli not ekleyebilirsiniz — hiçbir şey eklemeden de geçebilirsiniz.
             </div>
-            <div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-4)">
-              <button type="button" class="btn ${hasPhotos ? 'btn--primary' : ''}" onclick="BM.inspections.togglePhotos()" style="flex:1;flex-direction:column;padding:var(--space-3)">
-                <div style="font-size:24px">📷</div>
-                <div style="font-size:11px;font-weight:600">${hasPhotos ? '✓ Fotoğraflar (' + s.photos.length + ')' : 'Fotoğraf Ekle'}</div>
+            <div class="media-toggle-row">
+              <button type="button" class="btn btn--media ${hasPhotos ? 'btn--primary' : ''}" onclick="BM.inspections.togglePhotos()">
+                <div class="btn-icon">📷</div>
+                <div class="btn-label">${hasPhotos ? '✓ ' + s.photos.length + ' Fotoğraf' : 'Fotoğraf Ekle'}</div>
               </button>
-              <button type="button" class="btn ${hasAudio ? 'btn--primary' : ''}" onclick="BM.inspections.toggleAudio()" style="flex:1;flex-direction:column;padding:var(--space-3)">
-                <div style="font-size:24px">🎙</div>
-                <div style="font-size:11px;font-weight:600">${hasAudio ? '✓ Ses Kaydı' : 'Sesli Not Ekle'}</div>
+              <button type="button" class="btn btn--media ${hasAudio ? 'btn--primary' : ''}" onclick="BM.inspections.toggleAudio()">
+                <div class="btn-icon">🎙</div>
+                <div class="btn-label">${hasAudio ? '✓ Ses Kaydı' : 'Sesli Not Ekle'}</div>
               </button>
             </div>
             <div id="photo-area" style="display:${hasPhotos ? 'block' : 'none'}">

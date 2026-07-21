@@ -548,3 +548,38 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
   line-height: 1.2;
   display: block;
 }
+
+
+/* === MEDIA TOGGLE BUTTONS (Ek Medya step) === */
+.media-toggle-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.btn--media {
+  display: flex !important;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  min-height: 88px;
+  height: auto;
+  padding: 14px 8px;
+  white-space: normal;
+  line-height: 1.2;
+}
+.btn--media .btn-icon {
+  font-size: 28px;
+  line-height: 1;
+  display: block;
+  margin: 0;
+}
+.btn--media .btn-label {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  display: block;
+  margin: 0;
+}
