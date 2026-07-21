@@ -379,6 +379,7 @@ ul, ol { list-style: none; }
 .frame--brood { background: rgba(249,115,22,0.12); border-color: rgba(249,115,22,0.4); }
 .frame--honey { background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.4); }
 .frame--pollen { background: rgba(168,85,247,0.12); border-color: rgba(168,85,247,0.4); }
+.frame--perga { background: rgba(120,53,15,0.15); border-color: rgba(120,53,15,0.4); }
 .frame--foundation { background: var(--bg-tertiary); border-color: var(--n-700); }
 .frame--empty { background: transparent; border-style: dashed; }
 .frame--retired { background: var(--danger-bg); border-color: var(--danger); }

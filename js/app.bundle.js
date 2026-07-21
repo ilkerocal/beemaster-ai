@@ -132,7 +132,7 @@
         queenId: qid, nfcTag: 'BM-' + Date.now().toString(36).toUpperCase() + '-' + (i + 1),
         installedAt: ago((i + 1) * 30), notes: '', createdAt: now, updatedAt: now
       });
-      const ftypes = ['brood', 'brood', 'brood', 'honey', 'honey', 'pollen', 'foundation', 'empty'];
+      const ftypes = ['brood', 'brood', 'brood', 'honey', 'honey', 'pollen', 'perga', 'foundation', 'empty'];
       for (let p = 1; p <= s.fc; p++) {
         frames.push({
           id: 'fr_' + hid + '_' + p, hiveId: hid, position: p,
@@ -1025,10 +1025,10 @@
       const el = document.getElementById('hive-tab-content');
       if (tabId === 'frames') {
         const frames = BM.Storage.list('frames').filter(f => f.hiveId === id).sort((a, b) => a.position - b.position);
-        const summary = {brood:0,honey:0,pollen:0,foundation:0,empty:0};
+        const summary = {brood:0,honey:0,pollen:0,perga:0,foundation:0,empty:0};
         frames.forEach(f => { if (summary[f.frameType] !== undefined) summary[f.frameType]++; });
-        const frameIcon = t => ({brood:'🟠',honey:'🟡',pollen:'🟣',foundation:'⚪',empty:'⚫'}[t] || '⬜');
-        const frameLabel = t => ({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',foundation:'Ham Petek',empty:'Boş'}[t] || t);
+        const frameIcon = t => ({brood:'🟠',honey:'🟡',pollen:'🟣',perga:'🟤',foundation:'⚪',empty:'⚫'}[t] || '⬜');
+        const frameLabel = t => ({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',perga:'Perga (Polen+Bal)',foundation:'Ham Petek',empty:'Boş'}[t] || t);
 
         el.innerHTML = `
           <div class="card">
@@ -1128,7 +1128,7 @@
     },
 
     bulkMark(hiveId, type) {
-      if (!confirm(`Tüm çerçeveleri "${type === 'brood' ? 'Yavru' : type === 'honey' ? 'Bal' : type === 'empty' ? 'Boş' : 'Ham Petek'}" olarak işaretle?`)) return;
+      if (!confirm(`Tüm çerçeveleri "${type === 'brood' ? 'Yavru' : type === 'honey' ? 'Bal' : type === 'empty' ? 'Boş' : type === 'perga' ? 'Perga' : type === 'foundation' ? 'Ham Petek' : type}" olarak işaretle?`)) return;
       BM.Storage.list('frames').filter(f => f.hiveId === hiveId).forEach(f => {
         BM.Storage.update('frames', f.id, { frameType: type });
       });
@@ -1205,7 +1205,7 @@
         </div>
         <label class="field"><span class="field-label">Tip</span>
           <select class="select" name="frameType">
-            ${['brood','honey','pollen','foundation','empty'].map(t => `<option value="${t}"${f.frameType === t ? ' selected' : ''}>${({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',foundation:'Ham Petek',empty:'Boş'})[t]}</option>`).join('')}
+            ${['brood','honey','pollen','perga','foundation','empty'].map(t => `<option value="${t}"${f.frameType === t ? ' selected' : ''}>${({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',perga:'Perga (Polen+Bal)',foundation:'Ham Petek',empty:'Boş'})[t]}</option>`).join('')}
           </select></label>
         <div class="field-row">
           <label class="field"><span class="field-label">Temel</span>
