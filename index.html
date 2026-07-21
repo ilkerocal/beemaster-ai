@@ -1940,7 +1940,13 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
             </select></label>
           <label class="field"><span class="field-label">Durum</span>
             <select class="select" name="status">
-              ${['in_use','extracted','cleaning','stored','retired'].map(s => `<option value="${s}"${f.status === s ? ' selected' : ''}>${s}</option>`).join('')}
+              ${[
+                {v:'in_use', l:'Kullanımda'},
+                {v:'extracted', l:'Çıkarıldı'},
+                {v:'cleaning', l:'Temizleniyor'},
+                {v:'stored', l:'Depoda'},
+                {v:'retired', l:'Emekli'}
+              ].map(o => `<option value="${o.v}"${f.status === o.v ? ' selected' : ''}>${o.l}</option>`).join('')}
             </select></label>
         </div>
         <div class="field-row">
@@ -2750,7 +2756,11 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
            <label class="field"><span class="field-label">Ağırlık (kg) *</span>
              <input class="input" name="weight" type="number" step="0.1" required value="${h.weight}"></label>
            <label class="field"><span class="field-label">Kalite</span>
-             <select class="select" name="quality">${['A','B','C'].map(q => `<option value="${q}"${h.quality === q ? ' selected' : ''}>${q}</option>`).join('')}</select></label>
+             <select class="select" name="quality">${[
+                {v:'A', l:'A (Premium)'},
+                {v:'B', l:'B (Standart)'},
+                {v:'C', l:'C (Endüstri)'}
+              ].map(o => `<option value="${o.v}"${h.quality === o.v ? ' selected' : ''}>${o.l}</option>`).join('')}</select></label>
            <label class="field"><span class="field-label">Çerçeve</span>
              <input class="input" name="frames" type="number" value="${h.frames || 0}"></label>
          </div>
@@ -3031,7 +3041,11 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
            <label class="field"><span class="field-label">Hastalık</span>
              <select class="select" name="disease">${['varroosis','nosemosis','foulbrood','chalkbrood','sacbrood','small_hive_beetle'].map(x => `<option value="${x}"${d.disease === x ? ' selected' : ''}>${BM.T.disease(x)}</option>`).join('')}</select></label>
            <label class="field"><span class="field-label">Şiddet</span>
-             <select class="select" name="severity">${['low','medium','high'].map(s => `<option value="${s}"${d.severity === s ? ' selected' : ''}>${s}</option>`).join('')}</select></label>
+             <select class="select" name="severity">${[
+                {v:'low', l:'Düşük'},
+                {v:'medium', l:'Orta'},
+                {v:'high', l:'Yüksek'}
+              ].map(o => `<option value="${o.v}"${d.severity === o.v ? ' selected' : ''}>${o.l}</option>`).join('')}</select></label>
          </div>
          <label class="field"><span class="field-label">Tedavi</span>
            <input class="input" name="treatment" value="${BM.esc(d.treatment || '')}"></label>
