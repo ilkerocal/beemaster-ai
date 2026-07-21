@@ -391,7 +391,8 @@
   const Wizard = {
     open(title, steps, onComplete, initialState) {
       let currentStep = 0;
-      const state = initialState ? Object.assign({}, initialState) : {};
+      // initialState'i direkt kullan ki setMode gibi cagrilar ayni objeyi degistirsin
+      const state = initialState || {};
 
       const render = () => {
         const step = steps[currentStep];
