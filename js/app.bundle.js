@@ -1966,7 +1966,7 @@
 
     const treatments = BM.Storage.list('treatments').filter(t => t.hiveId === hiveId);
     const harvests = BM.Storage.list('harvests').filter(h => h.hiveId === hiveId);
-    const feedings = BM.Storage.list('feedings').filter(f => f.f.hiveId || f.hiveId === hiveId);
+    const feedings = BM.Storage.list('feedings').filter(f => f && (f.hiveId === hiveId || (f.f && f.f.hiveId === hiveId)));
 
     const events = [];
 
