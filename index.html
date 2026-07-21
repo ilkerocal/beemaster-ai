@@ -2941,6 +2941,195 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
 
 })(window);
 
+
+
+/* ===== js/modules/weather.js ===== */
+// ============================================================
+// Weather Module — Open-Meteo API (ücretsiz, key gerektirmez)
+// https://open-meteo.com/en/docs
+// ============================================================
+(function (global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  // WMO Weather codes → açıklama + emoji
+  // https://open-meteo.com/en/docs#weathervariables
+  const WMO = {
+    0:  { tr: 'Açık',                icon: '☀️', cat: 'sunny'  },
+    1:  { tr: 'Çoğunlukla Açık',     icon: '🌤', cat: 'sunny'  },
+    2:  { tr: 'Parçalı Bulutlu',     icon: '⛅', cat: 'cloudy' },
+    3:  { tr: 'Kapalı',              icon: '☁️', cat: 'cloudy' },
+    45: { tr: 'Sisli',               icon: '🌫', cat: 'cloudy' },
+    48: { tr: 'Donlu Sis',           icon: '🌫', cat: 'cloudy' },
+    51: { tr: 'Hafif Çisenti',       icon: '🌦', cat: 'rainy'  },
+    53: { tr: 'Çisenti',             icon: '🌦', cat: 'rainy'  },
+    55: { tr: 'Yoğun Çisenti',       icon: '🌧', cat: 'rainy'  },
+    61: { tr: 'Hafif Yağmur',        icon: '🌦', cat: 'rainy'  },
+    63: { tr: 'Yağmur',              icon: '🌧', cat: 'rainy'  },
+    65: { tr: 'Şiddetli Yağmur',     icon: '🌧', cat: 'rainy'  },
+    71: { tr: 'Hafif Kar',           icon: '🌨', cat: 'rainy'  },
+    73: { tr: 'Kar',                 icon: '❄️', cat: 'rainy'  },
+    75: { tr: 'Şiddetli Kar',        icon: '❄️', cat: 'rainy'  },
+    77: { tr: 'Kar Taneleri',        icon: '❄️', cat: 'rainy'  },
+    80: { tr: 'Hafif Sağanak',       icon: '🌦', cat: 'rainy'  },
+    81: { tr: 'Sağanak',             icon: '🌧', cat: 'rainy'  },
+    82: { tr: 'Şiddetli Sağanak',    icon: '⛈', cat: 'rainy'  },
+    85: { tr: 'Kar Sağanağı',        icon: '🌨', cat: 'rainy'  },
+    86: { tr: 'Şiddetli Kar Sağanağı', icon: '🌨', cat: 'rainy' },
+    95: { tr: 'Gök Gürültülü Fırtına', icon: '⛈', cat: 'rainy' },
+    96: { tr: 'Dolu ile Fırtına',    icon: '⛈', cat: 'rainy'  },
+    99: { tr: 'Şiddetli Dolu Fırtınası', icon: '⛈', cat: 'rainy' }
+  };
+
+  function describe(code) {
+    return WMO[code] || { tr: 'Bilinmiyor', icon: '🌡', cat: 'cloudy' };
+  }
+
+  // Önbellek: aynı konum için 10 dakika cache
+  const cache = new Map();
+  const CACHE_TTL = 10 * 60 * 1000;
+
+  // Open-Meteo'dan güncel hava durumu çek
+  async function fetchCurrent(lat, lng) {
+    if (!lat || !lng) return null;
+    const key = lat.toFixed(3) + ',' + lng.toFixed(3);
+    const cached = cache.get(key);
+    if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
+      return cached.data;
+    }
+
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&wind_speed_unit=kmh&timezone=auto`;
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) return null;
+      const json = await resp.json();
+      const current = json.current || {};
+      const data = {
+        temp: Math.round(current.temperature_2m ?? 0),
+        humidity: current.relative_humidity_2m ?? 0,
+        wind: Math.round(current.wind_speed_10m ?? 0),
+        code: current.weather_code ?? 0,
+        description: describe(current.weather_code ?? 0),
+        time: current.time || '',
+        lat: json.latitude,
+        lng: json.longitude,
+        timezone: json.timezone
+      };
+      cache.set(key, { timestamp: Date.now(), data });
+      return data;
+    } catch (e) {
+      console.warn('Weather fetch failed:', e);
+      return null;
+    }
+  }
+
+  // Aktif üsten hava durumu al
+  async function fetchForActive() {
+    const apiaries = BM.Storage.list('apiaries');
+    const activeId = BM.Storage.state.activeApiaryId;
+    let apiary = apiaries.find(a => a.id === activeId);
+    if (!apiary && apiaries.length) apiary = apiaries[0];
+    if (!apiary || !apiary.lat || !apiary.lng) return null;
+    return fetchCurrent(apiary.lat, apiary.lng);
+  }
+
+  // Havacı kategorisini bizim sistemimize eşle
+  function toCategory(code) {
+    const d = describe(code);
+    return d.cat; // sunny, cloudy, rainy, windy
+  }
+
+  // Dashboard weather card HTML
+  function renderDashboardCard() {
+    const apiaries = BM.Storage.list('apiaries');
+    const activeId = BM.Storage.state.activeApiaryId;
+    let apiary = apiaries.find(a => a.id === activeId);
+    if (!apiary && apiaries.length) apiary = apiaries[0];
+    const apiaryName = apiary ? apiary.name : 'Üs konumu yok';
+    const apiaryLoc = apiary ? (apiary.location || '') : '';
+    const floraStr = apiary && apiary.flora ? apiary.flora : 'Geven, Kekik, Adaçayı, Pamuk';
+
+    return `
+      <div class="card weather-card" style="margin-bottom:var(--space-4)" id="weather-card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">🌤️ Hava Durumu</div>
+            <div class="card-sub" id="weather-location">${BM.esc(apiaryLoc || apiaryName)}</div>
+          </div>
+          <button class="btn btn--sm btn--ghost" onclick="BM.Weather.refresh()" title="Yenile">🔄</button>
+        </div>
+        <div id="weather-body" style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4)">
+          <div style="font-size:48px;line-height:1">⏳</div>
+          <div>
+            <div style="font-size:13px;color:var(--text-secondary)">Yükleniyor...</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Open-Meteo API</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;margin-bottom:var(--space-2)">Aktif Flora</div>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-1)">${floraStr.split(',').map(f => `<span style="background:var(--bg-tertiary);padding:4px 10px;border-radius:99px;font-size:11px">${BM.esc(f.trim())}</span>`).join('')}</div>
+      </div>
+    `;
+  }
+
+  // Hava verisini DOM'a yerleştir
+  async function updateDashboardCard() {
+    const body = document.getElementById('weather-body');
+    const sub = document.getElementById('weather-location');
+    if (!body) return;
+
+    const data = await fetchForActive();
+    if (!data) {
+      body.innerHTML = `
+        <div style="font-size:36px">⚠️</div>
+        <div>
+          <div style="font-size:13px;color:var(--text-secondary)">Üs konumu yok</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Üs eklerken enlem/boylam girin</div>
+        </div>
+      `;
+      if (sub) sub.textContent = 'Hava durumu için GPS gerekli';
+      return;
+    }
+
+    const d = data.description;
+    body.innerHTML = `
+      <div style="font-size:48px;line-height:1">${d.icon}</div>
+      <div>
+        <div style="font-size:32px;font-weight:800;letter-spacing:-0.02em">${data.temp}°C</div>
+        <div style="font-size:12px;color:var(--text-secondary)">${BM.esc(d.tr)} · Nem ${data.humidity}% · Rüzgar ${data.wind} km</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${BM.esc(data.time)} · ${BM.esc(data.timezone || '')}</div>
+      </div>
+    `;
+    if (sub) sub.textContent = `${data.lat.toFixed(2)}, ${data.lng.toFixed(2)}`;
+  }
+
+  // Muayene wizard'a otomatik hava yükle
+  async function autoFillInspection(state) {
+    const data = await fetchForActive();
+    if (!data) return null;
+    state.weather = toCategory(data.code);
+    return data;
+  }
+
+  async function refresh() {
+    cache.clear();
+    await updateDashboardCard();
+    BM.Toast.show('Hava durumu güncellendi ✓', 'success');
+  }
+
+  BM.Weather = {
+    describe,
+    fetchCurrent,
+    fetchForActive,
+    toCategory,
+    renderDashboardCard,
+    updateDashboardCard,
+    autoFillInspection,
+    refresh
+  };
+
+})(window);
+
+
 /* ===== js/modules/crud.js ===== */
 // ============================================================
 // CRUD modülleri — Queens, Harvest, Feeding, Treatments, Diseases, Inventory
@@ -3616,15 +3805,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
         </div>
 
         <div>
-          <div class="card weather-card" style="margin-bottom:var(--space-4)">
-            <div class="card-head"><div><div class="card-title">🌤️ Hava & Flora</div><div class="card-sub">Eğil, Diyarbakır</div></div></div>
-            <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4)">
-              <div style="font-size:48px">☀️</div>
-              <div><div style="font-size:32px;font-weight:800;letter-spacing:-0.02em">28°C</div><div style="font-size:12px;color:var(--text-secondary)">Güneşli · Nem 35% · Rüzgar 12 km</div></div>
-            </div>
-            <div style="font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;margin-bottom:var(--space-2)">Aktif Flora</div>
-            <div style="display:flex;flex-wrap:wrap;gap:var(--space-1)">${(s.apiaries[0] ? (s.apiaries[0].flora || 'Geven, Kekik, Adaçayı') : 'Geven, Kekik, Adaçayı').split(',').map(f => `<span style="background:var(--bg-tertiary);padding:4px 10px;border-radius:99px;font-size:11px">${BM.esc(f.trim())}</span>`).join('')}</div>
-          </div>
+          ${BM.Weather.renderDashboardCard()}
 
           <div class="card" style="margin-bottom:var(--space-4)">
             <div class="card-head"><div class="card-title">📍 Üs Konumları</div></div>
@@ -4200,6 +4381,10 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
       if (viewEl) {
         viewEl.classList.add('view--active');
         this.render(view);
+        // Hava durumunu canli cek (dashboard icin)
+        if (view === 'dashboard' && BM.Weather) {
+          setTimeout(() => BM.Weather.updateDashboardCard(), 100);
+        }
       }
       document.querySelectorAll(`[data-view="${view}"]`).forEach(n => {
         if (n.classList.contains('nav-item') || n.classList.contains('bottom-nav__item')) {
