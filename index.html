@@ -2179,9 +2179,23 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
     },
 
     setMode(mode) {
+      if (!this._state) return;
       this._state.mode = mode;
-      App.render();
-      this.add(this._state.hiveId);
+      // Sadece wizard body'sini yeniden render et, modal'i yeniden ACMA
+      const wizard = document.querySelector('.wizard');
+      const body = document.getElementById('wizard-body');
+      if (wizard && body) {
+        // Butonlarin active class'ini guncelle
+        const btns = wizard.querySelectorAll('button[onclick*="setMode"]');
+        btns.forEach(b => {
+          if (b.getAttribute('onclick').includes(`'${mode}'`)) {
+            b.classList.add('btn--primary');
+          } else {
+            b.classList.remove('btn--primary');
+          }
+        });
+      }
+      BM.Toast.show('Mod değiştirildi: ' + (mode === 'form' ? 'Form' : mode === 'voice' ? 'Sesli' : 'Fotoğraf'), 'info');
     },
 
     toggleRecord() {
