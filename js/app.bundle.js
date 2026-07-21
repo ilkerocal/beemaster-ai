@@ -1550,7 +1550,8 @@
       if (name === 'spring') { s.population = 'strong'; s.broodFrames = 5; s.eggsPattern = 'regular'; s.notes = 'Bahar kontrol'; }
       s.template = name;
       // Sadece state'i guncelle, wizard'i yeniden acma. Goruntuyu yenile.
-      BM.Toast.show('Şablon uygulandı: ' + name, 'success');
+      const templateLabels = { varroa: 'Varroa', winter: 'Kış', spring: 'Bahar' };
+      BM.Toast.show('Şablon uygulandı: ' + (templateLabels[name] || name), 'success');
       // Wizard body's ilgili alanlarini yeniden render etmek icin modal body's icindeki inputlara set et
       const notesEl = document.getElementById('w-notes');
       if (notesEl) notesEl.value = s.notes;
