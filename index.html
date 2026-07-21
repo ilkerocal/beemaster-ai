@@ -2047,22 +2047,34 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
                   <textarea class="textarea" id="w-notes" rows="3">${BM.esc(s.notes)}</textarea></label>`;
             }
             if (s.mode === 'voice') {
-              return `<label class="field"><span class="field-label">🎙 Sesli Not (60 sn)</span>
-                <div style="background:var(--bg-tertiary);padding:var(--space-5);border-radius:var(--r-lg);text-align:center">
-                  <button type="button" class="btn btn--primary" id="rec-btn" onclick="BM.inspections.toggleRecord()" style="width:80px;height:80px;border-radius:50%;font-size:32px;padding:0">🎙</button>
-                  <div id="rec-status" style="margin-top:var(--space-3);font-size:12px;color:var(--text-secondary)">Kayıt için tıkla</div>
-                  <div id="rec-audio" style="margin-top:var(--space-2)"></div>
+              return `<div class="field">
+                  <label class="field-label">🎙 Sesli Not (60 sn)</label>
+                  <div style="background:var(--bg-tertiary);padding:var(--space-5);border-radius:var(--radius-lg);text-align:center;margin-top:var(--space-2)">
+                    <button type="button" class="btn btn--primary" id="rec-btn" onclick="BM.inspections.toggleRecord()" style="width:80px;height:80px;border-radius:50%;font-size:32px;padding:0">🎙</button>
+                    <div id="rec-status" style="margin-top:var(--space-3);font-size:12px;color:var(--text-secondary)">Kayıt için tıklayın</div>
+                    <div id="rec-audio" style="margin-top:var(--space-2)"></div>
+                  </div>
                 </div>
-                <textarea class="textarea" id="w-notes" placeholder="veya doğrudan yaz..." rows="2" style="margin-top:var(--space-3)">${BM.esc(s.notes)}</textarea></label>`;
+                <label class="field"><span class="field-label">veya doğrudan yazın</span>
+                  <textarea class="textarea" id="w-notes" placeholder="Muayene notlarınızı yazın..." rows="3">${BM.esc(s.notes)}</textarea></label>`;
             }
             if (s.mode === 'photo') {
-              return `<label class="field"><span class="field-label">📷 Fotoğraflar (Max 5)</span>
-                <input type="file" accept="image/*" multiple capture="environment" id="w-photos" onchange="BM.inspections.handlePhotos(event)" style="margin-top:var(--space-2)">
-                <div id="photo-preview" style="display:flex;gap:var(--space-2);flex-wrap:wrap;margin-top:var(--space-3)">
-                  ${(s.photos || []).map((p, i) => `<div style="width:60px;height:60px;background:url(${p}) center/cover;border-radius:var(--radius-md);border:1px solid var(--n-800);position:relative"><button type="button" onclick="BM.inspections.removePhoto(${i})" style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer">×</button></div>`).join('')}
-                </div></label>
-                <label class="field" style="margin-top:var(--space-3)"><span class="field-label">Etiket</span>
-                  <input class="input" id="w-photo-tag" placeholder="petek, ana arı, hastalık..."></label>`;
+              return `<div class="field">
+                  <label class="field-label">📷 Fotoğraflar (Max 5)</label>
+                  <div class="photo-upload" onclick="document.getElementById('w-photos').click()">
+                    <div class="photo-upload__icon">📷</div>
+                    <div class="photo-upload__text">Fotoğraf eklemek için tıklayın</div>
+                    <div class="photo-upload__hint">veya sürükleyin · JPG, PNG · Max 5 fotoğraf</div>
+                  </div>
+                  <input type="file" accept="image/*" multiple capture="environment" id="w-photos" onchange="BM.inspections.handlePhotos(event)" style="display:none">
+                  <div id="photo-preview" class="photo-preview">
+                    ${(s.photos || []).map((p, i) => `<div class="photo-preview__item"><img src="${p}" alt=""><button type="button" class="photo-preview__remove" onclick="BM.inspections.removePhoto(${i})">×</button></div>`).join('')}
+                  </div>
+                </div>
+                <label class="field"><span class="field-label">Etiket</span>
+                  <input class="input" id="w-photo-tag" placeholder="petek, ana arı, hastalık..." value="${BM.esc(s.photoTag || '')}"></label>
+                <label class="field"><span class="field-label">Notlar</span>
+                  <textarea class="textarea" id="w-notes" rows="2" placeholder="Ek notlar..."></textarea></label>`;
             }
           },
           onNext: (s) => {
@@ -2116,9 +2128,14 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
       ];
 
       BM.Wizard.open('🔬 Muayene Sihirbazı', steps, (s) => {
-        s.queenSeen = s.queenSeen === 'seen' || s.queenSeen === 'cell' || s.queenSeen === 'new';
+        s.queenSeen = s.queenSeen === 'seen' || s.queenSen === 'cell' || s.queenSeen === 'new';
         s.aiAnomalies = this.detectAnomalies(s).length;
-        s.photos = this._state.photos || []; BM.Storage.add('inspections', s);
+        // Fotograflari ve ses kaydini state'den al
+        s.photos = this._state.photos || [];
+        s.audioData = this._state.audioData || null;
+        s.mode = this._state.mode || 'form';
+        s.photoTag = this._state.photoTag || '';
+        BM.Storage.add('inspections', s);
         const anomalies = this.detectAnomalies(s);
         if (anomalies.filter(a => a.severity === 'high').length > 0) {
           BM.Toast.show(`Muayene kaydedildi. ${anomalies.length} anomali!`, 'warn');
@@ -2141,12 +2158,24 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
 
     applyTemplate(name) {
       const s = this._state;
+      if (!s) return;
       if (name === 'varroa') { s.varroaCount = 0; s.population = 'strong'; s.notes = 'Varroa sayımı muayenesi'; }
       if (name === 'winter') { s.varroaCount = 2; s.population = 'medium'; s.broodFrames = 3; s.honeyFrames = 8; s.notes = 'Kış hazırlığı kontrolü'; }
       if (name === 'spring') { s.population = 'strong'; s.broodFrames = 5; s.eggsPattern = 'regular'; s.notes = 'Bahar kontrol'; }
       s.template = name;
-      App.render(); // refresh
-      this.add(s.hiveId);
+      // Sadece state'i guncelle, wizard'i yeniden acma. Goruntuyu yenile.
+      BM.Toast.show('Şablon uygulandı: ' + name, 'success');
+      // Wizard body's ilgili alanlarini yeniden render etmek icin modal body's icindeki inputlara set et
+      const notesEl = document.getElementById('w-notes');
+      if (notesEl) notesEl.value = s.notes;
+      const vEl = document.getElementById('w-varroaCount');
+      if (vEl) vEl.value = s.varroaCount;
+      const pEl = document.getElementById('w-population');
+      if (pEl) pEl.value = s.population;
+      const bEl = document.getElementById('w-broodFrames');
+      if (bEl) bEl.value = s.broodFrames;
+      const hEl = document.getElementById('w-honeyFrames');
+      if (hEl) hEl.value = s.honeyFrames;
     },
 
     setMode(mode) {
@@ -2158,55 +2187,110 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
     toggleRecord() {
       const btn = document.getElementById('rec-btn');
       const status = document.getElementById('rec-status');
-      if (btn.dataset.state === 'rec') {
+      if (!btn) return;
+      if (!this._state) this._state = {};
+      if (this._state._recorder && this._state._recorder.state === 'recording') {
+        // Durdur
+        this._state._recorder.stop();
+        return;
+      }
+      btn.dataset.state = 'rec';
+      btn.textContent = '⏹';
+      status.textContent = '🔴 Kayıt yapılıyor...';
+      status.style.color = 'var(--danger)';
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        status.textContent = '⚠️ Tarayıcı mikrofonu desteklemiyor';
+        status.style.color = 'var(--warning)';
         btn.dataset.state = 'idle';
         btn.textContent = '🎙';
-        status.textContent = 'Kayıt tamamlandı ✓';
-        status.style.color = 'var(--success)';
-      } else {
-        btn.dataset.state = 'rec';
-        btn.textContent = '⏹';
-        status.textContent = '🔴 Kayıt yapılıyor...';
-        status.style.color = 'var(--danger)';
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-            const rec = new MediaRecorder(stream);
-            const chunks = [];
-            rec.ondataavailable = e => chunks.push(e.data);
-            rec.onstop = () => {
-              const blob = new Blob(chunks, { type: 'audio/webm' });
-              const url = URL.createObjectURL(blob);
-              document.getElementById('rec-audio').innerHTML = '<audio controls src="' + url + '" style="width:100%;margin-top:var(--space-2)"></audio>';
-              stream.getTracks().forEach(t => t.stop());
-            };
-            rec.start();
-            btn.onclick = () => rec.stop();
-          }).catch(err => {
-            status.textContent = '⚠️ Mikrofon erişimi reddedildi';
-            status.style.color = 'var(--warning)';
-          });
-        }
+        return;
       }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        const rec = new MediaRecorder(stream);
+        const chunks = [];
+        rec.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+        rec.onstop = () => {
+          const blob = new Blob(chunks, { type: 'audio/webm' });
+          const reader = new FileReader();
+          reader.onload = e => {
+            // DataURL olarak state'e kaydet
+            this._state.audioData = e.target.result;
+            this._state.audioBlob = blob;
+            // Audio player goster
+            const url = URL.createObjectURL(blob);
+            const audioDiv = document.getElementById('rec-audio');
+            if (audioDiv) audioDiv.innerHTML = '<audio controls src="' + url + '" style="width:100%;margin-top:var(--space-2)"></audio>';
+            stream.getTracks().forEach(t => t.stop());
+          };
+          reader.readAsDataURL(blob);
+        };
+        rec.start();
+        this._state._recorder = rec;
+        // Durdurma
+        btn.onclick = () => {
+          if (rec.state === 'recording') {
+            rec.stop();
+            btn.dataset.state = 'idle';
+            btn.textContent = '🎙';
+            status.textContent = '✓ Kayıt tamamlandı';
+            status.style.color = 'var(--success)';
+          }
+        };
+      }).catch(err => {
+        status.textContent = '⚠️ Mikrofon erişimi reddedildi: ' + (err.message || err.name);
+        status.style.color = 'var(--warning)';
+        btn.dataset.state = 'idle';
+        btn.textContent = '🎙';
+      });
     },
 
     handlePhotos(e) {
-      const files = Array.from(e.target.files).slice(0, 5);
+      const files = Array.from((e && e.target && e.target.files) || []).slice(0, 5);
+      if (!files.length) return;
+      if (!this._state.photos) this._state.photos = [];
+      let pending = files.length;
       files.forEach(f => {
         const reader = new FileReader();
         reader.onload = ev => {
-          if (!this._state.photos) this._state.photos = [];
-          if (this._state.photos.length < 5) this._state.photos.push(ev.target.result);
-          App.render();
-          this.add(this._state.hiveId);
+          if (this._state.photos.length < 5) {
+            this._state.photos.push(ev.target.result);
+          }
+          pending--;
+          if (pending === 0) {
+            // Tum fotograflar islendi, sadece wizard body'sini yenile (wizard'i yeniden ACMA)
+            this.refreshWizardStep();
+            BM.Toast.show(files.length + ' fotoğraf eklendi ✓', 'success');
+          }
         };
         reader.readAsDataURL(f);
       });
     },
 
+    refreshWizardStep() {
+      // Wizard'i yeniden acmadan, sadece mevcut step'in renderini yenile
+      // Bu sayede foto eklenince wizard kapanip acilmiyor
+      const s = this._state;
+      const step3 = document.getElementById('wizard-body');
+      if (!step3 || !s) return;
+      // Sadece photo modundaysa yeniden render et
+      if (s.mode === 'photo') {
+        const preview = document.getElementById('photo-preview');
+        if (preview) {
+          preview.innerHTML = (s.photos || []).map((p, i) => `<div class="photo-preview__item"><img src="${p}" alt=""><button type="button" class="photo-preview__remove" onclick="BM.inspections.removePhoto(${i})">×</button></div>`).join('');
+        }
+      } else if (s.mode === 'voice') {
+        // Voice modunda not textareayi yenile
+        const notesEl = document.getElementById('w-notes');
+        if (notesEl && s.notes !== undefined) notesEl.value = s.notes;
+      }
+    },
+
     removePhoto(i) {
-      this._state.photos.splice(i, 1);
-      App.render();
-      this.add(this._state.hiveId);
+      if (this._state && this._state.photos) {
+        this._state.photos.splice(i, 1);
+        this.refreshWizardStep();
+        BM.Toast.show('Fotoğraf silindi', 'info');
+      }
     },
 
     edit(id) {
