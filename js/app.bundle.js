@@ -1315,52 +1315,12 @@
 
       const steps = [
         {
-          label: 'Yöntem Seç',
-          render: (s) => `
-            <div style="margin-bottom:var(--space-4)">
-              <div style="font-size:12px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;margin-bottom:var(--space-2)">Hızlı Şablon</div>
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2)">
-                <button type="button" class="btn btn--tpl" onclick="BM.inspections.applyTemplate('varroa')">
-                  <div class="btn-icon">🔬</div>
-                  <div class="btn-label">Varroa</div>
-                </button>
-                <button type="button" class="btn btn--tpl" onclick="BM.inspections.applyTemplate('winter')">
-                  <div class="btn-icon">❄️</div>
-                  <div class="btn-label">Kış</div>
-                </button>
-                <button type="button" class="btn btn--tpl" onclick="BM.inspections.applyTemplate('spring')">
-                  <div class="btn-icon">🌸</div>
-                  <div class="btn-label">Bahar</div>
-                </button>
-              </div>
-            </div>
-            <div style="border-top:1px solid var(--n-800);padding-top:var(--space-4)">
-              <div style="font-size:12px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;margin-bottom:var(--space-2)">Giriş Yöntemi</div>
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3)">
-                <button type="button" class="btn btn--mode ${s.mode === 'form' ? 'btn--primary' : ''}" onclick="BM.inspections.setMode('form')">
-                  <div class="btn-icon">📝</div>
-                  <div class="btn-title">Form</div>
-                  <div class="btn-sub">Yapılandırılmış</div>
-                </button>
-                <button type="button" class="btn btn--mode ${s.mode === 'voice' ? 'btn--primary' : ''}" onclick="BM.inspections.setMode('voice')">
-                  <div class="btn-icon">🎙</div>
-                  <div class="btn-title">Sesli</div>
-                  <div class="btn-sub">Mikrofon</div>
-                </button>
-                <button type="button" class="btn btn--mode ${s.mode === 'photo' ? 'btn--primary' : ''}" onclick="BM.inspections.setMode('photo')">
-                  <div class="btn-icon">📷</div>
-                  <div class="btn-title">Foto</div>
-                  <div class="btn-sub">Görsel kanıt</div>
-                </button>
-              </div>
-            </div>
-          `,
-          validate: () => true
-        },
-        {
           label: 'Kovan & Tarih',
           render: (s) => {
             if (!s.date) s.date = BM.today();
+            const hOpts = BM.Storage.list('hives').map(h =>
+              `<option value="${h.id}"${h.id === s.hiveId ? ' selected' : ''}>${BM.esc(h.name)} — ${BM.esc(BM.T.strain(h.strain))}</option>`
+            ).join('');
             return `
             <label class="field"><span class="field-label">Kovan *</span>
               <select class="select" id="w-hiveId">${hOpts}</select></label>
@@ -1373,6 +1333,20 @@
                 <option value="rainy"${s.weather === 'rainy' ? ' selected' : ''}>🌧 Yağmurlu</option>
                 <option value="windy"${s.weather === 'windy' ? ' selected' : ''}>💨 Rüzgarlı</option>
               </select></label>
+            <label class="field"><span class="field-label">Hızlı Şablon (opsiyonel)</span>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2)">
+                <button type="button" class="btn btn--tpl" onclick="BM.inspections.applyTemplate('varroa')">
+                  <div class="btn-icon">🔬</div><div class="btn-label">Varroa</div>
+                </button>
+                <button type="button" class="btn btn--tpl" onclick="BM.inspections.applyTemplate('winter')">
+                  <div class="btn-icon">❄️</div><div class="btn-label">Kış</div>
+                </button>
+                <button type="button" class="btn btn--tpl" onclick="BM.inspections.applyTemplate('spring')">
+                  <div class="btn-icon">🌸</div><div class="btn-label">Bahar</div>
+                </button>
+              </div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Şablon seçince aşağıdaki alanlar otomatik dolar</div>
+            </label>
           `;
           },
           onNext: (s) => {
@@ -1390,92 +1364,120 @@
           }
         },
         {
-          label: 'Detaylar',
-          render: (s) => {
-            if (s.mode === 'form') {
-              return `<label class="field"><span class="field-label">Güç (5 seviye)</span>
-                <select class="select" id="w-population">
-                  ${['very_strong','strong','medium','weak','very_weak'].map(p => `<option value="${p}"${s.population === p ? ' selected' : ''}>${BM.T.pop(p)} ${'●'.repeat({very_strong:5,strong:4,medium:3,weak:2,very_weak:1}[p])}</option>`).join('')}
-                </select></label>
-                <label class="field"><span class="field-label">Ana Arı</span>
-                  <select class="select" id="w-queenSeen">
-                    <option value="seen"${s.queenSeen === 'seen' ? ' selected' : ''}>👑 Gördüm</option>
-                    <option value="cell"${s.queenSeen === 'cell' ? ' selected' : ''}>Yavru Hücresi</option>
-                    <option value="new"${s.queenSeen === 'new' ? ' selected' : ''}>Yeni Ana Arı</option>
-                    <option value="absent"${s.queenSeen === 'absent' ? ' selected' : ''}>Yok</option>
-                  </select></label>
-                <div class="field-row">
-                  <label class="field"><span class="field-label">Yavru Çerçeve</span>
-                    <input class="input" id="w-broodFrames" type="number" min="0" value="${s.broodFrames}"></label>
-                  <label class="field"><span class="field-label">Bal Çerçeve</span>
-                    <input class="input" id="w-honeyFrames" type="number" min="0" value="${s.honeyFrames}"></label>
-                  <label class="field"><span class="field-label">Polen</span>
-                    <input class="input" id="w-pollenFrames" type="number" min="0" value="${s.pollenFrames}"></label>
-                </div>
-                <label class="field"><span class="field-label">Varroa (adet) *</span>
-                  <input class="input" id="w-varroaCount" type="number" min="0" value="${s.varroaCount}"></label>
-                <label class="field"><span class="field-label">Yumurta Düzeni</span>
-                  <select class="select" id="w-eggsPattern">
-                    <option value="regular"${s.eggsPattern === 'regular' ? ' selected' : ''}>Düzenli</option>
-                    <option value="irregular"${s.eggsPattern === 'irregular' ? ' selected' : ''}>Düzensiz</option>
-                    <option value="absent"${s.eggsPattern === 'absent' ? ' selected' : ''}>Yok</option>
-                  </select></label>
-                <label class="field"><span class="field-label">Genel Not</span>
-                  <textarea class="textarea" id="w-notes" rows="3">${BM.esc(s.notes)}</textarea></label>`;
-            }
-            if (s.mode === 'voice') {
-              return `<div class="field">
-                  <label class="field-label">🎙 Sesli Not (60 sn)</label>
-                  <div style="background:var(--bg-tertiary);padding:var(--space-5);border-radius:var(--radius-lg);text-align:center;margin-top:var(--space-2)">
-                    <button type="button" class="btn btn--primary" id="rec-btn" onclick="BM.inspections.toggleRecord()" style="width:80px;height:80px;border-radius:50%;font-size:32px;padding:0">🎙</button>
-                    <div id="rec-status" style="margin-top:var(--space-3);font-size:12px;color:var(--text-secondary)">Kayıt için tıklayın</div>
-                    <div id="rec-audio" style="margin-top:var(--space-2)"></div>
-                  </div>
-                </div>
-                <label class="field"><span class="field-label">veya doğrudan yazın</span>
-                  <textarea class="textarea" id="w-notes" placeholder="Muayene notlarınızı yazın..." rows="3">${BM.esc(s.notes)}</textarea></label>`;
-            }
-            if (s.mode === 'photo') {
-              return `<div class="field">
-                  <label class="field-label">📷 Fotoğraflar (Max 5)</label>
-                  <div class="photo-upload" onclick="document.getElementById('w-photos').click()">
-                    <div class="photo-upload__icon">📷</div>
-                    <div class="photo-upload__text">Fotoğraf eklemek için tıklayın</div>
-                    <div class="photo-upload__hint">veya sürükleyin · JPG, PNG · Max 5 fotoğraf</div>
-                  </div>
-                  <input type="file" accept="image/*" multiple capture="environment" id="w-photos" onchange="BM.inspections.handlePhotos(event)" style="display:none">
-                  <div id="photo-preview" class="photo-preview">
-                    ${(s.photos || []).map((p, i) => `<div class="photo-preview__item"><img src="${p}" alt=""><button type="button" class="photo-preview__remove" onclick="BM.inspections.removePhoto(${i})">×</button></div>`).join('')}
-                  </div>
-                </div>
-                <label class="field"><span class="field-label">Etiket</span>
-                  <input class="input" id="w-photo-tag" placeholder="petek, ana arı, hastalık..." value="${BM.esc(s.photoTag || '')}"></label>
-                <label class="field"><span class="field-label">Notlar</span>
-                  <textarea class="textarea" id="w-notes" rows="2" placeholder="Ek notlar..."></textarea></label>`;
-            }
-          },
+          label: 'Muayene Formu',
+          render: (s) => `
+            <div style="background:var(--bg-tertiary);padding:var(--space-3);border-radius:var(--radius-md);margin-bottom:var(--space-3);font-size:12px;color:var(--text-secondary)">
+              📋 Zorunlu muayene verileri — bunlar kayıt için gereklidir
+            </div>
+            <label class="field"><span class="field-label">Güç (5 seviye) *</span>
+              <select class="select" id="w-population">
+                ${['very_strong','strong','medium','weak','very_weak'].map(p => `<option value="${p}"${s.population === p ? ' selected' : ''}>${BM.T.pop(p)} ${'●'.repeat({very_strong:5,strong:4,medium:3,weak:2,very_weak:1}[p])}</option>`).join('')}
+              </select></label>
+            <label class="field"><span class="field-label">Ana Arı *</span>
+              <select class="select" id="w-queenSeen">
+                <option value="seen"${s.queenSeen === 'seen' ? ' selected' : ''}>👑 Gördüm</option>
+                <option value="cell"${s.queenSeen === 'cell' ? ' selected' : ''}>Yavru Hücresi</option>
+                <option value="new"${s.queenSeen === 'new' ? ' selected' : ''}>Yeni Ana Arı</option>
+                <option value="absent"${s.queenSeen === 'absent' ? ' selected' : ''}>Yok</option>
+              </select></label>
+            <div class="field-row">
+              <label class="field"><span class="field-label">Yavru Çerçeve</span>
+                <input class="input" id="w-broodFrames" type="number" min="0" value="${s.broodFrames}"></label>
+              <label class="field"><span class="field-label">Bal Çerçeve</span>
+                <input class="input" id="w-honeyFrames" type="number" min="0" value="${s.honeyFrames}"></label>
+              <label class="field"><span class="field-label">Polen</span>
+                <input class="input" id="w-pollenFrames" type="number" min="0" value="${s.pollenFrames}"></label>
+            </div>
+            <label class="field"><span class="field-label">Varroa (adet) *</span>
+              <input class="input" id="w-varroaCount" type="number" min="0" value="${s.varroaCount}" required></label>
+            <label class="field"><span class="field-label">Yumurta Düzeni</span>
+              <select class="select" id="w-eggsPattern">
+                <option value="regular"${s.eggsPattern === 'regular' ? ' selected' : ''}>Düzenli</option>
+                <option value="irregular"${s.eggsPattern === 'irregular' ? ' selected' : ''}>Düzensiz</option>
+                <option value="absent"${s.eggsPattern === 'absent' ? ' selected' : ''}>Yok</option>
+              </select></label>
+            <label class="field"><span class="field-label">Notlar</span>
+              <textarea class="textarea" id="w-notes" rows="2" placeholder="Ek notlar...">${BM.esc(s.notes)}</textarea></label>
+          `,
           onNext: (s) => {
             const get = id => document.getElementById(id);
-            if (s.mode === 'form') {
-              s.population = get('w-population').value;
-              s.queenSeen = get('w-queenSeen').value;
-              s.broodFrames = parseInt(get('w-broodFrames').value) || 0;
-              s.honeyFrames = parseInt(get('w-honeyFrames').value) || 0;
-              s.pollenFrames = parseInt(get('w-pollenFrames').value) || 0;
-              s.varroaCount = parseInt(get('w-varroaCount').value) || 0;
-              s.eggsPattern = get('w-eggsPattern').value;
-              s.notes = get('w-notes').value;
-            } else if (s.mode === 'voice' || s.mode === 'photo') {
-              s.notes = get('w-notes').value;
-              s.photoTag = get('w-photo-tag') ? get('w-photo-tag').value : '';
+            s.population = get('w-population').value;
+            s.queenSeen = get('w-queenSeen').value;
+            s.broodFrames = parseInt(get('w-broodFrames').value) || 0;
+            s.honeyFrames = parseInt(get('w-honeyFrames').value) || 0;
+            s.pollenFrames = parseInt(get('w-pollenFrames').value) || 0;
+            s.varroaCount = parseInt(get('w-varroaCount').value) || 0;
+            s.eggsPattern = get('w-eggsPattern').value;
+            s.notes = get('w-notes').value;
+          },
+          validate: (s) => {
+            if (s.varroaCount === undefined || s.varroaCount === null || isNaN(s.varroaCount)) {
+              BM.Toast.show('Varroa sayısı gerekli', 'error');
+              return false;
             }
+            return true;
           }
+        },
+        {
+          label: 'Ek Medya (opsiyonel)',
+          render: (s) => {
+            const hasPhotos = (s.photos && s.photos.length > 0);
+            const hasAudio = !!s.audioData;
+            return `
+            <div style="background:var(--bg-tertiary);padding:var(--space-3);border-radius:var(--radius-md);margin-bottom:var(--space-3);font-size:12px;color:var(--text-secondary)">
+              💡 Bu adım isteğe bağlıdır. Fotoğraf ve/veya sesli not ekleyebilirsiniz — hiçbir şey eklemeden de geçebilirsiniz.
+            </div>
+            <div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-4)">
+              <button type="button" class="btn ${hasPhotos ? 'btn--primary' : ''}" onclick="BM.inspections.togglePhotos()" style="flex:1;flex-direction:column;padding:var(--space-3)">
+                <div style="font-size:24px">📷</div>
+                <div style="font-size:11px;font-weight:600">${hasPhotos ? '✓ Fotoğraflar (' + s.photos.length + ')' : 'Fotoğraf Ekle'}</div>
+              </button>
+              <button type="button" class="btn ${hasAudio ? 'btn--primary' : ''}" onclick="BM.inspections.toggleAudio()" style="flex:1;flex-direction:column;padding:var(--space-3)">
+                <div style="font-size:24px">🎙</div>
+                <div style="font-size:11px;font-weight:600">${hasAudio ? '✓ Ses Kaydı' : 'Sesli Not Ekle'}</div>
+              </button>
+            </div>
+            <div id="photo-area" style="display:${hasPhotos ? 'block' : 'none'}">
+              <div class="photo-upload" onclick="document.getElementById('w-photos').click()">
+                <div class="photo-upload__icon">📷</div>
+                <div class="photo-upload__text">Fotoğraf eklemek için tıklayın</div>
+                <div class="photo-upload__hint">JPG, PNG · Max 5 fotoğraf</div>
+              </div>
+              <input type="file" accept="image/*" multiple capture="environment" id="w-photos" onchange="BM.inspections.handlePhotos(event)" style="display:none">
+              <div id="photo-preview" class="photo-preview">
+                ${(s.photos || []).map((p, i) => `<div class="photo-preview__item"><img src="${p}" alt=""><button type="button" class="photo-preview__remove" onclick="BM.inspections.removePhoto(${i})">×</button></div>`).join('')}
+              </div>
+              <label class="field" style="margin-top:var(--space-3)"><span class="field-label">Fotoğraf Etiketi</span>
+                <input class="input" id="w-photo-tag" placeholder="petek, ana arı, hastalık..." value="${BM.esc(s.photoTag || '')}"></label>
+            </div>
+            <div id="audio-area" style="display:${hasAudio ? 'block' : 'none'}">
+              <div style="background:var(--bg-tertiary);padding:var(--space-5);border-radius:var(--radius-lg);text-align:center">
+                <button type="button" class="btn btn--primary" id="rec-btn" onclick="BM.inspections.toggleRecord()" style="width:80px;height:80px;border-radius:50%;font-size:32px;padding:0">${s.audioData ? '✓' : '🎙'}</button>
+                <div id="rec-status" style="margin-top:var(--space-3);font-size:12px;color:${s.audioData ? 'var(--success)' : 'var(--text-secondary)'}">${s.audioData ? '✓ Kayıt tamamlandı' : 'Kayıt için tıklayın'}</div>
+                <div id="rec-audio" style="margin-top:var(--space-2)">${s.audioData ? '<audio controls src="' + s.audioData + '" style="width:100%"></audio>' : ''}</div>
+              </div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center">
+                ${s.audioData ? '✓ Ses kaydedildi — İsterseniz tekrar kaydedin' : '60 saniyeye kadar kayıt yapabilirsiniz'}
+              </div>
+            </div>
+          `;
+          },
+          onNext: () => {
+            // Optional step - always passes
+            const tagEl = document.getElementById('w-photo-tag');
+            if (tagEl && window.BM && BM.inspections && BM.inspections._state) {
+              BM.inspections._state.photoTag = tagEl.value;
+            }
+          },
+          validate: () => true
         },
         {
           label: 'AI Analiz',
           render: (s) => {
             const anomalies = this.detectAnomalies(s);
             const hive = BM.Storage.get('hives', s.hiveId);
+            const photoCount = (s.photos || []).length;
+            const hasAudio = !!s.audioData;
             return `<div class="ai-card card" style="margin-bottom:var(--space-4)">
               <div style="font-size:13px;font-weight:700;margin-bottom:var(--space-2);display:flex;align-items:center;gap:var(--space-2)">🤖 AI Analiz Sonucu</div>
               <div style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-3)">
@@ -1498,6 +1500,7 @@
                 <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Güç</div></div><div>${BM.T.pop(s.population)}</div></div>
                 <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Varroa</div></div><div style="color:${s.varroaCount >= 6 ? 'var(--danger)' : s.varroaCount >= 3 ? 'var(--warning)' : 'var(--success)'};font-weight:700">${s.varroaCount}</div></div>
                 <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Çerçeve</div></div><div>Y:${s.broodFrames} B:${s.honeyFrames} P:${s.pollenFrames}</div></div>
+                <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Ek Medya</div></div><div>${photoCount > 0 ? '📷 ' + photoCount + ' fotoğraf' : ''}${photoCount > 0 && hasAudio ? ' · ' : ''}${hasAudio ? '🎙 Ses kaydı' : ''}${photoCount === 0 && !hasAudio ? '—' : ''}</div></div>
               </div>
             </div>`;
           }
@@ -1659,21 +1662,32 @@
 
     refreshWizardStep() {
       // Wizard'i yeniden acmadan, sadece mevcut step'in renderini yenile
-      // Bu sayede foto eklenince wizard kapanip acilmiyor
       const s = this._state;
       const step3 = document.getElementById('wizard-body');
       if (!step3 || !s) return;
-      // Sadece photo modundaysa yeniden render et
-      if (s.mode === 'photo') {
-        const preview = document.getElementById('photo-preview');
-        if (preview) {
-          preview.innerHTML = (s.photos || []).map((p, i) => `<div class="photo-preview__item"><img src="${p}" alt=""><button type="button" class="photo-preview__remove" onclick="BM.inspections.removePhoto(${i})">×</button></div>`).join('');
-        }
-      } else if (s.mode === 'voice') {
-        // Voice modunda not textareayi yenile
-        const notesEl = document.getElementById('w-notes');
-        if (notesEl && s.notes !== undefined) notesEl.value = s.notes;
+      const preview = document.getElementById('photo-preview');
+      if (preview) {
+        preview.innerHTML = (s.photos || []).map((p, i) => `<div class="photo-preview__item"><img src="${p}" alt=""><button type="button" class="photo-preview__remove" onclick="BM.inspections.removePhoto(${i})">×</button></div>`).join('');
       }
+    },
+
+    togglePhotos() {
+      if (!this._state) return;
+      const photoArea = document.getElementById('photo-area');
+      const audioArea = document.getElementById('audio-area');
+      const isShowing = photoArea && photoArea.style.display !== 'none';
+      // Goster/gizle
+      if (photoArea) photoArea.style.display = isShowing ? 'none' : 'block';
+      // Photos array'i koru (gizlesek bile), kullanici tekrar acabilsin
+      BM.Toast.show(isShowing ? 'Fotoğraf bölümü gizlendi' : 'Fotoğraf bölümü açıldı', 'info');
+    },
+
+    toggleAudio() {
+      if (!this._state) return;
+      const audioArea = document.getElementById('audio-area');
+      const isShowing = audioArea && audioArea.style.display !== 'none';
+      if (audioArea) audioArea.style.display = isShowing ? 'none' : 'block';
+      BM.Toast.show(isShowing ? 'Ses kaydı gizlendi' : 'Ses kaydı açıldı', 'info');
     },
 
     removePhoto(i) {
