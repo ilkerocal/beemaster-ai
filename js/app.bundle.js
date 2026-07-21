@@ -1320,17 +1320,38 @@
             <div style="margin-bottom:var(--space-4)">
               <div style="font-size:12px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;margin-bottom:var(--space-2)">Hızlı Şablon</div>
               <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2)">
-                <button type="button" class="btn" onclick="BM.inspections.applyTemplate('varroa')" style="padding:var(--space-3);flex-direction:column"><div style="font-size:24px;margin-bottom:4px">🔬</div><div style="font-size:11px;font-weight:600">Varroa</div></button>
-                <button type="button" class="btn" onclick="BM.inspections.applyTemplate('winter')" style="padding:var(--space-3);flex-direction:column"><div style="font-size:24px;margin-bottom:4px">❄️</div><div style="font-size:11px;font-weight:600">Kış</div></button>
-                <button type="button" class="btn" onclick="BM.inspections.applyTemplate('spring')" style="padding:var(--space-3);flex-direction:column"><div style="font-size:24px;margin-bottom:4px">🌸</div><div style="font-size:11px;font-weight:600">Bahar</div></button>
+                <button type="button" class="btn btn--tpl" onclick="BM.inspections.applyTemplate('varroa')">
+                  <div class="btn-icon">🔬</div>
+                  <div class="btn-label">Varroa</div>
+                </button>
+                <button type="button" class="btn btn--tpl" onclick="BM.inspections.applyTemplate('winter')">
+                  <div class="btn-icon">❄️</div>
+                  <div class="btn-label">Kış</div>
+                </button>
+                <button type="button" class="btn btn--tpl" onclick="BM.inspections.applyTemplate('spring')">
+                  <div class="btn-icon">🌸</div>
+                  <div class="btn-label">Bahar</div>
+                </button>
               </div>
             </div>
             <div style="border-top:1px solid var(--n-800);padding-top:var(--space-4)">
               <div style="font-size:12px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;margin-bottom:var(--space-2)">Giriş Yöntemi</div>
               <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3)">
-                <button type="button" class="btn ${s.mode === 'form' ? 'btn--primary' : ''}" onclick="BM.inspections.setMode('form')" style="padding:var(--space-5);flex-direction:column"><div style="font-size:32px;margin-bottom:6px">📝</div><div style="font-weight:600">Form</div><div style="font-size:10px;opacity:.7">Yapılandırılmış</div></button>
-                <button type="button" class="btn ${s.mode === 'voice' ? 'btn--primary' : ''}" onclick="BM.inspections.setMode('voice')" style="padding:var(--space-5);flex-direction:column"><div style="font-size:32px;margin-bottom:6px">🎙</div><div style="font-weight:600">Sesli</div><div style="font-size:10px;opacity:.7">Mikrofon</div></button>
-                <button type="button" class="btn ${s.mode === 'photo' ? 'btn--primary' : ''}" onclick="BM.inspections.setMode('photo')" style="padding:var(--space-5);flex-direction:column"><div style="font-size:32px;margin-bottom:6px">📷</div><div style="font-weight:600">Foto</div><div style="font-size:10px;opacity:.7">Görsel kanıt</div></button>
+                <button type="button" class="btn btn--mode ${s.mode === 'form' ? 'btn--primary' : ''}" onclick="BM.inspections.setMode('form')">
+                  <div class="btn-icon">📝</div>
+                  <div class="btn-title">Form</div>
+                  <div class="btn-sub">Yapılandırılmış</div>
+                </button>
+                <button type="button" class="btn btn--mode ${s.mode === 'voice' ? 'btn--primary' : ''}" onclick="BM.inspections.setMode('voice')">
+                  <div class="btn-icon">🎙</div>
+                  <div class="btn-title">Sesli</div>
+                  <div class="btn-sub">Mikrofon</div>
+                </button>
+                <button type="button" class="btn btn--mode ${s.mode === 'photo' ? 'btn--primary' : ''}" onclick="BM.inspections.setMode('photo')">
+                  <div class="btn-icon">📷</div>
+                  <div class="btn-title">Foto</div>
+                  <div class="btn-sub">Görsel kanıt</div>
+                </button>
               </div>
             </div>
           `,

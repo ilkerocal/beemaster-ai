@@ -505,3 +505,46 @@ ul, ol { list-style: none; }
 @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
 @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
 noscript { display: flex; align-items: center; justify-content: center; height: 100vh; background: #07080C; color: #E8EAF2; font-family: system-ui; text-align: center; padding: 20px; }
+
+/* === STACKED BUTTONS (template + mode chooser) === */
+.btn--tpl,
+.btn--mode {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  min-height: 72px;
+  height: auto;
+  padding: 12px 8px;
+  white-space: normal;
+  line-height: 1.2;
+}
+.btn--tpl .btn-icon,
+.btn--mode .btn-icon {
+  font-size: 24px;
+  line-height: 1;
+  display: block;
+}
+.btn--mode .btn-icon {
+  font-size: 28px;
+}
+.btn--tpl .btn-label {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  display: block;
+}
+.btn--mode .btn-title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  display: block;
+}
+.btn--mode .btn-sub {
+  font-size: 10px;
+  opacity: 0.7;
+  line-height: 1.2;
+  display: block;
+}
