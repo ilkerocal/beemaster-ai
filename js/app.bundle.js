@@ -298,6 +298,8 @@
       if (!this.el) {
         this.el = document.getElementById('modal-overlay');
       }
+      // Click outside to close
+      this.el.onclick = (e) => { if (e.target === this.el) this.close(); };
       document.getElementById('modal-title').textContent = title;
       document.getElementById('modal-body').innerHTML = html;
       document.getElementById('modal-form').onsubmit = (e) => {
@@ -3145,8 +3147,8 @@
         this.nav(view || 'dashboard', param);
       }
 
-      // Onboarding (ilk kullanım)
-      if (!localStorage.getItem('bm-onboarded')) { setTimeout(() => BM.onboarding.init(), 800); }
+      // Onboarding removed - user goes directly to dashboard
+      localStorage.setItem('bm-onboarded', '1');
 
       // Bildirim kontrolü (3 sn sonra)
       setTimeout(() => BM.notify.check(), 3000);
