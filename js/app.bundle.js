@@ -973,6 +973,7 @@
       const queenAge = queen ? ((Date.now() - new Date(queen.birthDate).getTime()) / (365 * 864e5)).toFixed(1) : '-';
 
       const html = `
+        ${BM.Bio.renderTimeline(id)}
         <div class="actions-bar">
           <div>
             <a class="link" style="color:var(--honey-500);font-weight:600;cursor:pointer" onclick="App.render('hives')">← Kovanlar</a>
@@ -1838,6 +1839,381 @@
   };
 
   BM.inspections = inspectionsModule;
+
+
+/* ===== js/modules/bio.js ===== */
+// ============================================================
+// Bio Engine — Colony Lifecycle & AI Reasoning (Spec 17)
+// Türkçe bölgesel terminoloji ile uluslararası AI isimleri
+// ============================================================
+(function (global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  // 20+ yaşam döngüsü evresi
+  // Her evre: { id, name_tr, name_ai, season, description, indicators }
+  const STAGES = [
+    { id: 'winter_cluster', name_tr: 'Kış Kümelenmesi', name_ai: 'Winter Cluster', season: 'winter',
+      desc: 'Arılar kovanda kümelenir, ana arı yumurta bırakmaz', indicators: ['temp_low', 'no_brood'] },
+    { id: 'late_winter', name_tr: 'Geç Kış Gelişimi', name_ai: 'Late Winter Development', season: 'late_winter',
+      desc: 'Ana arı yumurta bırakmaya başlar, kuluçka alanı genişler', indicators: ['first_eggs', 'small_brood'] },
+    { id: 'spring_buildup', name_tr: 'İlkbahar Güçlenmesi', name_ai: 'Spring Build-up', season: 'spring',
+      desc: 'Nüfus hızla artar, kuluçka alanı genişler', indicators: ['brood_growing', 'population_increasing'] },
+    { id: 'rapid_growth', name_tr: 'Hızlı Nüfus Artışı', name_ai: 'Rapid Population Growth', season: 'spring',
+      desc: 'Petek örme hızlanır, kuluçka deseni genişler', indicators: ['wax_building', 'many_larvae'] },
+    { id: 'brood_expansion', name_tr: 'Kuluçka Genişlemesi', name_ai: 'Brood Expansion', season: 'spring',
+      desc: 'Kuluçka çerçeveleri artar, erkek arı üretimi başlar', indicators: ['drone_brood'] },
+    { id: 'wax_building', name_tr: 'Petek İnşası', name_ai: 'Wax Building', season: 'spring',
+      desc: 'İşçi arılar yeni petek örüyor', indicators: ['fresh_wax', 'white_combs'] },
+    { id: 'frame_expansion', name_tr: 'Çerçeve Genişlemesi', name_ai: 'Frame Expansion', season: 'spring',
+      desc: 'Koloni daha fazla çerçeve dolduruyor', indicators: ['frames_filling'] },
+    { id: 'honey_flow_start', name_tr: 'Bal Akımı Başlangıcı', name_ai: 'Honey Flow Start', season: 'spring',
+      desc: 'Nektar akışı başladı, ballık ekleme zamanı', indicators: ['nectar_inflow', 'white_honey'] },
+    { id: 'pre_swarming', name_tr: 'Oğul Öncesi Dönem', name_ai: 'Pre-Swarming Stage', season: 'spring',
+      desc: 'Ana arı yeni yumurta bırakıyor', indicators: ['queen_cells_start', 'tight_space'] },
+    { id: 'kulakca', name_tr: 'Kulakça Dönemi', name_ai: 'Ear Projection Stage', season: 'spring',
+      desc: 'Çerçeve altlarında kulakçalar oluşuyor', indicators: ['bottom_protrusions', 'reduced_space'] },
+    { id: 'queen_cells', name_tr: 'Ana Arı Yüksüğü Gelişimi', name_ai: 'Queen Cell Development', season: 'spring',
+      desc: 'Ana arı yüksükleri (oğul hücreleri) görünüyor', indicators: ['swarm_cells', 'queen_cells'] },
+    { id: 'swarming_prep', name_tr: 'Oğul Hazırlığı', name_ai: 'Swarming Preparation', season: 'spring',
+      desc: 'Ana arı yüksükleri kapatıldı, oğul yakın', indicators: ['capped_queen_cells', 'reduced_foraging'] },
+    { id: 'swarming_event', name_tr: 'Oğul Verme', name_ai: 'Swarming Event', season: 'spring',
+      desc: 'Koloni oğul verdi', indicators: ['sudden_population_drop', 'queen_cells_open'] },
+    { id: 'post_swarm_recovery', name_tr: 'Oğul Sonrası İyileşme', name_ai: 'Post Swarm Recovery', season: 'summer',
+      desc: 'Yeni ana arı çıkıyor, koloni toparlanıyor', indicators: ['virgin_queen', 'reduced_population'] },
+    { id: 'queen_emergence', name_tr: 'Ana Arı Çıkışı', name_ai: 'Queen Emergence', season: 'summer',
+      desc: 'Yeni ana arı yüksükten çıktı', indicators: ['virgin_queen', 'no_eggs_yet'] },
+    { id: 'queen_mating', name_tr: 'Ana Arı Çiftleşmesi', name_ai: 'Queen Mating', season: 'summer',
+      desc: 'Ana arı çiftleşme uçuşunda', indicators: ['mating_flight'] },
+    { id: 'new_queen_laying', name_tr: 'Yeni Ana Arı Yumurtlaması', name_ai: 'New Queen Egg Laying', season: 'summer',
+      desc: 'Yeni ana arı yumurtlamaya başladı', indicators: ['new_eggs', 'regular_pattern'] },
+    { id: 'population_recovery', name_tr: 'Nüfus Toparlanması', name_ai: 'Population Recovery', season: 'summer',
+      desc: 'Koloni güçleniyor', indicators: ['population_increasing'] },
+    { id: 'main_honey_flow', name_tr: 'Ana Bal Akımı', name_ai: 'Main Honey Flow', season: 'summer',
+      desc: 'En yoğun bal üretimi dönemi', indicators: ['high_honey_storage', 'foraging_intense'] },
+    { id: 'honey_harvest', name_tr: 'Bal Hasadı', name_ai: 'Honey Harvest', season: 'summer',
+      desc: 'Bal sağımı yapılıyor', indicators: ['frames_extracted'] },
+    { id: 'late_summer', name_tr: 'Geç Yaz', name_ai: 'Late Summer', season: 'late_summer',
+      desc: 'Bal akımı azalıyor, kış hazırlığı başlıyor', indicators: ['reduced_nectar', 'drone_eviction'] },
+    { id: 'autumn_preparation', name_tr: 'Sonbahar Hazırlığı', name_ai: 'Autumn Preparation', season: 'autumn',
+      desc: 'Kış için yiyecek depolanıyor', indicators: ['food_storage_increasing'] },
+    { id: 'winter_feeding', name_tr: 'Kış Beslemesi', name_ai: 'Winter Feeding', season: 'autumn',
+      desc: 'Şerbet/keçi ile kış yiyeceği takviyesi', indicators: ['feeding_records'] },
+    { id: 'varroa_treatment', name_tr: 'Varroa Tedavisi', name_ai: 'Varroa Treatment', season: 'autumn',
+      desc: 'Varroa ilaçlaması yapılıyor', indicators: ['treatment_records'] },
+    { id: 'winter_preparation', name_tr: 'Kış Hazırlığı', name_ai: 'Winter Preparation', season: 'autumn',
+      desc: 'Kovan kışa hazırlanıyor (izolasyon, daraltma)', indicators: ['entrance_reduced'] },
+    { id: 'winter_rest', name_tr: 'Kış Dinlenmesi', name_ai: 'Winter Rest', season: 'winter',
+      desc: 'Koloni kış uykusunda', indicators: ['no_flying', 'cluster_intact'] }
+  ];
+
+  // Şu anki ay için olası evreler (Diyarbakır / Türkiye merkezli)
+  // Bölgeye göre ayarlanabilir
+  const STAGE_BY_MONTH = {
+    0: ['winter_rest', 'winter_cluster'],
+    1: ['winter_cluster', 'late_winter'],
+    2: ['late_winter', 'spring_buildup'],
+    3: ['spring_buildup', 'rapid_growth', 'brood_expansion'],
+    4: ['rapid_growth', 'brood_expansion', 'wax_building', 'frame_expansion', 'honey_flow_start', 'pre_swarming', 'kulakca'],
+    5: ['pre_swarming', 'kulakca', 'queen_cells', 'swarming_prep', 'swarming_event', 'honey_flow_start', 'main_honey_flow'],
+    6: ['main_honey_flow', 'swarming_event', 'post_swarm_recovery', 'queen_emergence', 'queen_mating', 'new_queen_laying', 'population_recovery'],
+    7: ['main_honey_flow', 'population_recovery', 'honey_harvest', 'late_summer'],
+    8: ['late_summer', 'honey_harvest', 'autumn_preparation', 'varroa_treatment'],
+    9: ['autumn_preparation', 'varroa_treatment', 'winter_feeding', 'winter_preparation'],
+    10: ['winter_feeding', 'winter_preparation', 'winter_rest'],
+    11: ['winter_rest', 'winter_cluster']
+  };
+
+  // Şu anki evreyi tespit et
+  function detectStage(hiveId, inspection) {
+    const month = new Date(inspection.date || Date.now()).getMonth();
+    const candidates = STAGE_BY_MONTH[month] || [];
+
+    // Inspection gözlemlerine göre daralt
+    const obs = inspection || {};
+    const scores = candidates.map(stageId => {
+      const stage = STAGES.find(s => s.id === stageId);
+      if (!stage) return { stageId, score: 0 };
+
+      let score = 50; // base score for being in season
+      const ind = stage.indicators || [];
+
+      // Kış kümelenmesi: hiç kuluçka yok, düşük sıcaklık
+      if (stage.id === 'winter_cluster' && obs.broodFrames === 0) score += 30;
+      if (stage.id === 'late_winter' && obs.eggsPattern && obs.eggsPattern !== 'absent' && obs.broodFrames > 0) score += 25;
+      if (stage.id === 'spring_buildup' && obs.broodFrames >= 3) score += 20;
+      if (stage.id === 'rapid_growth' && obs.broodFrames >= 5 && obs.honeyFrames >= 3) score += 20;
+      if (stage.id === 'main_honey_flow' && obs.honeyFrames >= 7) score += 30;
+      if (stage.id === 'honey_harvest' && obs.notes && /hasat/i.test(obs.notes)) score += 30;
+      if (stage.id === 'queen_cells' && obs.queenSeen === 'cell') score += 35;
+      if (stage.id === 'pre_swarming' && obs.queenSeen === 'cell') score += 25;
+      if (stage.id === 'swarming_event' && obs.queenSeen === 'absent' && obs.population === 'weak') score += 40;
+      if (stage.id === 'kulakca' && obs.notes && /kulakça/i.test(obs.notes)) score += 50;
+
+      return { stageId, score };
+    });
+
+    // En yüksek skoru al
+    scores.sort((a, b) => b.score - a.score);
+    return scores[0] || { stageId: 'spring_buildup', score: 50 };
+  }
+
+  // Koloni için biyolojik timeline oluştur
+  function buildTimeline(hiveId) {
+    const inspections = BM.Storage.list('inspections')
+      .filter(i => i.hiveId === hiveId)
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const treatments = BM.Storage.list('treatments').filter(t => t.hiveId === hiveId);
+    const harvests = BM.Storage.list('harvests').filter(h => h.hiveId === hiveId);
+    const feedings = BM.Storage.list('feedings').filter(f => f.f.hiveId || f.hiveId === hiveId);
+
+    const events = [];
+
+    // Muayene -> evre tespiti
+    inspections.forEach(insp => {
+      const result = detectStage(hiveId, insp);
+      const stage = STAGES.find(s => s.id === result.stageId);
+      events.push({
+        date: insp.date,
+        type: 'inspection',
+        stage_id: result.stageId,
+        stage_tr: stage?.name_tr || '?',
+        stage_ai: stage?.name_ai || '?',
+        confidence: result.score,
+        data: insp
+      });
+    });
+
+    // Tedaviler
+    treatments.forEach(t => {
+      events.push({
+        date: t.date,
+        type: 'treatment',
+        stage_id: 'varroa_treatment',
+        stage_tr: 'Varroa Tedavisi',
+        stage_ai: 'Varroa Treatment',
+        confidence: 100,
+        data: t
+      });
+    });
+
+    // Hasatlar
+    harvests.forEach(h => {
+      events.push({
+        date: h.date,
+        type: 'harvest',
+        stage_id: 'honey_harvest',
+        stage_tr: 'Bal Hasadı',
+        stage_ai: 'Honey Harvest',
+        confidence: 100,
+        data: h
+      });
+    });
+
+    // Zamana göre sırala
+    events.sort((a, b) => a.date.localeCompare(b.date));
+    return events;
+  }
+
+  // Şu anki evre + tahminler
+  function getCurrentState(hiveId) {
+    const insp = BM.Storage.list('inspections')
+      .filter(i => i.hiveId === hiveId)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+
+    if (!insp) {
+      return {
+        current: null,
+        next: STAGES.find(s => s.id === 'spring_buildup'),
+        confidence: 0,
+        recommendations: ['Henüz muayene yapılmadı. İlk muayeneyi yapın.']
+      };
+    }
+
+    const current = detectStage(hiveId, insp);
+    const currentStage = STAGES.find(s => s.id === current.stageId);
+    const nextStage = currentStage ? STAGES[STAGES.indexOf(currentStage) + 1] || null : null;
+
+    // Öneriler
+    const recommendations = [];
+    if (currentStage?.id === 'pre_swarming' || currentStage?.id === 'kulakca') {
+      recommendations.push('Oğul kontrolü yapın — yüksük olup olmadığını kontrol edin');
+      recommendations.push('Kuluçkalık kontrolü yapın, gerekirse yükseltin');
+    }
+    if (currentStage?.id === 'queen_cells' || currentStage?.id === 'swarming_prep') {
+      recommendations.push('ACİL: Oğul kontrolü — ana arı yüksükleri kapatılmış olabilir');
+    }
+    if (insp.varroaCount >= 6) {
+      recommendations.push('Kritik varroa seviyesi — Apivar veya Oksalik asit ile tedavi');
+    }
+    if (currentStage?.id === 'autumn_preparation') {
+      recommendations.push('Kış yiyeceği kontrolü yapın — yeterli bal bırakıldığından emin olun');
+    }
+    if (currentStage?.id === 'winter_feeding') {
+      recommendations.push('Kış beslemesi başlatın (2:1 şerbet veya fondant)');
+    }
+    if (currentStage?.id === 'main_honey_flow' && insp.honeyFrames >= 8) {
+      recommendations.push('Bal hasadı zamanı — ballıkları indirin');
+    }
+
+    // Tahminler
+    const predictions = {
+      swarming_probability: 0,
+      queen_replacement_soon: false,
+      honey_yield_estimate: 0,
+      needs_feeding: false,
+      needs_harvest: false
+    };
+
+    // Oğul olasılığı
+    if (currentStage?.id === 'pre_swarming') predictions.swarming_probability = 60;
+    if (currentStage?.id === 'kulakca') predictions.swarming_probability = 75;
+    if (currentStage?.id === 'queen_cells') predictions.swarming_probability = 90;
+    if (currentStage?.id === 'swarming_prep') predictions.swarming_probability = 95;
+
+    // Ana arı yaşı
+    const queen = BM.Storage.list('queens').find(q => q.hiveId === hiveId);
+    if (queen) {
+      const ageYears = (Date.now() - new Date(queen.birthDate).getTime()) / (365 * 864e5);
+      if (ageYears > 2) predictions.queen_replacement_soon = true;
+    }
+
+    // Bal tahmini
+    const recentHarvests = BM.Storage.list('harvests').filter(h => h.hiveId === hiveId).slice(-5);
+    predictions.honey_yield_estimate = recentHarvests.reduce((s, h) => s + h.weight, 0);
+
+    // Besleme ihtiyacı
+    if (insp.honeyFrames < 4 && (currentStage?.season === 'autumn' || currentStage?.season === 'late_summer')) {
+      predictions.needs_feeding = true;
+    }
+
+    // Hasat ihtiyacı
+    if (insp.honeyFrames >= 8) predictions.needs_harvest = true;
+
+    return {
+      current: currentStage,
+      current_confidence: current.score,
+      next: nextStage,
+      recommendations,
+      predictions,
+      last_inspection: insp
+    };
+  }
+
+  // Stage'i insan-dostu renkle göster
+  function getStageColor(stageId) {
+    const colors = {
+      winter_cluster: '#3b82f6', late_winter: '#60a5fa', spring_buildup: '#22c55e',
+      rapid_growth: '#22c55e', brood_expansion: '#22c55e', wax_building: '#22c55e',
+      frame_expansion: '#22c55e', honey_flow_start: '#eab308', pre_swarming: '#f59e0b',
+      kulakca: '#f59e0b', queen_cells: '#ef4444', swarming_prep: '#ef4444',
+      swarming_event: '#dc2626', post_swarm_recovery: '#06b6d4', queen_emergence: '#06b6d4',
+      queen_mating: '#06b6d4', new_queen_laying: '#22c55e', population_recovery: '#22c55e',
+      main_honey_flow: '#eab308', honey_harvest: '#facc15', late_summer: '#f97316',
+      autumn_preparation: '#f97316', winter_feeding: '#a855f7', varroa_treatment: '#dc2626',
+      winter_preparation: '#3b82f6', winter_rest: '#1e40af'
+    };
+    return colors[stageId] || '#737373';
+  }
+
+  // UI: Timeline render HTML
+  function renderTimeline(hiveId) {
+    const timeline = buildTimeline(hiveId);
+    const state = getCurrentState(hiveId);
+
+    if (!timeline.length) {
+      return `<div class="card"><div class="empty"><div class="empty__icon">📅</div><div class="empty__title">Henüz biyolojik veri yok</div><div class="empty__sub">İlk muayeneyi yaparak koloni yaşam döngüsünü başlatın</div></div></div>`;
+    }
+
+    const currentStage = state.current;
+    const confidence = state.current_confidence;
+
+    // Timeline items
+    const items = timeline.slice(-15).reverse().map(ev => {
+      const color = getStageColor(ev.stage_id);
+      const dateStr = BM.dateStr(ev.date);
+      return `
+        <div class="timeline-item" style="display:flex;gap:var(--space-3);padding:var(--space-2) 0;border-left:3px solid ${color};padding-left:var(--space-3);margin-left:var(--space-2)">
+          <div style="min-width:90px;font-size:11px;color:var(--text-secondary)">${dateStr}</div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:13px">${ev.stage_tr}</div>
+            <div style="font-size:10px;color:var(--text-muted)">${ev.stage_ai} · ${ev.confidence}% güven</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Recommendations
+    const recs = state.recommendations.length
+      ? state.recommendations.map(r => `<li style="padding:var(--space-1) 0">${BM.esc(r)}</li>`).join('')
+      : '<li style="color:var(--text-muted)">Şu an özel bir öneri yok — koloni sağlıklı görünüyor ✓</li>';
+
+    // Predictions badges
+    const preds = [];
+    if (state.predictions.swarming_probability > 0) {
+      preds.push(`<span class="badge badge--danger">🐝 Oğul Riski: %${state.predictions.swarming_probability}</span>`);
+    }
+    if (state.predictions.queen_replacement_soon) {
+      preds.push(`<span class="badge badge--warn">👑 Ana arı yaşlı</span>`);
+    }
+    if (state.predictions.needs_harvest) {
+      preds.push(`<span class="badge badge--warn">🍯 Hasat zamanı</span>`);
+    }
+    if (state.predictions.needs_feeding) {
+      preds.push(`<span class="badge badge--danger">🍯 Besleme gerekli</span>`);
+    }
+
+    return `
+      <div class="card" style="margin-bottom:var(--space-4)">
+        <div class="card-head">
+          <div>
+            <div class="card-title">🧬 Koloni Yaşam Döngüsü</div>
+            <div class="card-sub">Biyolojik AI analizi</div>
+          </div>
+        </div>
+
+        ${currentStage ? `
+          <div style="background:linear-gradient(135deg, ${getStageColor(currentStage.id)}22, ${getStageColor(currentStage.id)}11);border:1px solid ${getStageColor(currentStage.id)}66;border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4)">
+            <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px">Şu anki evre</div>
+            <div style="font-size:20px;font-weight:700;color:${getStageColor(currentStage.id)}">${BM.esc(currentStage.name_tr)}</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${BM.esc(currentStage.desc)}</div>
+            <div style="display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-3);font-size:11px;color:var(--text-muted)">
+              <span>AI: ${BM.esc(currentStage.name_ai)}</span>
+              <span>·</span>
+              <span>Güven: <strong>${confidence}%</strong></span>
+              ${state.next ? `<span>·</span><span>Sıradaki: <strong>${BM.esc(state.next.name_tr)}</strong></span>` : ''}
+            </div>
+          </div>
+        ` : ''}
+
+        ${preds.length ? `<div style="display:flex;gap:var(--space-2);flex-wrap:wrap;margin-bottom:var(--space-4)">${preds.join('')}</div>` : ''}
+
+        <div style="margin-bottom:var(--space-4)">
+          <div style="font-size:13px;font-weight:600;margin-bottom:var(--space-2)">💡 Öneriler</div>
+          <ul style="margin:0;padding-left:var(--space-5);font-size:13px">${recs}</ul>
+        </div>
+
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:var(--space-2)">📅 Biyolojik Zaman Çizelgesi (son ${timeline.slice(-15).length})</div>
+          <div style="max-height:280px;overflow-y:auto">${items}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Public API
+  BM.Bio = {
+    STAGES,
+    detectStage,
+    buildTimeline,
+    getCurrentState,
+    renderTimeline,
+    getStageColor
+  };
+
+})(window);
+
 })(window);
 
 /* ===== js/modules/crud.js ===== */
