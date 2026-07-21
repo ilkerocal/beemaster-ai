@@ -389,9 +389,9 @@
 
   // ============ WIZARD ============
   const Wizard = {
-    open(title, steps, onComplete) {
+    open(title, steps, onComplete, initialState) {
       let currentStep = 0;
-      const state = {};
+      const state = initialState ? Object.assign({}, initialState) : {};
 
       const render = () => {
         const step = steps[currentStep];
@@ -1488,7 +1488,7 @@
           }, 500);
         }
         App.render('inspections');
-      });
+      }, state);
 
       // Hooks for wizard buttons
       this._state = state;
