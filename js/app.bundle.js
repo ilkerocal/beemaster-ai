@@ -54,7 +54,7 @@
   // Transforms / Labels
   const T = {
     strain: s => ({anatolian:'Anadolu',caucasian:'Kafkas',carniolan:'Karniyol',buckfast:'Buckfast',carpathian:'Karpat',italian:'İtalyan',cyprian:'Kıbrıs',syrian:'Suriye',egyptian:'Mısır',hybrid:'Hibrit',survivor:'Survivor',unknown:'Bilinmiyor'}[s] || s),
-    box: s => ({langstroth:'Langstroth',dadant:'Dadant',layens:'Layens',flow:'Flow',top_bar:'Top-Bar',wooden:'Ahşap Kovan',plastic:'Plastik Kovan',styrofoam:'Strafor Kovan',log:'Kütük Kovan',traditional:'Geleneksel Kütük',observation:'Gözlem Kovanı'}[s] || s),
+    box: s => ({langstroth:'Langstroth',dadant:'Dadant',layens:'Layens',flow:'Flow',top_bar:'Top-Bar',wooden:'Ahşap Kovan',plastic:'Plastik Kovan',styrofoam:'Strafor Kovan',log:'Kütük Kovan',traditional:'Geleneksel Kütük',observation:'Gözlem Kovanı',queen_rearing:'Ana Arı Yetiştirme Kovanı'}[s] || s),
     pop: s => ({very_strong:'Çok Güçlü',strong:'Güçlü',medium:'Orta',weak:'Zayıf',very_weak:'Çok Zayıf'}[s] || s),
     color: s => ({white:'Beyaz',yellow:'Sarı',red:'Kırmızı',green:'Yeşil',blue:'Mavi'}[s] || s),
     source: s => ({bred:'Yetiştirildi',purchased:'Satın alındı',swarm:'Oğul',supersedure:'Süpersedür',emergency:'Acil'}[s] || s),
@@ -870,7 +870,7 @@
                <option value="hybrid">Hibrit</option>
                <option value="survivor">Survivor</option>
              </select></label>
-           <label class="field"><span class="field-label">Kutu Tipi</span>
+           <label class="field"><span class="field-label">Kovan Tipi</span>
              <select class="select" name="boxType">
                <option value="langstroth">Langstroth</option>
                <option value="dadant">Dadant</option>
@@ -883,6 +883,7 @@
                <option value="log">Kütük Kovan</option>
                <option value="traditional">Geleneksel Kütük</option>
                <option value="observation">Gözlem Kovanı</option>
+               <option value="queen_rearing">Ana Arı Yetiştirme Kovanı</option>
              </select></label>
          </div>
          <div class="field-row">
@@ -938,9 +939,9 @@
              <select class="select" name="strain">
                ${['anatolian','caucasian','carniolan','buckfast','carpathian','italian','cyprian','syrian','egyptian','hybrid','survivor'].map(s => `<option value="${s}"${h.strain === s ? ' selected' : ''}>${BM.T.strain(s)}</option>`).join('')}
              </select></label>
-           <label class="field"><span class="field-label">Kutu Tipi</span>
+           <label class="field"><span class="field-label">Kovan Tipi</span>
              <select class="select" name="boxType">
-               ${['langstroth','dadant','layens','flow','top_bar','wooden','plastic','styrofoam','log','traditional','observation'].map(b => `<option value="${b}"${h.boxType === b ? ' selected' : ''}>${BM.T.box(b)}</option>`).join('')}
+               ${['langstroth','dadant','layens','flow','top_bar','wooden','plastic','styrofoam','log','traditional','observation','queen_rearing'].map(b => `<option value="${b}"${h.boxType === b ? ' selected' : ''}>${BM.T.box(b)}</option>`).join('')}
              </select></label>
          </div>
          <div class="field-row">
