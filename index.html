@@ -1082,6 +1082,26 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       btn.textContent = '🔐';
       btn.title = 'Giriş Yap / Kayıt Ol';
     }
+    updateSidebarUser();
+  }
+
+  function updateSidebarUser() {
+    const avatar = document.getElementById('sidebar-user-avatar');
+    const name = document.getElementById('sidebar-user-name');
+    const role = document.getElementById('sidebar-user-role');
+    if (!avatar || !name || !role) return;
+    if (_user) {
+      const email = _user.email || '';
+      avatar.textContent = email.charAt(0).toUpperCase() || '👤';
+      avatar.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+      name.textContent = email.split('@')[0] || email;
+      role.textContent = '✅ ' + (BM.Storage.list('apiaries').length) + ' üs · Supabase bağlı';
+    } else {
+      avatar.textContent = '?';
+      avatar.style.background = 'var(--bg-tertiary)';
+      name.textContent = 'Giriş Yap';
+      role.textContent = 'Misafir · Veriler cihazınızda';
+    }
   }
 
   async function doLogout() {
@@ -1135,6 +1155,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
     showLoginModal,
     switchTab,
     updateAuthBtn,
+    updateSidebarUser,
     doLogout,
     initFromStorage
   };
@@ -4118,8 +4139,10 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   // ============ SETTINGS ============
   const settingsModule = {
     render() {
+      const userEmail = (BM.Auth && BM.Auth.getUser) ? BM.Auth.getUser()?.email : null;
+      const defaultDesc = userEmail ? `${userEmail} · ${BM.Storage.list('apiaries').length} üs` : 'Giriş yapmadan kullanabilirsiniz';
       const items = [
-        { icon: '👤', name: 'Kullanıcı', desc: 'İlker Öcal · Diyarbakır, Eğil' },
+        { icon: '👤', name: 'Kullanıcı', desc: userEmail || 'Giriş yapmamış · Misafir modu' },
         { icon: '🔔', name: 'Bildirim Tercihleri', desc: 'Varroa, stok, ana arı uyarıları', fn: 'BM.notify.show()' },
         { icon: '📱', name: 'PWA Yükle', desc: 'Telefon/PC ana ekrana ekle', fn: 'BM.pwa.install()' },
         { icon: '🌍', name: 'Konum', desc: 'GPS ile otomatik konum', fn: 'BM.utils.useLocation()' },
@@ -4523,11 +4546,11 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
           `).join('')}
         </nav>
         <div class="sidebar__foot">
-          <div class="user-card" onclick="App.nav('settings')">
-            <div class="user-card__avatar">İÖ</div>
+          <div class="user-card" id="sidebar-user-card" onclick="if(window.BM&&BM.Auth&&BM.Auth.isAuthenticated&&BM.Auth.isAuthenticated()){App.nav('settings')}else{if(window.BM&&BM.Auth&&BM.Auth.showLoginModal)BM.Auth.showLoginModal()}">
+            <div class="user-card__avatar" id="sidebar-user-avatar">?</div>
             <div>
-              <div class="user-card__name">İlker Öcal</div>
-              <div class="user-card__role">Arıcı · Diyarbakır</div>
+              <div class="user-card__name" id="sidebar-user-name">Giriş Yap</div>
+              <div class="user-card__role" id="sidebar-user-role">Misafir · Veriler cihazınızda</div>
             </div>
           </div>
         </div>
