@@ -87,6 +87,163 @@
   Object.assign(BM, { $, $$, uid, esc, fmt, today, dateStr, dateAgo, Icons, T, Bus });
 })(window);
 
+/* ===== js/modules/auth.js ===== */
+// ============================================================
+// Supabase Auth + Cloud Sync (Optional - falls back to localStorage)
+// ============================================================
+(function (global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  // Config from Vercel env vars (injected at runtime) or hardcoded fallback
+  const SUPABASE_URL = (typeof window !== 'undefined' && window.__SUPABASE_URL__) || null;
+  const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.__SUPABASE_ANON_KEY__) || null;
+
+  let _client = null;
+  let _user = null;
+  let _session = null;
+
+  function isConfigured() {
+    return !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+  }
+
+  function getClient() {
+    if (!isConfigured()) return null;
+    if (!_client) {
+      try {
+        _client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } catch (e) {
+        console.warn('Supabase init failed:', e);
+        return null;
+      }
+    }
+    return _client;
+  }
+
+  // ---- Auth ----
+  async function signUp(email, password) {
+    const c = getClient();
+    if (!c) return { data: null, error: { message: 'Supabase yapılandırılmamış' } };
+    const result = await c.auth.signUp({ email, password });
+    if (result.data?.user) {
+      _user = result.data.user;
+      _session = result.data.session;
+      localStorage.setItem('beemaster-auth-token', _session?.access_token || '');
+      // Create profile
+      await c.from('profiles').upsert({ id: _user.id, email: _user.email });
+    }
+    return result;
+  }
+
+  async function signIn(email, password) {
+    const c = getClient();
+    if (!c) return { data: null, error: { message: 'Supabase yapılandırılmamış' } };
+    const result = await c.auth.signInWithPassword({ email, password });
+    if (result.data?.user) {
+      _user = result.data.user;
+      _session = result.data.session;
+      localStorage.setItem('beemaster-auth-token', _session?.access_token || '');
+    }
+    return result;
+  }
+
+  async function signOut() {
+    const c = getClient();
+    if (c) await c.auth.signOut();
+    _user = null;
+    _session = null;
+    localStorage.removeItem('beemaster-auth-token');
+  }
+
+  function getUser() { return _user; }
+  function isAuthenticated() { return !!_user; }
+
+  // ---- UI: Show login modal ----
+  function showLoginModal() {
+    if (typeof BM === 'undefined' || !BM.Modal) {
+      // Fallback: simple alert if modal not ready
+      alert('Giriş için lütfen bekleyin, sayfa yükleniyor...');
+      return;
+    }
+    BM.Modal.open('🐝 BeeMaster AI - Giriş',
+      `<div style="padding:var(--space-3) 0">
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:var(--space-4)">
+          Verileriniz bulutta saklansın. Hesabınız yoksa otomatik oluşturulur.
+        </p>
+        <label class="field"><span class="field-label">E-posta</span>
+          <input class="input" type="email" id="auth-email" placeholder="ornek@mail.com" autofocus></label>
+        <label class="field"><span class="field-label">Şifre (en az 6 karakter)</span>
+          <input class="input" type="password" id="auth-password" placeholder="••••••"></label>
+        <div id="auth-error" style="color:var(--danger);font-size:12px;margin-top:var(--space-2);min-height:18px"></div>
+        <div style="margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--n-800);font-size:11px;color:var(--text-muted)">
+          💡 Verileriniz cihazınızda (localStorage) saklanmaya devam eder. Giriş yaparsanız bulutla senkronize olur.
+        </div>
+      </div>`,
+      async () => {
+        const email = document.getElementById('auth-email')?.value.trim();
+        const password = document.getElementById('auth-password')?.value;
+        const errEl = document.getElementById('auth-error');
+        if (!email || !password) {
+          if (errEl) errEl.textContent = 'E-posta ve şifre gerekli';
+          return false;
+        }
+        if (password.length < 6) {
+          if (errEl) errEl.textContent = 'Şifre en az 6 karakter olmalı';
+          return false;
+        }
+        // Try sign in first, fall back to sign up
+        let result = await signIn(email, password);
+        if (result.error) {
+          result = await signUp(email, password);
+        }
+        if (result.error) {
+          if (errEl) errEl.textContent = result.error.message || 'Giriş başarısız';
+          return false;
+        }
+        if (result.data?.user) {
+          BM.Toast.show('Hoş geldiniz! 🌐 Bulut senkronizasyonu aktif', 'success');
+          // Trigger initial sync
+          if (BM.CloudSync) BM.CloudSync.syncFromCloud();
+          return true;
+        }
+        return false;
+      }
+    );
+  }
+
+  // ---- Check existing session on load ----
+  async function initFromStorage() {
+    const token = localStorage.getItem('beemaster-auth-token');
+    if (!token || !isConfigured()) return;
+    const c = getClient();
+    if (!c) return;
+    try {
+      const { data, error } = await c.auth.getUser(token);
+      if (data?.user) {
+        _user = data.user;
+        _session = { access_token: token };
+      }
+    } catch (e) {
+      // Token expired
+      localStorage.removeItem('beemaster-auth-token');
+    }
+  }
+
+  BM.Auth = {
+    isConfigured,
+    getClient,
+    signUp,
+    signIn,
+    signOut,
+    getUser,
+    isAuthenticated,
+    showLoginModal,
+    initFromStorage
+  };
+})(window);
+
+
+
 /* ===== js/db.js ===== */
 // ============================================================
 // Storage — localStorage adapter (IndexedDB pattern, Spec 11)
