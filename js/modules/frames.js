@@ -60,7 +60,6 @@ const framesModule = {
         }
       );
     },
-,
 
     // FR-04: Cerceve dongu tamamla (upgrade)
     upgradeCycle(frameId, hiveId) {
