@@ -907,18 +907,81 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       return;
     }
     if (_user) {
-      // Show profile + logout if already logged in
-      BM.Modal.open('🐝 Hesabım',
-        `<div style="padding:var(--space-2) 0">
-          <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);margin-bottom:var(--space-3)">
-            <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase">Giriş Yapıldı ✓</div>
-            <div style="font-size:15px;font-weight:600;margin-top:6px">${BM.esc(_user.email || '')}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">ID: ${(_user.id || '').substring(0, 8)}...</div>
+      // Show profile + logout if already logged in - temiz tasarim
+      const email = BM.esc(_user.email || '');
+      const userId = (_user.id || '').substring(0, 8);
+      const createdAt = _user.created_at ? new Date(_user.created_at).toLocaleDateString('tr-TR') : '';
+      const stats = BM.Storage.state || {};
+      const totalRecords = (stats.hives?.length || 0) + (stats.inspections?.length || 0) + (stats.feedings?.length || 0);
+
+      BM.Modal.open('👤 Hesabım',
+        `<div style="padding:var(--space-1) 0">
+          <!-- Avatar + Email Header -->
+          <div style="display:flex;align-items:center;gap:var(--space-4);padding:var(--space-4);background:linear-gradient(135deg, var(--primary-color) 0%, #f59e0b 100%);border-radius:var(--radius-lg);margin-bottom:var(--space-4);color:#fff">
+            <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;flex-shrink:0">
+              ${email.charAt(0).toUpperCase()}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:11px;opacity:0.85;text-transform:uppercase;letter-spacing:0.04em">Giriş Yapıldı ✓</div>
+              <div style="font-size:16px;font-weight:700;margin-top:4px;word-break:break-all">${email}</div>
+              ${createdAt ? `<div style="font-size:11px;opacity:0.8;margin-top:4px">Üyelik: ${createdAt}</div>` : ''}
+            </div>
           </div>
-          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:var(--space-3)">
-            ✅ Verileriniz Supabase bulutuna kaydediliyor. Farklı cihazdan aynı e-posta ile girince tüm verileriniz görünür.
-          </p>
-          <button type="button" class="btn btn--danger" style="width:100%" onclick="BM.Auth.doLogout()">🚪 Çıkış Yap</button>
+
+          <!-- Cloud Status -->
+          <div style="padding:var(--space-3);background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-md);margin-bottom:var(--space-3)">
+            <div style="display:flex;align-items:center;gap:var(--space-2)">
+              <span style="font-size:20px">☁️</span>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:700;color:#16a34a">Supabase Bağlı</div>
+                <div style="font-size:11px;color:var(--text-secondary)">Tüm değişiklikler buluta kaydediliyor</div>
+              </div>
+              <span class="badge badge--ok" style="background:#16a34a;color:#fff">AKTİF</span>
+            </div>
+          </div>
+
+          <!-- Stats -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2);margin-bottom:var(--space-4)">
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);text-align:center">
+              <div style="font-size:20px;font-weight:700;color:var(--primary-color)">${stats.hives?.length || 0}</div>
+              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Kovan</div>
+            </div>
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);text-align:center">
+              <div style="font-size:20px;font-weight:700;color:var(--primary-color)">${stats.inspections?.length || 0}</div>
+              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Muayene</div>
+            </div>
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);text-align:center">
+              <div style="font-size:20px;font-weight:700;color:var(--primary-color)">${stats.feedings?.length || 0}</div>
+              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Besleme</div>
+            </div>
+          </div>
+
+          <!-- Account Info -->
+          <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);margin-bottom:var(--space-3)">
+            <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:var(--space-2)">Hesap Bilgileri</div>
+            <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;font-size:13px">
+              <span style="color:var(--text-secondary)">Kullanıcı ID</span>
+              <span style="font-family:monospace;font-size:12px">${userId}...</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;font-size:13px">
+              <span style="color:var(--text-secondary)">E-posta doğrulandı</span>
+              <span>${_user.email_confirmed_at ? '✅' : '⏳ Bekliyor'}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;font-size:13px">
+              <span style="color:var(--text-secondary)">Toplam kayıt</span>
+              <span><strong>${totalRecords}</strong></span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+            <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.Storage.syncFromCloud(),300)">
+              🔄 Buluttan Yenile
+            </button>
+            <button type="button" class="btn btn--danger" onclick="BM.Auth.doLogout()">
+              🚪 Çıkış Yap
+            </button>
+          </div>
         </div>`,
         () => false
       );
@@ -1032,18 +1095,32 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   // ---- Check existing session on load ----
   async function initFromStorage() {
     const token = localStorage.getItem('beemaster-auth-token');
-    if (!token || !isConfigured()) return;
+    if (!token) return;
+    // Wait for Supabase to load if not yet ready
+    if (!window.supabase) {
+      let wait = 0;
+      while (!window.supabase && wait < 3000) {
+        await new Promise(r => setTimeout(r, 100));
+        wait += 100;
+      }
+    }
+    if (!isConfigured()) return;
     const c = getClient();
     if (!c) return;
     try {
       const { data, error } = await c.auth.getUser(token);
+      if (error) {
+        // Token invalid - temizle
+        localStorage.removeItem('beemaster-auth-token');
+        return;
+      }
       if (data?.user) {
         _user = data.user;
         _session = { access_token: token };
+        updateAuthBtn();
       }
     } catch (e) {
-      // Token expired
-      localStorage.removeItem('beemaster-auth-token');
+      console.warn('[Auth] initFromStorage error:', e);
     }
   }
 
@@ -4525,6 +4602,18 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
 
       // Onboarding removed - user goes directly to dashboard
       localStorage.setItem('bm-onboarded', '1');
+
+      // Supabase auth check - async, sonucu sonra yuklenir
+      if (BM.Auth && typeof BM.Auth.initFromStorage === 'function') {
+        BM.Auth.initFromStorage().then(() => {
+          if (BM.Auth.isAuthenticated()) {
+            console.log('[Auth] Auto-logged in as', BM.Auth.getUser().email);
+            if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') {
+              BM.Storage.syncFromCloud();
+            }
+          }
+        });
+      }
 
       // Bildirim kontrolü (3 sn sonra)
       setTimeout(() => BM.notify.check(), 3000);
