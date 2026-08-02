@@ -1,3 +1,9 @@
+// ============================================================
+// SUPABASE CONFIG (injected inline to bypass CDN cache)
+// ============================================================
+window.__SUPABASE_URL__ = 'https://assfwtjbvuuxclioqsih.supabase.co';
+window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
+
 /* BeeMaster AI v3.0 - Bundled JS (order: utils, db, ui, modules/*, app) */
 
 /* ===== js/utils.js ===== */
