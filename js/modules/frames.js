@@ -9,7 +9,7 @@ const framesModule = {
         `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:var(--space-2);margin-bottom:var(--space-4)">
           <div style="background:rgba(249,115,22,0.15);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:var(--orange)">${summary.brood || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Yumurtalık</div></div>
           <div style="background:rgba(245,158,11,0.15);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:var(--honey-500)">${summary.honey || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Bal</div></div>
-          <div style="background:rgba(168,85,247,0.15);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:#a855f7">${summary.pollen || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Polen</div></div>
+          <div style="background:rgba(168,85,247,0.12);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:#a855f7">${summary.pollen || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Polen</div></div>
           <div style="background:var(--bg-tertiary);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:var(--text-secondary)">${summary.foundation || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Perga</div></div>
           <div style="background:transparent;border:1px dashed var(--n-700);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:var(--text-muted)">${summary.empty || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Boş</div></div>
         </div>
@@ -44,7 +44,12 @@ const framesModule = {
         <label class="field"><span class="field-label">Son Bal Alımı</span>
           <input class="input" name="lastExtractedAt" type="date" value="${f.lastExtractedAt || ''}"></label>
         <label class="field"><span class="field-label">Notlar</span>
-          <textarea class="textarea" name="notes" rows="2">${BM.esc(f.notes || '')}</textarea></label>`,
+          <textarea class="textarea" name="notes" rows="2">${BM.esc(f.notes || '')}</textarea></label>
+        <div style="margin-top:var(--space-4);padding-top:var(--space-2);border-top:1px solid var(--n-800);display:flex;gap:var(--space-2);justify-content:flex-end;">
+          <button type="button" class="btn btn--sm" onclick="BM.frames.upgradeCycle('${f.id}', '${hiveId}')">Döngü Tamamla (+1)</button>
+          <button type="button" class="btn btn--sm" onclick="BM.frames.ageWax('${f.id}', '${hiveId}')">Petek Yaşı (+1 ay)</button>
+          <button type="button" class="btn btn--danger btn--sm" onclick="BM.frames.retire('${f.id}', '${hiveId}')">Emekli Et</button>
+        </div>`,
         (d) => {
           d.cyclesCompleted = parseInt(d.cyclesCompleted) || 0;
           d.waxAgeMonths = parseInt(d.waxAgeMonths) || 0;
@@ -54,7 +59,7 @@ const framesModule = {
           return true;
         }
       );
-    }
+    },
 ,
 
     // FR-04: Cerceve dongu tamamla (upgrade)

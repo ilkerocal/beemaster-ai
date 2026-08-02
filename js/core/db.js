@@ -314,59 +314,90 @@
       const uid = this._userId();
       if (!uid) return false;
       const client = BM.Auth.getClient();
-      const tables = ['apiaries', 'hives', 'queens', 'inspections', 'frames', 'harvests', 'feedings', 'treatments', 'diseases', 'inventory'];
+      if (!client) return false;
+      const tables = ['apiaries','hives','queens','inspections','frames','harvests','feedings','treatments','diseases','inventory'];
+      // First, download from cloud and merge into local (so we don't lose newer cloud data)
+      for (const t of tables) {
+        try {
+          const res = await client.from(t).select('*').eq('user_id', uid);
+          const cloudItems = res.data || [];
+          // Map cloud items to our camelCase format
+          const map = {
+            apiaryId: 'apiary_id', hiveId: 'hive_id', queenId: 'queen_id',
+            boxType: 'box_type', frameCount: 'frame_count', nfcTag: 'nfc_tag',
+            installedAt: 'installed_at', birthDate: 'birth_date', markedColor: 'marked_color',
+            performanceScore: 'performance_score', varroaCount: 'varroa_count',
+            broodFrames: 'brood_frames', honeyFrames: 'honey_frames', pollenFrames: 'pollen_frames',
+            queenSeen: 'queen_seen', eggsPattern: 'eggs_pattern',
+            positionInApiary: 'position_in_apiary', amountKg: 'amount_kg',
+            audioData: 'audio_data', apiaryName: 'apiary_name'
+          };
+          const reverseMap = {};
+          for (const [k, v] of Object.entries(map)) {
+            reverseMap[v] = k;
+          }
+          const cloudMap = new Map();
+          for (const cloudItem of cloudItems) {
+            const obj = {};
+            for (const [dbKey, value] of Object.entries(cloudItem)) {
+              const camelKey = reverseMap[dbKey] || dbKey;
+              obj[camelKey] = value;
+            }
+            cloudMap.set(obj.id, obj);
+          }
+          // Merge with local
+          const localList = this.state[t] || [];
+          for (const localItem of localList) {
+            const cloudItem = cloudMap.get(localItem.id);
+            if (cloudItem) {
+              // If cloud exists, compare timestamps and keep the newer
+              const localTime = new Date(localItem.updatedAt).getTime();
+              const cloudTime = new Date(cloudItem.updatedAt).getTime();
+              if (cloudTime > localTime) {
+                // Cloud is newer, update local
+                Object.assign(localItem, cloudItem);
+              }
+            } else {
+              // No cloud item for this local id, keep local (it will be uploaded later)
+            }
+          }
+          // Add any cloud items that are not present locally
+          for (const cloudItem of cloudItems) {
+            const obj = {};
+            for (const [dbKey, value] of Object.entries(cloudItem)) {
+              const camelKey = reverseMap[dbKey] || dbKey;
+              obj[camelKey] = value;
+            }
+            if (!localList.some(item => item.id === obj.id)) {
+              localList.push(obj);
+            }
+          }
+          // Update the state with the merged list
+          this.state[t] = localList;
+        } catch (e) {
+          console.warn('[CloudSync] download/merge error (' + t + '):', e.message);
+        }
+      }
+      // Save merged state to localStorage
+      this.save();
+      // Now upload the merged local state to cloud
       let uploaded = 0;
-      let isLocalEmpty = true;
-
-      // ONCE local'deki verileri Supabase'e yaz
       for (const t of tables) {
         const local = this.state[t] || [];
-        if (local.length > 0) isLocalEmpty = false;
         for (const item of local) {
           try {
             const payload = this._mapToDb(t, item);
             const { error } = await client.from(t).upsert(payload);
-            if (!error) uploaded = uploaded + 1;
-          } catch (e) {}
+            if (!error) uploaded++;
+          } catch (e) {
+            console.warn('[CloudSync] upload error (' + t + '):', e.message);
+          }
         }
       }
-
-      // SADECE local bossa cloud'dan cek (silinen kayitlar korunur)
-      if (isLocalEmpty || force) {
-        const reverseMap = {
-          apiary_id: 'apiaryId', hive_id: 'hiveId', queen_id: 'queenId',
-          box_type: 'boxType', frame_count: 'frameCount', nfc_tag: 'nfcTag',
-          installed_at: 'installedAt', birth_date: 'birthDate', marked_color: 'markedColor',
-          performance_score: 'performanceScore', varroa_count: 'varroaCount',
-          brood_frames: 'broodFrames', honey_frames: 'honeyFrames', pollen_frames: 'pollenFrames',
-          queen_seen: 'queenSeen', eggs_pattern: 'eggsPattern',
-          position_in_apiary: 'positionInApiary', amount_kg: 'amountKg',
-          audio_data: 'audioData'
-        };
-        const fromDb = function(row) {
-          const obj = {};
-          for (const k in row) obj[reverseMap[k] || k] = row[k];
-          return obj;
-        };
-        for (const t of tables) {
-          try {
-            const res = await client.from(t).select('*').eq('user_id', uid);
-            const data = res.data;
-            if (data && data.length) {
-              const cloudItems = data.map(fromDb);
-              const localIds = {};
-              (this.state[t] || []).forEach(function(x) { localIds[x.id] = true; });
-              const newItems = cloudItems.filter(function(x) { return !localIds[x.id]; });
-              this.state[t] = (this.state[t] || []).concat(newItems);
-            }
-          } catch (e) {}
-        }
-      }
-      this.save();
       if (uploaded > 0) BM.Toast.show('☁️ ' + uploaded + ' kayıt buluta yüklendi', 'success');
       if (typeof App !== 'undefined' && App.render) App.render(App.currentView || 'dashboard');
       return true;
-    },
+},
 
     // Cascade delete
     cascadeDeleteHive(hiveId) {

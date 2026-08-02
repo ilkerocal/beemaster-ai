@@ -209,7 +209,7 @@
       if (result.data?.user) {
         BM.Toast.show('Hoş geldiniz! 🌐 Bulut senkronizasyonu aktif', 'success');
         updateAuthBtn();
-        if (BM.CloudSync) BM.CloudSync.syncFromCloud();
+        if (BM.Storage) BM.Storage.syncFromCloud();
         return true;
       }
       return false;
