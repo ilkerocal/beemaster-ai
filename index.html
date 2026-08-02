@@ -4320,12 +4320,17 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
   <!-- Supabase JS SDK (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Supabase Config (Vercel Env Vars inject this before app.bundle.js) -->
+  <!-- Supabase Config (loaded from window if Vercel env injected) -->
   <script>
-    // Bu degerler Vercel Dashboard > Settings > Environment Variables'dan gelir
+    // Build-time injection: Vercel automatically injects these via
+    // NEXT_PUBLIC_ env vars (if Next.js) or via build script.
+    // For static deploys, we read from URL query or localStorage fallback.
     window.__SUPABASE_URL__ = window.__SUPABASE_URL__ || null;
     window.__SUPABASE_ANON_KEY__ = window.__SUPABASE_ANON_KEY__ || null;
   </script>
+
+  <!-- Build-time generated Supabase config (set by build script) -->
+  <script src="js/supabase-config.js"></script>
 
   <!-- Init script — runs AFTER bundle (DOMContentLoaded) -->
   <script>
