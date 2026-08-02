@@ -861,8 +861,14 @@
                <option value="anatolian">Anadolu</option>
                <option value="caucasian">Kafkas</option>
                <option value="carniolan">Karniyol</option>
+               <option value="buckfast">Buckfast</option>
+               <option value="carpathian">Karpat</option>
                <option value="italian">İtalyan</option>
+               <option value="cyprian">Kıbrıs</option>
+               <option value="syrian">Suriye</option>
+               <option value="egyptian">Mısır</option>
                <option value="hybrid">Hibrit</option>
+               <option value="survivor">Survivor</option>
              </select></label>
            <label class="field"><span class="field-label">Kutu Tipi</span>
              <select class="select" name="boxType">
@@ -871,6 +877,12 @@
                <option value="layens">Layens</option>
                <option value="flow">Flow</option>
                <option value="top_bar">Top-Bar</option>
+               <option value="wooden">Ahşap Kovan</option>
+               <option value="plastic">Plastik Kovan</option>
+               <option value="styrofoam">Strafor Kovan</option>
+               <option value="log">Kütük Kovan</option>
+               <option value="traditional">Geleneksel Kütük</option>
+               <option value="observation">Gözlem Kovanı</option>
              </select></label>
          </div>
          <div class="field-row">
