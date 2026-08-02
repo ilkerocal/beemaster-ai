@@ -196,33 +196,33 @@
     // CRUD generic - with Supabase cloud sync
     list(coll) { return this.state[coll] || []; },
     get(coll, id) { return (this.state[coll] || []).find(x => x.id === id); },
-    add(coll, data) {
+    async add(coll, data) {
       const id = BM.uid();
       const now = new Date().toISOString();
       const obj = { id, createdAt: now, updatedAt: now, ...data };
       this.state[coll].push(obj);
       this.save();
       BM.Bus.emit('change:' + coll, obj);
-      // Supabase cloud sync (fire-and-forget)
-      this._syncAdd(coll, obj);
+      // Supabase cloud sync (awaited)
+      await this._syncAdd(coll, obj);
       return obj;
     },
-    update(coll, id, data) {
+    async update(coll, id, data) {
       const idx = this.state[coll].findIndex(x => x.id === id);
       if (idx < 0) return null;
       this.state[coll][idx] = { ...this.state[coll][idx], ...data, updatedAt: new Date().toISOString() };
       this.save();
       BM.Bus.emit('change:' + coll, this.state[coll][idx]);
       // Supabase cloud sync
-      this._syncUpdate(coll, this.state[coll][idx]);
+      await this._syncUpdate(coll, this.state[coll][idx]);
       return this.state[coll][idx];
     },
-    remove(coll, id) {
+    async remove(coll, id) {
       this.state[coll] = this.state[coll].filter(x => x.id !== id);
       this.save();
       BM.Bus.emit('change:' + coll, { id });
       // Supabase cloud sync
-      this._syncRemove(coll, id);
+      await this._syncRemove(coll, id);
     },
 
     // ---- Supabase Cloud Sync (internal) ----
