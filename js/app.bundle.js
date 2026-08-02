@@ -520,7 +520,7 @@
       }
     },
 
-    // CRUD generic
+    // CRUD generic - with Supabase cloud sync
     list(coll) { return this.state[coll] || []; },
     get(coll, id) { return (this.state[coll] || []).find(x => x.id === id); },
     add(coll, data) {
@@ -530,6 +530,8 @@
       this.state[coll].push(obj);
       this.save();
       BM.Bus.emit('change:' + coll, obj);
+      // Supabase cloud sync (fire-and-forget)
+      this._syncAdd(coll, obj);
       return obj;
     },
     update(coll, id, data) {
@@ -538,12 +540,145 @@
       this.state[coll][idx] = { ...this.state[coll][idx], ...data, updatedAt: new Date().toISOString() };
       this.save();
       BM.Bus.emit('change:' + coll, this.state[coll][idx]);
+      // Supabase cloud sync
+      this._syncUpdate(coll, this.state[coll][idx]);
       return this.state[coll][idx];
     },
     remove(coll, id) {
       this.state[coll] = this.state[coll].filter(x => x.id !== id);
       this.save();
       BM.Bus.emit('change:' + coll, { id });
+      // Supabase cloud sync
+      this._syncRemove(coll, id);
+    },
+
+    // ---- Supabase Cloud Sync (internal) ----
+    _userId() {
+      return (BM.Auth && BM.Auth.getUser) ? (BM.Auth.getUser()?.id || null) : null;
+    },
+    _supabaseAvailable() {
+      return !!(BM.Auth && BM.Auth.isConfigured && BM.Auth.isConfigured());
+    },
+    _mapToDb(coll, obj) {
+      // Camel case → snake_case for DB
+      const map = {
+        apiaryId: 'apiary_id', hiveId: 'hive_id', queenId: 'queen_id',
+        boxType: 'box_type', frameCount: 'frame_count', nfcTag: 'nfc_tag',
+        installedAt: 'installed_at', birthDate: 'birth_date', markedColor: 'marked_color',
+        performanceScore: 'performance_score', varroaCount: 'varroa_count',
+        broodFrames: 'brood_frames', honeyFrames: 'honey_frames', pollenFrames: 'pollen_frames',
+        queenSeen: 'queen_seen', eggsPattern: 'eggs_pattern',
+        positionInApiary: 'position_in_apiary', amountKg: 'amount_kg',
+        audioData: 'audio_data', apiaryName: 'apiary_name'
+      };
+      const out = {};
+      for (const k of Object.keys(obj)) {
+        out[map[k] || k] = obj[k];
+      }
+      const uid = this._userId();
+      if (uid && coll !== 'profiles') out.user_id = uid;
+      return out;
+    },
+    _tableFor(coll) {
+      // Map collection name to DB table
+      const map = {
+        apiaries: 'apiaries', hives: 'hives', queens: 'queens',
+        inspections: 'inspections', frames: 'frames',
+        harvests: 'harvests', feedings: 'feedings',
+        treatments: 'treatments', diseases: 'diseases', inventory: 'inventory'
+      };
+      return map[coll];
+    },
+    async _syncAdd(coll, obj) {
+      if (!this._supabaseAvailable()) return;
+      const uid = this._userId();
+      if (!uid) return;
+      const client = BM.Auth.getClient();
+      const table = this._tableFor(coll);
+      if (!table) return;
+      try {
+        const payload = this._mapToDb(coll, obj);
+        const { error } = await client.from(table).upsert(payload);
+        if (error) console.warn('[CloudSync] add error (' + coll + '):', error.message);
+      } catch (e) {
+        console.warn('[CloudSync] add failed (' + coll + '):', e.message);
+      }
+    },
+    async _syncUpdate(coll, obj) {
+      if (!this._supabaseAvailable()) return;
+      const uid = this._userId();
+      if (!uid) return;
+      const client = BM.Auth.getClient();
+      const table = this._tableFor(coll);
+      if (!table) return;
+      try {
+        const payload = this._mapToDb(coll, obj);
+        const { error } = await client.from(table).upsert(payload);
+        if (error) console.warn('[CloudSync] update error (' + coll + '):', error.message);
+      } catch (e) {
+        console.warn('[CloudSync] update failed (' + coll + '):', e.message);
+      }
+    },
+    async _syncRemove(coll, id) {
+      if (!this._supabaseAvailable()) return;
+      const uid = this._userId();
+      if (!uid) return;
+      const client = BM.Auth.getClient();
+      const table = this._tableFor(coll);
+      if (!table) return;
+      try {
+        const { error } = await client.from(table).delete().eq('id', id);
+        if (error) console.warn('[CloudSync] remove error (' + coll + '):', error.message);
+      } catch (e) {
+        console.warn('[CloudSync] remove failed (' + coll + '):', e.message);
+      }
+    },
+
+    // ---- Bulk fetch from Supabase on login ----
+    async syncFromCloud() {
+      if (!this._supabaseAvailable()) return false;
+      const uid = this._userId();
+      if (!uid) return false;
+      const client = BM.Auth.getClient();
+      const tables = ['apiaries', 'hives', 'queens', 'inspections', 'frames', 'harvests', 'feedings', 'treatments', 'diseases', 'inventory'];
+      let total = 0;
+      for (const t of tables) {
+        try {
+          const { data, error } = await client.from(t).select('*').eq('user_id', uid);
+          if (error) { console.warn('[CloudSync] fetch ' + t + ':', error.message); continue; }
+          if (data) {
+            // Map snake_case → camelCase
+            const reverseMap = {
+              apiary_id: 'apiaryId', hive_id: 'hiveId', queen_id: 'queenId',
+              box_type: 'boxType', frame_count: 'frameCount', nfc_tag: 'nfcTag',
+              installed_at: 'installedAt', birth_date: 'birthDate', marked_color: 'markedColor',
+              performance_score: 'performanceScore', varroa_count: 'varroaCount',
+              brood_frames: 'broodFrames', honey_frames: 'honeyFrames', pollen_frames: 'pollenFrames',
+              queen_seen: 'queenSeen', eggs_pattern: 'eggsPattern',
+              position_in_apiary: 'positionInApiary', amount_kg: 'amountKg',
+              audio_data: 'audioData'
+            };
+            const items = data.map(row => {
+              const obj = {};
+              for (const k of Object.keys(row)) {
+                obj[reverseMap[k] || k] = row[k];
+              }
+              return obj;
+            });
+            this.state[t] = items;
+            total += items.length;
+          }
+        } catch (e) {
+          console.warn('[CloudSync] fetch failed ' + t + ':', e.message);
+        }
+      }
+      this.save();
+      if (typeof App !== 'undefined' && App.render) {
+        const currentView = App.currentView || 'dashboard';
+        App.render(currentView);
+      }
+      BM.Toast.show('☁️ ' + total + ' kayıt Supabase den yüklendi', 'success');
+      return true;
     },
 
     // Cascade delete
