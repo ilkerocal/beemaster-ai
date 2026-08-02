@@ -296,13 +296,21 @@ ul, ol { list-style: none; }
   padding: 0 var(--space-6); position: sticky; top: 0; z-index: 50; gap: var(--space-4);
   height: var(--header-h);
 }
-.page-title { display: flex; flex-direction: column; min-width: 0; }
+.page-title { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.page-title h1,
 .page-title__h1 {
   font-family: var(--font-heading);
-  font-size: 17px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2;
+  font-size: 17px !important; font-weight: 700 !important;
+  letter-spacing: -0.01em; line-height: 1.2 !important;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin: 0; padding: 0;
+}
+.page-title p,
+.page-title__sub {
+  font-size: 12px !important; color: var(--text-secondary);
+  margin: 0 !important; padding: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.page-title__sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .header__actions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
 
 /* Main — HTML uses .app__main */
@@ -778,12 +786,21 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
 
   // Transforms / Labels
   const T = {
-    strain: s => ({anatolian:'Anadolu',caucasian:'Kafkas',carniolan:'Karniyol',italian:'İtalyan',hybrid:'Hibrit'}[s] || s),
-    box: s => ({langstroth:'Langstroth',dadant:'Dadant',layens:'Layens',flow:'Flow',top_bar:'Top-Bar'}[s] || s),
+    strain: s => ({anatolian:'Anadolu',caucasian:'Kafkas',carniolan:'Karniyol',buckfast:'Buckfast',carpathian:'Karpat',italian:'İtalyan',cyprian:'Kıbrıs',syrian:'Suriye',egyptian:'Mısır',hybrid:'Hibrit',survivor:'Survivor',unknown:'Bilinmiyor'}[s] || s),
+    box: s => ({langstroth:'Langstroth',dadant:'Dadant',layens:'Layens',flow:'Flow',top_bar:'Top-Bar',wooden:'Ahşap Kovan',plastic:'Plastik Kovan',styrofoam:'Strafor Kovan',log:'Kütük Kovan',traditional:'Geleneksel Kütük',observation:'Gözlem Kovanı'}[s] || s),
     pop: s => ({very_strong:'Çok Güçlü',strong:'Güçlü',medium:'Orta',weak:'Zayıf',very_weak:'Çok Zayıf'}[s] || s),
     color: s => ({white:'Beyaz',yellow:'Sarı',red:'Kırmızı',green:'Yeşil',blue:'Mavi'}[s] || s),
     source: s => ({bred:'Yetiştirildi',purchased:'Satın alındı',swarm:'Oğul',supersedure:'Süpersedür',emergency:'Acil'}[s] || s),
-    feedType: s => ({sugar_syrup:'Şeker Şurubu',fondant:'Fondant',pollen_patty:'Polen Keçi',candy:'Kek',honey_water:'Bal+Su'}[s] || s),
+    feedType: s => ({
+      sugar_syrup: {tr:'Şeker Şurubu (2:1)', unit:'L', density:1.3},
+      sugar_syrup_1to1: {tr:'Şeker Şurubu (1:1)', unit:'L', density:1.2},
+      fondant: {tr:'Fondant (Kek)', unit:'kg', density:1},
+      pollen_patty: {tr:'Polen Keçi', unit:'kg', density:1},
+      candy: {tr:'Yemlik Kek', unit:'kg', density:1},
+      honey_water: {tr:'Bal+Su', unit:'L', density:1.05},
+      invert_syrup: {tr:'İnvert Şurubu', unit:'L', density:1.3},
+      protein_patty: {tr:'Protein Keçi', unit:'kg', density:1}
+    }[s] || {tr:s, unit:'kg', density:1}),
     reason: s => ({weak_colony:'Zayıf koloni',winter_prep:'Kış hazırlığı',drought:'Kuraklık',supplement:'Ek besin',stimulative:'Teşvik'}[s] || s),
     disease: s => ({varroosis:'Varroosis',nosemosis:'Nosema',foulbrood:'Yavru Çürüğü',chalkbrood:'Kireç Hastalığı',sacbrood:'Torba Hastalığı',small_hive_beetle:'KKB'}[s] || s),
     invCat: s => ({medication:'İlaç',feed:'Yem',equipment:'Ekipman',consumable:'Sarf'}[s] || s),
@@ -812,7 +829,8 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
   'use strict';
 
   const BM = global.BM = global.BM || {};
-  const KEY = 'beemaster-v3';
+  const KEY = 'beemaster-v4';
+  const LEGACY_KEYS = ['beemaster-v1', 'beemaster-v2', 'beemaster-v3'];
 
   // Schema (Spec 08 — Database Architecture)
   const SCHEMA = ['apiaries','hives','queens','frames','inspections','harvests','feedings','treatments','diseases','inventory'];
@@ -936,21 +954,52 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
     state: null,
 
     load() {
-      try {
-        const raw = localStorage.getItem(KEY);
-        if (raw) {
-          this.state = JSON.parse(raw);
-          SCHEMA.forEach(k => { if (!Array.isArray(this.state[k])) this.state[k] = []; });
-          return true;
+      let raw = localStorage.getItem(KEY);
+      if (!raw) {
+        for (const oldKey of LEGACY_KEYS) {
+          const oldRaw = localStorage.getItem(oldKey);
+          if (oldRaw) {
+            try {
+              this.state = this.migrate(JSON.parse(oldRaw));
+              this.save();
+              return true;
+            } catch (e) {}
+          }
         }
+        return false;
+      }
+      try {
+        this.state = JSON.parse(raw);
+        SCHEMA.forEach(k => { if (!Array.isArray(this.state[k])) this.state[k] = []; });
+        return true;
       } catch (e) { console.warn('Storage load failed', e); }
       return false;
+    },
+    migrate(oldState) {
+      if (!oldState.apiaries) oldState.apiaries = [];
+      if (!oldState.hives) oldState.hives = [];
+      if (!oldState.queens) oldState.queens = [];
+      if (!oldState.frames) oldState.frames = [];
+      if (!oldState.inspections) oldState.inspections = [];
+      if (!oldState.harvests) oldState.harvests = [];
+      if (!oldState.feedings) oldState.feedings = [];
+      if (!oldState.treatments) oldState.treatments = [];
+      if (!oldState.diseases) oldState.diseases = [];
+      if (!oldState.inventory) oldState.inventory = [];
+      oldState.hives.forEach(h => { if (!h.strain) h.strain = 'anatolian'; if (!h.boxType) h.boxType = 'langstroth'; if (!h.status) h.status = 'active'; if (!h.frameCount) h.frameCount = 10; });
+      oldState.queens.forEach(q => { if (!q.strain) q.strain = 'anatolian'; if (!q.status) q.status = 'active'; if (q.performanceScore === undefined) q.performanceScore = 0.5; });
+      oldState.feedings.forEach(f => { if (!f.amountKg && f.amount) f.amountKg = f.amount; if (!f.type) f.type = 'sugar_syrup'; });
+      SCHEMA.forEach(k => { if (!Array.isArray(oldState[k])) oldState[k] = []; });
+      return oldState;
     },
 
     save() {
       try {
         localStorage.setItem(KEY, JSON.stringify(this.state));
-      } catch (e) { console.warn('Storage save failed', e); }
+      } catch (e) {
+        console.error('Storage save failed:', e);
+        if (typeof BM !== 'undefined' && BM.Toast) BM.Toast.show('Kayıt hatası: ' + e.message, 'error');
+      }
     },
 
     reset() {
@@ -1019,7 +1068,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
     cb: null,
     el: null,
 
-    open(title, html, onSubmit) {
+    open(title, html, onSubmit, options) {
       if (!this.el) {
         this.el = document.getElementById('modal-overlay');
       }
@@ -1043,6 +1092,15 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
         if (this.cb && this.cb(data) !== false) this.close();
       };
       this.cb = onSubmit;
+      const foot = document.querySelector('.modal__foot');
+      if (foot) {
+        if (options && options.hideFooter) {
+          foot.style.display = 'none';
+        } else {
+          foot.style.display = '';
+          foot.innerHTML = '<button type="button" class="btn btn--ghost" onclick="BM.Modal.close()">İptal</button>\n          <button type="submit" class="btn btn--primary" id="modal-submit">Kaydet</button>';
+        }
+      }
       this.el.classList.add('modal-overlay--active');
       setTimeout(() => {
         const f = document.getElementById('modal-body').querySelector('input,select,textarea');
@@ -1053,16 +1111,32 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
     close() {
       if (this.el) this.el.classList.remove('modal-overlay--active');
       this.cb = null;
+      const foot = document.querySelector('.modal__foot');
+      if (foot) {
+        foot.style.display = '';
+        foot.innerHTML = '<button type="button" class="btn btn--ghost" onclick="BM.Modal.close()">İptal</button>\n          <button type="submit" class="btn btn--primary" id="modal-submit">Kaydet</button>';
+      }
     },
 
-    confirm(msg, onYes) {
-      this.open('⚠️ Onay',
-        `<div class="empty" style="padding:var(--space-3) 0">
-          <div class="empty__icon">⚠️</div>
-          <div class="empty__title">${BM.esc(msg)}</div>
-        </div>`,
-        () => { onYes(); return true; }
-      );
+    confirm(msg, onYes, onNo) {
+      const self = this;
+      this.cb = null;
+      if (!this.el) this.el = document.getElementById('modal-overlay');
+      this.el.onclick = (e) => { if (e.target === this.el) { this.close(); onNo && onNo(); } };
+      document.getElementById('modal-title').textContent = '⚠️ Onay';
+      document.getElementById('modal-body').innerHTML = `<div class="empty" style="padding:var(--space-3) 0"><div class="empty__icon" style="font-size:48px">⚠️</div><div class="empty__title" style="font-size:15px;margin-top:var(--space-2)">${BM.esc(msg)}</div></div>`;
+      const foot = document.querySelector('.modal__foot');
+      if (foot) {
+        foot.style.display = 'flex';
+        foot.innerHTML = `<button type="button" class="btn btn--ghost" id="confirm-no">İptal</button><button type="button" class="btn btn--danger" id="confirm-yes">⚠️ Onayla</button>`;
+        setTimeout(() => {
+          const yesBtn = document.getElementById('confirm-yes');
+          const noBtn = document.getElementById('confirm-no');
+          if (yesBtn) yesBtn.onclick = () => { self.close(); if (onYes) onYes(); };
+          if (noBtn) noBtn.onclick = () => { self.close(); if (onNo) onNo(); };
+        }, 50);
+      }
+      this.el.classList.add('modal-overlay--active');
     },
 
     showReport(html) {
@@ -1583,11 +1657,11 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
          <div class="field-row">
            <label class="field"><span class="field-label">Irk</span>
              <select class="select" name="strain">
-               ${['anatolian','caucasian','carniolan','italian','hybrid'].map(s => `<option value="${s}"${h.strain === s ? ' selected' : ''}>${BM.T.strain(s)}</option>`).join('')}
+               ${['anatolian','caucasian','carniolan','buckfast','carpathian','italian','cyprian','syrian','egyptian','hybrid','survivor'].map(s => `<option value="${s}"${h.strain === s ? ' selected' : ''}>${BM.T.strain(s)}</option>`).join('')}
              </select></label>
            <label class="field"><span class="field-label">Kutu Tipi</span>
              <select class="select" name="boxType">
-               ${['langstroth','dadant','layens','flow','top_bar'].map(b => `<option value="${b}"${h.boxType === b ? ' selected' : ''}>${BM.T.box(b)}</option>`).join('')}
+               ${['langstroth','dadant','layens','flow','top_bar','wooden','plastic','styrofoam','log','traditional','observation'].map(b => `<option value="${b}"${h.boxType === b ? ' selected' : ''}>${BM.T.box(b)}</option>`).join('')}
              </select></label>
          </div>
          <div class="field-row">
@@ -1618,7 +1692,13 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
       BM.Modal.confirm(`"${h.name}" kovanını silmek istiyor musunuz? Tüm muayene, hasat, besleme kayıtları da silinecek.`, () => {
         BM.Storage.cascadeDeleteHive(id);
         BM.Toast.show('Kovan silindi', 'info');
-        App.render('hives');
+        const detailEl = document.getElementById('view-hive-detail');
+        if (detailEl) {
+          detailEl.classList.remove('view--active');
+          detailEl.innerHTML = '';
+        }
+        App.currentView = 'hives';
+        App.nav('hives');
       });
     },
 
@@ -1832,7 +1912,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
         BM.Storage.list('harvests').filter(h => h.hiveId === id).forEach(h =>
           events.push({ date: h.date, icon: '🍯', title: 'Bal Hasadı', sub: `${h.weight} kg · ${h.quality} kalite` }));
         BM.Storage.list('feedings').filter(f => f.hiveId === id).forEach(f =>
-          events.push({ date: f.date, icon: '🌾', title: 'Besleme', sub: `${BM.T.feedType(f.type)} · ${f.amountKg} kg` }));
+          events.push({ date: f.date, icon: '🌾', title: 'Besleme', sub: `${BM.T.feedType(f.type).tr} · ${f.amountKg} ${BM.T.feedType(f.type).unit}` }));
         BM.Storage.list('treatments').filter(t => t.hiveId === id).forEach(t =>
           events.push({ date: t.date, icon: '💊', title: 'Tedavi', sub: `${BM.esc(t.product)} · ${BM.esc(t.dosage || '-')}` }));
         BM.Storage.list('diseases').filter(d => d.hiveId === id).forEach(d =>
@@ -2584,7 +2664,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
          <div class="field-row">
            <label class="field"><span class="field-label">Irk *</span>
              <select class="select" name="strain" required>
-               ${['anatolian','caucasian','carniolan','italian','hybrid'].map(s => `<option value="${s}">${BM.T.strain(s)}</option>`).join('')}
+               ${['anatolian','caucasian','carniolan','buckfast','carpathian','italian','cyprian','syrian','egyptian','hybrid','survivor'].map(s => `<option value="${s}">${BM.T.strain(s)}</option>`).join('')}
              </select></label>
            <label class="field"><span class="field-label">İşaret Rengi</span>
              <select class="select" name="markedColor">
@@ -2632,7 +2712,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
          <div class="field-row">
            <label class="field"><span class="field-label">Irk</span>
              <select class="select" name="strain">
-               ${['anatolian','caucasian','carniolan','italian','hybrid'].map(s => `<option value="${s}"${q.strain === s ? ' selected' : ''}>${BM.T.strain(s)}</option>`).join('')}
+               ${['anatolian','caucasian','carniolan','buckfast','carpathian','italian','cyprian','syrian','egyptian','hybrid','survivor'].map(s => `<option value="${s}"${q.strain === s ? ' selected' : ''}>${BM.T.strain(s)}</option>`).join('')}
              </select></label>
            <label class="field"><span class="field-label">İşaret</span>
              <select class="select" name="markedColor">
@@ -2831,10 +2911,10 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
            <input class="input" name="date" type="date" required value="${BM.today()}"></label>
          <div class="field-row">
            <label class="field"><span class="field-label">Tip *</span>
-             <select class="select" name="type" required>
-               ${['sugar_syrup','fondant','pollen_patty','candy','honey_water'].map(t => `<option value="${t}">${BM.T.feedType(t)}</option>`).join('')}
+             <select class="select" name="type" required onchange="BM.feeding.updateUnit(this)">
+               ${['sugar_syrup','sugar_syrup_1to1','fondant','pollen_patty','candy','honey_water','invert_syrup','protein_patty'].map(t => `<option value="${t}">${BM.T.feedType(t).tr}</option>`).join('')}
              </select></label>
-           <label class="field"><span class="field-label">Miktar (kg) *</span>
+           <label class="field"><span class="field-label" id="feed-unit-label">Miktar (L) *</span>
              <input class="input" name="amountKg" type="number" step="0.1" min="0" required value="1.0"></label>
          </div>
          <div class="field-row">
@@ -2860,7 +2940,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
            <input class="input" name="date" type="date" required value="${f.date}"></label>
          <div class="field-row">
            <label class="field"><span class="field-label">Tip</span>
-             <select class="select" name="type">${['sugar_syrup','fondant','pollen_patty','candy','honey_water'].map(t => `<option value="${t}"${f.type === t ? ' selected' : ''}>${BM.T.feedType(t)}</option>`).join('')}</select></label>
+             <select class="select" name="type">${['sugar_syrup','sugar_syrup_1to1','fondant','pollen_patty','candy','honey_water','invert_syrup','protein_patty'].map(t => `<option value="${t}"${f.type === t ? ' selected' : ''}>${BM.T.feedType(t).tr}</option>`).join('')}</select></label>
            <label class="field"><span class="field-label">Miktar (kg)</span>
              <input class="input" name="amountKg" type="number" step="0.1" value="${f.amountKg}"></label>
          </div>
@@ -2894,7 +2974,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
         return `<div class="timeline__item">
           <div class="timeline__icon" style="background:rgba(249,115,22,0.15);color:#f97316">🌾</div>
           <div class="timeline__body">
-            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${f.amountKg} kg ${BM.T.feedType(f.type)} <span class="badge ${BM.T.statusCls(f.status)}">${BM.T.status(f.status)}</span></div>
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${f.amountKg} ${BM.T.feedType(f.type).unit} ${BM.T.feedType(f.type).tr} <span class="badge ${BM.T.statusCls(f.status)}">${BM.T.status(f.status)}</span></div>
             <div class="timeline__meta">${BM.dateStr(f.date)} · ${BM.T.reason(f.reason)}${f.notes ? ' · ' + BM.esc(f.notes) : ''}</div>
           </div>
           <div style="display:flex;gap:var(--space-1);align-items:flex-start">
@@ -3184,6 +3264,20 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
   BM.queens = queensModule;
   BM.harvest = harvestModule;
   BM.feeding = feedingModule;
+  BM.feeding.updateUnit = function(selectEl) {
+    const info = BM.T.feedType(selectEl.value);
+    const label = document.getElementById('feed-unit-label');
+    const input = selectEl.closest('form')?.querySelector('input[name="amountKg"]');
+    if (label) label.textContent = 'Miktar (' + info.unit + ') *';
+    if (input) input.step = info.density >= 1.1 ? '0.1' : '0.05';
+  };
+  BM.feeding.formatAmount = function(type, amount) {
+    const info = BM.T.feedType(type);
+    if (info.unit === 'L' && info.density !== 1) {
+      return amount + ' ' + info.unit + ' (≈ ' + (amount * info.density).toFixed(2) + ' kg)';
+    }
+    return amount + ' ' + info.unit;
+  };
   BM.treatments = treatmentsModule;
   BM.diseases = diseasesModule;
   BM.inventory = inventoryModule;
@@ -3833,7 +3927,10 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
 
       // Update header
       const titles = {
-        dashboard: ['Dashboard', 'Genel bakış · Eğil, Diyarbakır'],
+        dashboard: ['Dashboard', function() {
+          const a = BM.Storage.list('apiaries').find(x => x.id === BM.Storage.state.activeApiaryId);
+          return 'Genel bakış · ' + (a?.name || 'Eğil, Diyarbakır');
+        }],
         apiaries: ['Arı Üsleri', BM.Storage.list('apiaries').length + ' üs'],
         hives: ['Kovanlar', BM.Storage.list('hives').length + ' kovan'],
         inspections: ['Muayeneler', BM.Storage.list('inspections').length + ' kayıt'],
@@ -3849,7 +3946,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
       };
       const t = titles[view] || [view, ''];
       document.getElementById('page-title').textContent = t[0];
-      document.getElementById('page-subtitle').textContent = t[1];
+      document.getElementById('page-subtitle').textContent = typeof t[1] === 'function' ? t[1]() : t[1];
 
       // Update URL hash
       if (param) {
@@ -3878,17 +3975,19 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
 
     quickAdd() {
       BM.Modal.open('+ Hızlı Ekle',
-        `<div style="display:grid;gap:var(--space-2)">
-          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.hives.add(),200)">🏠 Yeni Kovan</button>
-          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.apiaries.add(),200)">📍 Yeni Üs</button>
-          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.inspections.add(),200)">📋 Yeni Muayene</button>
-          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.harvest.add(),200)">🍯 Yeni Hasat</button>
-          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.feeding.add(),200)">🌾 Yeni Besleme</button>
-          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.treatments.add(),200)">💊 Yeni Tedavi</button>
-          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.queens.add(),200)">👑 Yeni Ana Arı</button>
-          <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.inventory.add(),200)">📦 Yeni Malzeme</button>
+        `<div style="display:grid;gap:var(--space-3);padding:var(--space-2) 0">
+          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:var(--space-2)">Hızlıca yeni kayıt ekle:</p>
+          <button type="button" class="btn btn--primary" style="justify-content:flex-start;padding:var(--space-3)" onclick="BM.Modal.close();setTimeout(()=>BM.hives.add(),200)">🏠 Yeni Kovan</button>
+          <button type="button" class="btn btn--primary" style="justify-content:flex-start;padding:var(--space-3)" onclick="BM.Modal.close();setTimeout(()=>BM.apiaries.add(),200)">📍 Yeni Üs</button>
+          <button type="button" class="btn btn--primary" style="justify-content:flex-start;padding:var(--space-3)" onclick="BM.Modal.close();setTimeout(()=>BM.inspections.add(),200)">📋 Yeni Muayene</button>
+          <button type="button" class="btn btn--primary" style="justify-content:flex-start;padding:var(--space-3)" onclick="BM.Modal.close();setTimeout(()=>BM.harvest.add(),200)">🍯 Yeni Hasat</button>
+          <button type="button" class="btn btn--primary" style="justify-content:flex-start;padding:var(--space-3)" onclick="BM.Modal.close();setTimeout(()=>BM.feeding.add(),200)">🌾 Yeni Besleme</button>
+          <button type="button" class="btn btn--primary" style="justify-content:flex-start;padding:var(--space-3)" onclick="BM.Modal.close();setTimeout(()=>BM.treatments.add(),200)">💊 Yeni Tedavi</button>
+          <button type="button" class="btn btn--primary" style="justify-content:flex-start;padding:var(--space-3)" onclick="BM.Modal.close();setTimeout(()=>BM.queens.add(),200)">👑 Yeni Ana Arı</button>
+          <button type="button" class="btn btn--primary" style="justify-content:flex-start;padding:var(--space-3)" onclick="BM.Modal.close();setTimeout(()=>BM.inventory.add(),200)">📦 Yeni Malzeme</button>
         </div>`,
-        () => true
+        () => false,
+        { hideFooter: true }
       );
     },
 
