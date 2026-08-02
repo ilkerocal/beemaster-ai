@@ -680,6 +680,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
         <button class="btn btn--icon btn--ghost" onclick="BM.Toast.show('Arama yakında','info')" title="Ara">🔍</button>
         <button class="btn btn--icon btn--ghost" onclick="App.toggleTheme()" id="theme-toggle" title="Tema">🌙</button>
         <button class="btn btn--icon btn--ghost" onclick="BM.notify.check()" title="Bildirimler">🔔</button>
+        <button class="btn btn--icon btn--ghost" id="auth-btn" onclick="BM.Auth.showLoginModal()" title="Giriş Yap / Kayıt Ol" style="font-size:18px">🔐</button>
         <button class="btn btn--primary" onclick="App.quickAdd()">+ Ekle</button>
       </div>
     </header>
@@ -4329,7 +4330,11 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
     window.__SUPABASE_ANON_KEY__ = window.__SUPABASE_ANON_KEY__ || null;
   </script>
 
-  <!-- Build-time generated Supabase config (set by build script) -->
+  <!-- Supabase Config - Direct injection (publishable key, RLS protected) -->
+  <script>
+    window.__SUPABASE_URL__ = 'https://beemaster-ai.supabase.co';
+    window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
+  </script>
   <script src="js/supabase-config.js"></script>
 
   <!-- Init script — runs AFTER bundle (DOMContentLoaded) -->

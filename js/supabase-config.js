@@ -1,8 +1,5 @@
 // ============================================================
 // Supabase Configuration
-// This file is auto-generated. For production values, run:
-//   npm run build
-// (or set env vars in Vercel before build)
 // ============================================================
-window.__SUPABASE_URL__ = '';
-window.__SUPABASE_ANON_KEY__ = '';
+window.__SUPABASE_URL__ = 'https://beemaster-ai.supabase.co';
+window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
