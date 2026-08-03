@@ -1459,13 +1459,13 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
           try {
             const newCount = parseInt(d.frameCount) || 10;
             d.frameCount = newCount;
-            console.log('[HiveEdit] start, newCount=' + newCount + ', hive=' + id);
+            
             await BM.Storage.update('hives', id, d);
-            console.log('[HiveEdit] hive updated');
+            
             // Sync frame records to match new frameCount
             const existingFrames = BM.Storage.list('frames').filter(f => f.hiveId === id).sort((a, b) => a.position - b.position);
             const oldCount = existingFrames.length;
-            console.log('[HiveEdit] existing frames=' + oldCount);
+            
             if (newCount > oldCount) {
               for (let p = oldCount + 1; p <= newCount; p++) {
                 await BM.Storage.add('frames', {
@@ -1477,12 +1477,12 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
               }
             } else if (newCount < oldCount) {
               const toRemove = existingFrames.slice(newCount);
-              console.log('[HiveEdit] removing ' + toRemove.length + ' frames');
+              
               for (const f of toRemove) {
                 await BM.Storage.remove('frames', f.id);
               }
             }
-            console.log('[HiveEdit] done, frames=' + BM.Storage.list('frames').filter(f => f.hiveId === id).length);
+            
             BM.Toast.show('Kovan güncellendi ✓', 'success');
             App.render('hives');
             return true;
