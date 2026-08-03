@@ -1502,8 +1502,8 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
            <input class="input" name="installedAt" type="date" value="${BM.today()}"></label>
          <label class="field"><span class="field-label">Notlar</span>
            <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
-        (d) => {
-          const h = BM.Storage.add('hives', {
+        async (d) => {
+          const h = await BM.Storage.add('hives', {
             ...d,
             status: 'active',
             queenId: null,
@@ -1514,7 +1514,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
           // Otomatik çerçeve oluştur
           const fc = h.frameCount;
           for (let p = 1; p <= fc; p++) {
-            BM.Storage.add('frames', {
+            await BM.Storage.add('frames', {
               hiveId: h.id, position: p,
               frameType: p <= 3 ? 'brood' : (p <= 6 ? 'honey' : 'foundation'),
               foundationType: 'wax', status: 'in_use',
