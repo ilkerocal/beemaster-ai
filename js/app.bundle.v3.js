@@ -880,7 +880,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         }
       }
 
-      // SADECE local bossa cloud'dan cek (silinen kayitlar korunur)
+      // Cloud'dan cek - downloadOnly modda cloud source of truth, normal modda merge
       if (isLocalEmpty || force) {
         const reverseMap = {
           apiary_id: 'apiaryId', hive_id: 'hiveId', queen_id: 'queenId',
@@ -903,10 +903,19 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
             const data = res.data;
             if (data && data.length) {
               const cloudItems = data.map(fromDb);
-              const localIds = {};
-              (this.state[t] || []).forEach(function(x) { localIds[x.id] = true; });
-              const newItems = cloudItems.filter(function(x) { return !localIds[x.id]; });
-              this.state[t] = (this.state[t] || []).concat(newItems);
+              if (downloadOnly) {
+                // Download-only mode: REPLACE local with cloud (cloud is source of truth)
+                this.state[t] = cloudItems;
+              } else {
+                // Normal mode: merge - add cloud items not in local
+                const localIds = {};
+                (this.state[t] || []).forEach(function(x) { localIds[x.id] = true; });
+                const newItems = cloudItems.filter(function(x) { return !localIds[x.id]; });
+                this.state[t] = (this.state[t] || []).concat(newItems);
+              }
+            } else if (downloadOnly) {
+              // Cloud empty - in download-only mode, keep local empty too
+              this.state[t] = [];
             }
           } catch (e) {}
         }
