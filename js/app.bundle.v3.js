@@ -304,7 +304,16 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       if (result.data?.user) {
         BM.Toast.show('Hoş geldiniz! 🌐 Bulut senkronizasyonu aktif', 'success');
         updateAuthBtn();
-        if (BM.CloudSync) BM.CloudSync.syncFromCloud();
+        // Login sonrası: local'i temizle ve cloud'dan yükle (eski guest verisi varsa silinmeli)
+        if (BM.Storage && typeof BM.Storage.reset === 'function') {
+          BM.Storage.reset();  // local'i sıfırla
+        }
+        // initAsync: auth user için cloud'dan yükle, değilse seed kullan
+        if (BM.Storage && typeof BM.Storage.initAsync === 'function') {
+          await BM.Storage.initAsync();
+        } else if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') {
+          await BM.Storage.syncFromCloud(true);
+        }
         return true;
       }
       return false;
@@ -375,6 +384,10 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
     updateAuthBtn();
     BM.Toast.show('Çıkış yapıldı. Veriler cihazınızda kalmaya devam ediyor.', 'info');
     BM.Modal.close();
+    // Logout'ta local verileri temizle ki tekrar login'de cloud'dan temiz gelsin
+    if (BM.Storage && typeof BM.Storage.reset === 'function') {
+      BM.Storage.reset();
+    }
     if (typeof App !== 'undefined' && App.render) App.render('dashboard');
   }
 
@@ -404,6 +417,12 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         _user = data.user;
         _session = { access_token: token };
         updateAuthBtn();
+        // Auto-login sonrası cloud'dan sync et
+        if (BM.Storage && typeof BM.Storage.initAsync === 'function') {
+          BM.Storage.initAsync().catch(e => console.warn('[Auto-login sync] error:', e.message));
+        } else if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') {
+          BM.Storage.syncFromCloud().catch(e => console.warn('[Auto-login sync] error:', e.message));
+        }
       }
     } catch (e) {
       console.warn('[Auth] initFromStorage error:', e);
@@ -619,8 +638,57 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
 
     init() {
       if (!this.load()) {
-        this.state = seedData();
-        this.save();
+        // Authenticated user: seed data YAPMA — cloud'dan veri gelecek veya boş başla
+        // Guest user: seed data göster (demo deneyim için)
+        const isAuth = (typeof BM !== 'undefined' && BM.Auth && BM.Auth.isAuthenticated && BM.Auth.isAuthenticated());
+        if (isAuth) {
+          // Auth kullanıcı için boş başla — cloud sync veriyi getirecek
+          this.state = {};
+          SCHEMA.forEach(k => this.state[k] = []);
+          this.save();
+        } else {
+          // Guest için demo seed data
+          this.state = seedData();
+          this.save();
+        }
+      }
+    },
+
+    // Async init: authenticated user için cloud'dan yükle
+    async initAsync() {
+      // İlk olarak load et (varsa localStorage'dan)
+      if (this.load()) {
+        // Local var — eğer authenticated kullanıcı ise cloud'dan sync et (cloud daha yeni olabilir)
+        const isAuth = (typeof BM !== 'undefined' && BM.Auth && BM.Auth.isAuthenticated && BM.Auth.isAuthenticated());
+        if (isAuth && this._supabaseAvailable() && this._userId()) {
+          try {
+            await this.syncFromCloud();
+          } catch (e) {
+            console.warn('[Storage.initAsync] cloud sync error:', e.message);
+          }
+        }
+      } else {
+        // Local yok — auth ise cloud'dan çek, değilse seed kullan
+        const isAuth = (typeof BM !== 'undefined' && BM.Auth && BM.Auth.isAuthenticated && BM.Auth.isAuthenticated());
+        if (isAuth && this._supabaseAvailable() && this._userId()) {
+          // Auth + cloud available: boş başlat, cloud sync veriyi getirir
+          this.state = {};
+          SCHEMA.forEach(k => this.state[k] = []);
+          this.save();
+          try {
+            await this.syncFromCloud();
+          } catch (e) {
+            console.warn('[Storage.initAsync] cloud sync error:', e.message);
+          }
+        } else {
+          // Guest: seed data
+          this.state = seedData();
+          this.save();
+        }
+      }
+      // UI'yı yeniden render et
+      if (typeof App !== 'undefined' && App.render) {
+        App.render(App.currentView || 'dashboard');
       }
     },
 

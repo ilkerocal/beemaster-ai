@@ -485,22 +485,55 @@ ul, ol { list-style: none; }
 @media (max-width: 1024px) {
   :root { --sidebar-w: 0px; }
   .app { grid-template-columns: 1fr; grid-template-areas: "app-header" "app-main"; }
+  /* Sidebar tamamen gizli — sadece açıkken görünür */
   #app-sidebar {
-    position: fixed; left: -280px; top: 0; width: 260px; height: 100vh;
-    transition: left var(--t-slow); z-index: 200; box-shadow: var(--shadow-lg);
+    position: fixed !important;
+    left: -280px !important;
+    top: 0;
+    width: 260px;
+    height: 100vh;
+    transform: translateX(0);
+    transition: left var(--t-slow);
+    z-index: 200;
+    box-shadow: var(--shadow-lg);
+    visibility: hidden;
   }
-  #app-sidebar.sidebar--open { left: 0; }
+  #app-sidebar.sidebar--open {
+    left: 0 !important;
+    visibility: visible !important;
+  }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .action-grid { grid-template-columns: repeat(3, 1fr); }
   #app-bottom-nav { display: flex; }
   .app__main { padding: var(--space-4); padding-bottom: 100px; }
+  /* Header mobile adjustments */
+  .app__header { padding: 0 var(--space-4); height: 60px; }
+  .app__header .btn { padding: 8px; }
+  /* Dashboard hero cards stack */
+  .hero-stats { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 640px) {
   .field-row, .field-row--3 { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .app__header { padding: 0 var(--space-4); }
   .stat__value { font-size: 22px; }
+  /* Dashboard mobile - 2 sütun grid */
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .stats-grid { gap: var(--space-2); }
+  .stat { padding: var(--space-3); }
+  .stat__value { font-size: 20px; }
+  .stat__label { font-size: 11px; }
+  /* Card adjustments */
+  .card { padding: var(--space-3); }
+  .card-title { font-size: 14px; }
+  /* Buttons smaller on mobile */
+  .btn { font-size: 13px; padding: 8px 12px; }
+  /* Modal fullscreen-ish on mobile */
+  .modal { max-width: 95vw; max-height: 92vh; }
+  .modal__body { padding: var(--space-3); max-height: 70vh; overflow-y: auto; }
+  .modal__head { padding: var(--space-3); }
+  .modal__foot { padding: var(--space-3); }
 }
 
 /* Boot screen (inline in HTML, but here for reference) */
