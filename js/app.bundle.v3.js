@@ -803,7 +803,39 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       const client = BM.Auth.getClient();
       const table = this._tableFor(coll);
       if (!table) return;
+      const del = async (t, col, val) => {
+        try {
+          const { error } = await client.from(t).delete().eq(col, val);
+          if (error && error.code !== 'PGRST116') console.warn('[CloudSync] cascade del error (' + t + '):', error.message);
+        } catch (e) { /* ignore */ }
+      };
       try {
+        // Cascade: delete related records before deleting the parent
+        if (coll === 'hives') {
+          await del('queens', 'hive_id', id);
+          await del('frames', 'hive_id', id);
+          await del('inspections', 'hive_id', id);
+          await del('harvests', 'hive_id', id);
+          await del('feedings', 'hive_id', id);
+          await del('treatments', 'hive_id', id);
+          await del('diseases', 'hive_id', id);
+        } else if (coll === 'apiaries') {
+          // Find all hives in this apiary and cascade-delete their records
+          const hivesRes = await client.from('hives').select('id').eq('apiary_id', id);
+          const hiveIds = (hivesRes.data || []).map(h => h.id);
+          for (const hid of hiveIds) {
+            await del('queens', 'hive_id', hid);
+            await del('frames', 'hive_id', hid);
+            await del('inspections', 'hive_id', hid);
+            await del('harvests', 'hive_id', hid);
+            await del('feedings', 'hive_id', hid);
+            await del('treatments', 'hive_id', hid);
+            await del('diseases', 'hive_id', hid);
+          }
+          await del('hives', 'apiary_id', id);
+        } else if (coll === 'queens') {
+          // No child records depend on queen
+        }
         const { error } = await client.from(table).delete().eq('id', id);
         if (error) console.warn('[CloudSync] remove error (' + coll + '):', error.message);
       } catch (e) {
