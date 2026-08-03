@@ -617,10 +617,38 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       this.init();
     },
 
-    init() {
+    async init() {
       if (!this.load()) {
-        this.state = seedData();
-        this.save();
+        // No local data - check if user is authenticated, load from cloud
+        await new Promise(r => setTimeout(r, 200));
+        const isAuth = BM.Auth && BM.Auth.isAuthenticated && BM.Auth.isAuthenticated();
+        const uid = BM.Auth && BM.Auth.getUser && BM.Auth.getUser()?.id;
+        // Start with empty state
+        this.state = {
+          apiaries: [], hives: [], queens: [], frames: [],
+          inspections: [], harvests: [], feedings: [],
+          treatments: [], diseases: [], inventory: []
+        };
+        if (isAuth && uid) {
+          // User is logged in - try to load from cloud first
+          if (typeof this.syncFromCloud === 'function') {
+            await this.syncFromCloud(true);
+          }
+          // If cloud is empty too, this is a new user - seed demo data
+          if (this.state.hives.length === 0 && this.state.apiaries.length === 0) {
+            console.log('[Storage.init] New user, seeding demo data');
+            this.state = seedData();
+            // Save and upload to cloud so next login has the data
+            this.save();
+            if (typeof this.syncFromCloud === 'function') {
+              await this.syncFromCloud(true);
+            }
+          }
+        } else {
+          // Not logged in - seed demo data
+          this.state = seedData();
+          this.save();
+        }
       }
     },
 
