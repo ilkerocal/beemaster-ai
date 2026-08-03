@@ -622,14 +622,40 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         // No local data - check if user is authenticated
         const isAuth = BM.Auth && BM.Auth.isAuthenticated && BM.Auth.isAuthenticated();
         const uid = BM.Auth && BM.Auth.getUser && BM.Auth.getUser()?.id;
+        // Also check localStorage for session (in case Auth not yet initialized)
+        const hasSession = (() => {
+          try {
+            const s = localStorage.getItem('bm-auth-session');
+            if (!s) return false;
+            const parsed = JSON.parse(s);
+            return !!(parsed && parsed.access_token);
+          } catch (e) { return false; }
+        })();
         if (isAuth && uid) {
-          // Start with empty state, will be populated by loadFromCloud
+          // Authenticated - empty state, will be populated by loadFromCloud
           this.state = {
             apiaries: [], hives: [], queens: [], frames: [],
             inspections: [], harvests: [], feedings: [],
             treatments: [], diseases: [], inventory: []
           };
           this.save();
+        } else if (hasSession) {
+          // Session in localStorage but Auth not yet init - wait briefly
+          this.state = {
+            apiaries: [], hives: [], queens: [], frames: [],
+            inspections: [], harvests: [], feedings: [],
+            treatments: [], diseases: [], inventory: []
+          };
+          this.save();
+          console.log('[Storage.init] Session found in localStorage, waiting for auth init');
+          // Try to load from cloud after a delay (auth will be init'd by then)
+          setTimeout(() => {
+            if (typeof this.loadFromCloud === 'function') {
+              this.loadFromCloud().then(() => {
+                if (typeof App !== 'undefined' && App.render) App.render(App.currentView || 'dashboard');
+              });
+            }
+          }, 500);
         } else {
           // Guest mode - seed demo data
           this.state = seedData();
