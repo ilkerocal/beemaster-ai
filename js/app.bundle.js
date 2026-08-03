@@ -627,33 +627,33 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
     // CRUD generic - with Supabase cloud sync
     list(coll) { return this.state[coll] || []; },
     get(coll, id) { return (this.state[coll] || []).find(x => x.id === id); },
-    add(coll, data) {
+    async add(coll, data) {
       const id = BM.uid();
       const now = new Date().toISOString();
       const obj = { id, createdAt: now, updatedAt: now, ...data };
       this.state[coll].push(obj);
       this.save();
       BM.Bus.emit('change:' + coll, obj);
-      // Supabase cloud sync (fire-and-forget)
-      this._syncAdd(coll, obj);
+      // Supabase cloud sync (awaited)
+      await this._syncAdd(coll, obj);
       return obj;
     },
-    update(coll, id, data) {
+    async update(coll, id, data) {
       const idx = this.state[coll].findIndex(x => x.id === id);
       if (idx < 0) return null;
       this.state[coll][idx] = { ...this.state[coll][idx], ...data, updatedAt: new Date().toISOString() };
       this.save();
       BM.Bus.emit('change:' + coll, this.state[coll][idx]);
-      // Supabase cloud sync
-      this._syncUpdate(coll, this.state[coll][idx]);
+      // Supabase cloud sync (awaited)
+      await this._syncUpdate(coll, this.state[coll][idx]);
       return this.state[coll][idx];
     },
-    remove(coll, id) {
+    async remove(coll, id) {
       this.state[coll] = this.state[coll].filter(x => x.id !== id);
       this.save();
       BM.Bus.emit('change:' + coll, { id });
-      // Supabase cloud sync
-      this._syncRemove(coll, id);
+      // Supabase cloud sync (awaited)
+      await this._syncRemove(coll, id);
     },
 
     // ---- Supabase Cloud Sync (internal) ----
@@ -1447,9 +1447,28 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
            <input class="input" name="nfcTag" value="${BM.esc(h.nfcTag || '')}"></label>
          <label class="field"><span class="field-label">Notlar</span>
            <textarea class="textarea" name="notes" rows="2">${BM.esc(h.notes || '')}</textarea></label>`,
-        (d) => {
-          d.frameCount = parseInt(d.frameCount) || 10;
-          BM.Storage.update('hives', id, d);
+        async (d) => {
+          const newCount = parseInt(d.frameCount) || 10;
+          d.frameCount = newCount;
+          await BM.Storage.update('hives', id, d);
+          // Sync frame records to match new frameCount
+          const existingFrames = BM.Storage.list('frames').filter(f => f.hiveId === id).sort((a, b) => a.position - b.position);
+          const oldCount = existingFrames.length;
+          if (newCount > oldCount) {
+            for (let p = oldCount + 1; p <= newCount; p++) {
+              await BM.Storage.add('frames', {
+                hiveId: id, position: p,
+                frameType: p <= 3 ? 'brood' : (p <= 6 ? 'honey' : 'foundation'),
+                foundationType: 'wax', status: 'in_use',
+                cyclesCompleted: 0, waxAgeMonths: 0
+              });
+            }
+          } else if (newCount < oldCount) {
+            const toRemove = existingFrames.slice(newCount);
+            for (const f of toRemove) {
+              await BM.Storage.remove('frames', f.id);
+            }
+          }
           BM.Toast.show('Kovan güncellendi ✓', 'success');
           App.render('hives');
           return true;

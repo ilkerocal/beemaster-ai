@@ -112,9 +112,30 @@ const hivesModule = {
            <input class="input" name="nfcTag" value="${BM.esc(h.nfcTag || '')}"></label>
          <label class="field"><span class="field-label">Notlar</span>
            <textarea class="textarea" name="notes" rows="2">${BM.esc(h.notes || '')}</textarea></label>`,
-        (d) => {
-          d.frameCount = parseInt(d.frameCount) || 10;
-          BM.Storage.update('hives', id, d);
+        async (d) => {
+          const newCount = parseInt(d.frameCount) || 10;
+          d.frameCount = newCount;
+          await BM.Storage.update('hives', id, d);
+          // Sync frame records to match new frameCount
+          const existingFrames = BM.Storage.list('frames').filter(f => f.hiveId === id).sort((a, b) => a.position - b.position);
+          const oldCount = existingFrames.length;
+          if (newCount > oldCount) {
+            // Add new frames at the end
+            for (let p = oldCount + 1; p <= newCount; p++) {
+              await BM.Storage.add('frames', {
+                hiveId: id, position: p,
+                frameType: p <= 3 ? 'brood' : (p <= 6 ? 'honey' : 'foundation'),
+                foundationType: 'wax', status: 'in_use',
+                cyclesCompleted: 0, waxAgeMonths: 0
+              });
+            }
+          } else if (newCount < oldCount) {
+            // Remove excess frames from the end
+            const toRemove = existingFrames.slice(newCount);
+            for (const f of toRemove) {
+              await BM.Storage.remove('frames', f.id);
+            }
+          }
           BM.Toast.show('Kovan güncellendi ✓', 'success');
           App.render('hives');
           return true;
