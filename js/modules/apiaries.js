@@ -223,8 +223,8 @@
                 ${alerts ? `<span class="badge badge--danger">${alerts} uyarı</span>` : ''}
               </div>
               <div class="row-list__info">
-                📍 ${BM.esc(a.location)}${a.lat && a.lng ? ` · GPS: ${a.lat.toFixed(3)}, ${a.lng.toFixed(3)}` : ''}${a.flora ? ` · 🌸 ${BM.esc(a.flora)}` : ''}
-              </div>
+                              📍 ${BM.esc(a.location)}${a.lat && a.lng ? ` · GPS: ${Number(a.lat).toFixed(3)}, ${Number(a.lng).toFixed(3)}` : ''}${a.flora ? ` · 🌸 ${BM.esc(a.flora)}` : ''}
+                            </div>
               ${a.notes ? `<div class="row-list__info" style="font-style:italic;margin-top:2px">"${BM.esc(a.notes)}"</div>` : ''}
             </div>
             <div style="text-align:right;min-width:110px;flex-shrink:0">
@@ -261,7 +261,7 @@
         el.innerHTML = '<div class="empty"><div class="empty__icon">📍</div><div class="empty__title">Koordinatlı üs yok</div><div class="empty__sub">Üs eklerken Enlem/Boylam girersen haritada görünür</div></div>';
         return;
       }
-      const center = [withCoords[0].lat, withCoords[0].lng];
+      const center = [Number(withCoords[0].lat), Number(withCoords[0].lng)];
       this._mapInstance = L.map(el, { zoomControl: true }).setView(center, 11);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
@@ -270,7 +270,7 @@
       withCoords.forEach(a => {
         const hc = BM.Storage.list('hives').filter(h => h.apiaryId === a.id).length;
         const honey = BM.Storage.list('harvests').filter(h => h.apiaryId === a.id).reduce((s, h) => s + h.weight, 0);
-        const marker = L.marker([a.lat, a.lng]).addTo(this._mapInstance);
+        const marker = L.marker([Number(a.lat), Number(a.lng)]).addTo(this._mapInstance);
         marker.bindPopup(`
           <div style="font-family:system-ui;min-width:200px">
             <div style="font-weight:700;font-size:14px;margin-bottom:4px">📍 ${BM.esc(a.name)}</div>
@@ -284,7 +284,7 @@
         `);
       });
       if (withCoords.length > 1) {
-        const bounds = L.latLngBounds(withCoords.map(a => [a.lat, a.lng]));
+        const bounds = L.latLngBounds(withCoords.map(a => [Number(a.lat), Number(a.lng)]));
         this._mapInstance.fitBounds(bounds, { padding: [40, 40] });
       }
     },

@@ -6,6 +6,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
 
 /* BeeMaster AI v3.0 - Bundled JS (order: utils, db, ui, modules/*, app) */
 
+/* ===== js\core\utils.js ===== */
 /* ===== js/utils.js ===== */
 // ============================================================
 // Utils — Spec 03, 14 — Global namespace pattern
@@ -93,358 +94,8 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   Object.assign(BM, { $, $$, uid, esc, fmt, today, dateStr, dateAgo, Icons, T, Bus });
 })(window);
 
-/* ===== js/modules/auth.js ===== */
-// ============================================================
-// Supabase Auth + Cloud Sync (Optional - falls back to localStorage)
-// ============================================================
-(function (global) {
-  'use strict';
-  const BM = global.BM = global.BM || {};
 
-  // Config from Vercel env vars (injected at runtime) or hardcoded fallback
-  const SUPABASE_URL = (typeof window !== 'undefined' && window.__SUPABASE_URL__) || null;
-  const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.__SUPABASE_ANON_KEY__) || null;
-
-  let _client = null;
-  let _user = null;
-  let _session = null;
-
-  function isConfigured() {
-    return !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
-  }
-
-  function getClient() {
-    if (!isConfigured()) return null;
-    if (!_client) {
-      try {
-        _client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      } catch (e) {
-        console.warn('Supabase init failed:', e);
-        return null;
-      }
-    }
-    return _client;
-  }
-
-  // ---- Auth ----
-  async function signUp(email, password) {
-    const c = getClient();
-    if (!c) return { data: null, error: { message: 'Supabase yapılandırılmamış' } };
-    const result = await c.auth.signUp({ email, password });
-    if (result.data?.user) {
-      _user = result.data.user;
-      _session = result.data.session;
-      localStorage.setItem('beemaster-auth-token', _session?.access_token || '');
-      // Create profile
-      await c.from('profiles').upsert({ id: _user.id, email: _user.email });
-    }
-    return result;
-  }
-
-  async function signIn(email, password) {
-    const c = getClient();
-    if (!c) return { data: null, error: { message: 'Supabase yapılandırılmamış' } };
-    const result = await c.auth.signInWithPassword({ email, password });
-    if (result.data?.user) {
-      _user = result.data.user;
-      _session = result.data.session;
-      localStorage.setItem('beemaster-auth-token', _session?.access_token || '');
-    }
-    return result;
-  }
-
-  async function signOut() {
-    const c = getClient();
-    if (c) await c.auth.signOut();
-    _user = null;
-    _session = null;
-    localStorage.removeItem('beemaster-auth-token');
-  }
-
-  function getUser() { return _user; }
-  function isAuthenticated() { return !!_user; }
-
-  // ---- UI: Show login modal ----
-  let _authMode = 'login'; // 'login' | 'register'
-
-  function showLoginModal() {
-    if (typeof BM === 'undefined' || !BM.Modal) {
-      alert('Giriş için lütfen bekleyin, sayfa yükleniyor...');
-      return;
-    }
-    if (_user) {
-      // Show profile + logout if already logged in - temiz tasarim
-      const email = BM.esc(_user.email || '');
-      const userId = (_user.id || '').substring(0, 8);
-      const createdAt = _user.created_at ? new Date(_user.created_at).toLocaleDateString('tr-TR') : '';
-      const stats = BM.Storage.state || {};
-      const totalRecords = (stats.hives?.length || 0) + (stats.inspections?.length || 0) + (stats.feedings?.length || 0);
-
-      BM.Modal.open('👤 Hesabım',
-        `<div style="padding:var(--space-1) 0">
-          <!-- Avatar + Email Header -->
-          <div style="display:flex;align-items:center;gap:var(--space-4);padding:var(--space-4);background:linear-gradient(135deg, var(--primary-color) 0%, #f59e0b 100%);border-radius:var(--radius-lg);margin-bottom:var(--space-4);color:#fff">
-            <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;flex-shrink:0">
-              ${email.charAt(0).toUpperCase()}
-            </div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:11px;opacity:0.85;text-transform:uppercase;letter-spacing:0.04em">Giriş Yapıldı ✓</div>
-              <div style="font-size:16px;font-weight:700;margin-top:4px;word-break:break-all">${email}</div>
-              ${createdAt ? `<div style="font-size:11px;opacity:0.8;margin-top:4px">Üyelik: ${createdAt}</div>` : ''}
-            </div>
-          </div>
-
-          <!-- Cloud Status -->
-          <div style="padding:var(--space-3);background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-md);margin-bottom:var(--space-3)">
-            <div style="display:flex;align-items:center;gap:var(--space-2)">
-              <span style="font-size:20px">☁️</span>
-              <div style="flex:1">
-                <div style="font-size:13px;font-weight:700;color:#16a34a">Supabase Bağlı</div>
-                <div style="font-size:11px;color:var(--text-secondary)">Tüm değişiklikler buluta kaydediliyor</div>
-              </div>
-              <span class="badge badge--ok" style="background:#16a34a;color:#fff">AKTİF</span>
-            </div>
-          </div>
-
-          <!-- Stats -->
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2);margin-bottom:var(--space-4)">
-            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);text-align:center">
-              <div style="font-size:20px;font-weight:700;color:var(--primary-color)">${stats.hives?.length || 0}</div>
-              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Kovan</div>
-            </div>
-            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);text-align:center">
-              <div style="font-size:20px;font-weight:700;color:var(--primary-color)">${stats.inspections?.length || 0}</div>
-              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Muayene</div>
-            </div>
-            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);text-align:center">
-              <div style="font-size:20px;font-weight:700;color:var(--primary-color)">${stats.feedings?.length || 0}</div>
-              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Besleme</div>
-            </div>
-          </div>
-
-          <!-- Account Info -->
-          <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);margin-bottom:var(--space-3)">
-            <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:var(--space-2)">Hesap Bilgileri</div>
-            <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;font-size:13px">
-              <span style="color:var(--text-secondary)">Kullanıcı ID</span>
-              <span style="font-family:monospace;font-size:12px">${userId}...</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;font-size:13px">
-              <span style="color:var(--text-secondary)">E-posta doğrulandı</span>
-              <span>${_user.email_confirmed_at ? '✅' : '⏳ Bekliyor'}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;font-size:13px">
-              <span style="color:var(--text-secondary)">Toplam kayıt</span>
-              <span><strong>${totalRecords}</strong></span>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
-            <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>{ if(BM.Storage.loadFromCloud) BM.Storage.loadFromCloud().then(()=>App.render(App.currentView||'dashboard')); },300)">
-              🔄 Buluttan Yenile
-            </button>
-            <button type="button" class="btn btn--danger" onclick="BM.Auth.doLogout()">
-              🚪 Çıkış Yap
-            </button>
-          </div>
-        </div>`,
-        () => false
-      );
-      return;
-    }
-
-    _authMode = 'login';
-
-    const renderBody = () => `
-      <div style="padding:var(--space-2) 0">
-        <div style="display:flex;gap:var(--space-1);margin-bottom:var(--space-4);background:var(--bg-tertiary);padding:4px;border-radius:var(--radius-md)">
-          <button type="button" id="auth-tab-login" class="btn ${_authMode === 'login' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('login')">🔑 Giriş Yap</button>
-          <button type="button" id="auth-tab-register" class="btn ${_authMode === 'register' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('register')">📝 Kayıt Ol</button>
-        </div>
-        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-3)">
-          ${_authMode === 'login' ? 'Hesabınızla giriş yapın — tüm verileriniz buluttan yüklenecek.' : 'Yeni hesap oluşturun — verileriniz Supabase bulutuna kaydedilecek.'}
-        </p>
-        <label class="field"><span class="field-label">E-posta</span>
-          <input class="input" type="email" id="auth-email" placeholder="ornek@gmail.com" autocomplete="email"></label>
-        <label class="field"><span class="field-label">Şifre (en az 6 karakter)</span>
-          <input class="input" type="password" id="auth-password" placeholder="••••••" autocomplete="${_authMode === 'login' ? 'current' : 'new'}-password"></label>
-        <div id="auth-error" style="color:var(--danger);font-size:12px;margin-top:var(--space-2);min-height:18px"></div>
-        <div style="margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--n-800);font-size:11px;color:var(--text-muted)">
-          💡 Giriş yapmadan da uygulamayı kullanabilirsiniz. Verileriniz cihazınızda (localStorage) saklanır. Giriş yaparsanız bulutla senkronize olur.
-        </div>
-      </div>`;
-
-    BM.Modal.open('🐝 BeeMaster AI', renderBody(), async () => {
-      const email = document.getElementById('auth-email')?.value.trim();
-      const password = document.getElementById('auth-password')?.value;
-      const errEl = document.getElementById('auth-error');
-      if (!email || !password) {
-        if (errEl) errEl.textContent = 'E-posta ve şifre gerekli';
-        return false;
-      }
-      if (password.length < 6) {
-        if (errEl) errEl.textContent = 'Şifre en az 6 karakter olmalı';
-        return false;
-      }
-      let result;
-      if (_authMode === 'register') {
-        result = await signUp(email, password);
-        if (result.error?.message?.toLowerCase().includes('already')) {
-          // Kullanıcı zaten var, sign in dene
-          result = await signIn(email, password);
-        }
-      } else {
-        result = await signIn(email, password);
-      }
-      if (result.error) {
-        if (errEl) errEl.textContent = (result.error.message || 'Giriş başarısız') + (result.error.code ? ' (' + result.error.code + ')' : '');
-        return false;
-      }
-      if (result.data?.user) {
-        BM.Toast.show('Hoş geldiniz! 🌐 Bulut senkronizasyonu aktif', 'success');
-        updateAuthBtn();
-        if (BM.Storage && typeof BM.Storage.loadFromCloud === 'function') { BM.Storage.loadFromCloud().then(() => App.render(App.currentView || 'dashboard')); }
-        return true;
-      }
-      return false;
-    });
-  }
-
-  function switchTab(mode) {
-    _authMode = mode;
-    document.getElementById('modal-body').innerHTML = renderBody();
-  }
-
-  function renderBody() {
-    return `
-      <div style="padding:var(--space-2) 0">
-        <div style="display:flex;gap:var(--space-1);margin-bottom:var(--space-4);background:var(--bg-tertiary);padding:4px;border-radius:var(--radius-md)">
-          <button type="button" id="auth-tab-login" class="btn ${_authMode === 'login' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('login')">🔑 Giriş Yap</button>
-          <button type="button" id="auth-tab-register" class="btn ${_authMode === 'register' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('register')">📝 Kayıt Ol</button>
-        </div>
-        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-3)">
-          ${_authMode === 'login' ? 'Hesabınızla giriş yapın.' : 'Yeni hesap oluşturun.'}
-        </p>
-        <label class="field"><span class="field-label">E-posta</span>
-          <input class="input" type="email" id="auth-email" placeholder="ornek@gmail.com" autocomplete="email"></label>
-        <label class="field"><span class="field-label">Şifre (en az 6 karakter)</span>
-          <input class="input" type="password" id="auth-password" placeholder="••••••" autocomplete="${_authMode === 'login' ? 'current' : 'new'}-password"></label>
-        <div id="auth-error" style="color:var(--danger);font-size:12px;margin-top:var(--space-2);min-height:18px"></div>
-        <div style="margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--n-800);font-size:11px;color:var(--text-muted)">
-          💡 Giriş yapmadan da kullanabilirsiniz. Giriş = bulut senkronizasyonu.
-        </div>
-      </div>`;
-  }
-
-  function updateAuthBtn() {
-    const btn = document.getElementById('auth-btn');
-    if (!btn) return;
-    if (_user) {
-      btn.textContent = '👤';
-      btn.title = _user.email + ' (çıkış için tıkla)';
-      btn.style.fontSize = '18px';
-    } else {
-      btn.textContent = '🔐';
-      btn.title = 'Giriş Yap / Kayıt Ol';
-    }
-    updateSidebarUser();
-  }
-
-  function updateSidebarUser() {
-    const avatar = document.getElementById('sidebar-user-avatar');
-    const name = document.getElementById('sidebar-user-name');
-    const role = document.getElementById('sidebar-user-role');
-    if (!avatar || !name || !role) return;
-    if (_user) {
-      const email = _user.email || '';
-      avatar.textContent = email.charAt(0).toUpperCase() || '👤';
-      avatar.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
-      name.textContent = email.split('@')[0] || email;
-      role.textContent = '✅ ' + (BM.Storage.list('apiaries').length) + ' üs · Supabase bağlı';
-    } else {
-      avatar.textContent = '?';
-      avatar.style.background = 'var(--bg-tertiary)';
-      name.textContent = 'Giriş Yap';
-      role.textContent = 'Misafir · Veriler cihazınızda';
-    }
-  }
-
-  async function doLogout() {
-    await signOut();
-    updateAuthBtn();
-    BM.Toast.show('Çıkış yapıldı. Veriler cihazınızda kalmaya devam ediyor.', 'info');
-    BM.Modal.close();
-    if (typeof App !== 'undefined' && App.render) App.render('dashboard');
-  }
-
-  // ---- Check existing session on load ----
-  async function initFromStorage() {
-    // Wait for Supabase to load if not yet ready
-    if (!window.supabase) {
-      let wait = 0;
-      while (!window.supabase && wait < 3000) {
-        await new Promise(r => setTimeout(r, 100));
-        wait += 100;
-      }
-    }
-    if (!isConfigured()) return;
-    const c = getClient();
-    if (!c) return;
-    try {
-      // Use Supabase's own session storage (sb-...-auth-token key, persists + auto-refreshes)
-      const { data, error } = await c.auth.getSession();
-      if (error) {
-        console.warn('[Auth] getSession error:', error.message);
-        return;
-      }
-      if (data?.session?.user) {
-        _user = data.session.user;
-        _session = data.session;
-        // Mirror to our key for backward compat
-        localStorage.setItem('beemaster-auth-token', data.session.access_token || '');
-        updateAuthBtn();
-        // Also listen for token refresh events
-        c.auth.onAuthStateChange((event, session) => {
-          if (event === 'TOKEN_REFRESHED' && session) {
-            _session = session;
-            _user = session.user;
-            localStorage.setItem('beemaster-auth-token', session.access_token || '');
-          } else if (event === 'SIGNED_OUT') {
-            _user = null;
-            _session = null;
-            localStorage.removeItem('beemaster-auth-token');
-            updateAuthBtn();
-          }
-        });
-      } else {
-        // No session - clean up legacy key
-        localStorage.removeItem('beemaster-auth-token');
-      }
-    } catch (e) {
-      console.warn('[Auth] initFromStorage error:', e);
-    }
-  }
-
-  BM.Auth = {
-    isConfigured,
-    getClient,
-    signUp,
-    signIn,
-    signOut,
-    getUser,
-    isAuthenticated,
-    showLoginModal,
-    switchTab,
-    updateAuthBtn,
-    updateSidebarUser,
-    doLogout,
-    initFromStorage
-  };
-})(window);
-
-
-
+/* ===== js\core\db.js ===== */
 /* ===== js/db.js ===== */
 // ============================================================
 // Storage — localStorage adapter (IndexedDB pattern, Spec 11)
@@ -635,71 +286,9 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
 
     init() {
       if (!this.load()) {
-        // No local data - check if user is authenticated
-        const isAuth = BM.Auth && BM.Auth.isAuthenticated && BM.Auth.isAuthenticated();
-        const uid = BM.Auth && BM.Auth.getUser && BM.Auth.getUser()?.id;
-        // Also check localStorage for session (in case Auth not yet initialized)
-        const hasSession = (() => {
-          try {
-            const s = localStorage.getItem('bm-auth-session');
-            if (!s) return false;
-            const parsed = JSON.parse(s);
-            return !!(parsed && parsed.access_token);
-          } catch (e) { return false; }
-        })();
-        if (isAuth && uid) {
-          // Authenticated - empty state, will be populated by loadFromCloud
-          this.state = {
-            apiaries: [], hives: [], queens: [], frames: [],
-            inspections: [], harvests: [], feedings: [],
-            treatments: [], diseases: [], inventory: []
-          };
-          this.save();
-        } else if (hasSession) {
-          // Session in localStorage but Auth not yet init - wait briefly
-          this.state = {
-            apiaries: [], hives: [], queens: [], frames: [],
-            inspections: [], harvests: [], feedings: [],
-            treatments: [], diseases: [], inventory: []
-          };
-          this.save();
-          console.log('[Storage.init] Session found in localStorage, waiting for auth init');
-          // Try to load from cloud after a delay (auth will be init'd by then)
-          setTimeout(() => {
-            if (typeof this.loadFromCloud === 'function') {
-              this.loadFromCloud().then(() => {
-                if (typeof App !== 'undefined' && App.render) App.render(App.currentView || 'dashboard');
-              });
-            }
-          }, 500);
-        } else {
-          // Guest mode - seed demo data
-          this.state = seedData();
-          this.save();
-        }
-      }
-    },
-
-    async loadFromCloud() {
-      // Called by App.init after auth check - ALWAYS download-only, never upload local demo data
-      const uid = BM.Auth && BM.Auth.getUser && BM.Auth.getUser()?.id;
-      if (!uid) return false;
-      console.log('[Storage.loadFromCloud] Loading from cloud (download-only mode)');
-      if (typeof this.syncFromCloud === 'function') {
-        await this.syncFromCloud(true, true);  // force=true, downloadOnly=true
-      }
-      const stillEmpty = (!this.state.hives || this.state.hives.length === 0) &&
-                          (!this.state.apiaries || this.state.apiaries.length === 0);
-      if (stillEmpty) {
-        // Cloud empty - this is a new user, seed demo data and upload to cloud
-        console.log('[Storage.loadFromCloud] Cloud empty, seeding demo data for new user');
         this.state = seedData();
         this.save();
-        if (typeof this.syncFromCloud === 'function') {
-          await this.syncFromCloud(false, false);  // normal mode - upload demo to cloud
-        }
       }
-      return true;
     },
 
     // CRUD generic - with Supabase cloud sync
@@ -722,7 +311,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       this.state[coll][idx] = { ...this.state[coll][idx], ...data, updatedAt: new Date().toISOString() };
       this.save();
       BM.Bus.emit('change:' + coll, this.state[coll][idx]);
-      // Supabase cloud sync (awaited)
+      // Supabase cloud sync
       await this._syncUpdate(coll, this.state[coll][idx]);
       return this.state[coll][idx];
     },
@@ -730,7 +319,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       this.state[coll] = this.state[coll].filter(x => x.id !== id);
       this.save();
       BM.Bus.emit('change:' + coll, { id });
-      // Supabase cloud sync (awaited)
+      // Supabase cloud sync
       await this._syncRemove(coll, id);
     },
 
@@ -808,39 +397,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       const client = BM.Auth.getClient();
       const table = this._tableFor(coll);
       if (!table) return;
-      const del = async (t, col, val) => {
-        try {
-          const { error } = await client.from(t).delete().eq(col, val);
-          if (error && error.code !== 'PGRST116') console.warn('[CloudSync] cascade del error (' + t + '):', error.message);
-        } catch (e) { /* ignore */ }
-      };
       try {
-        // Cascade: delete related records before deleting the parent
-        if (coll === 'hives') {
-          await del('queens', 'hive_id', id);
-          await del('frames', 'hive_id', id);
-          await del('inspections', 'hive_id', id);
-          await del('harvests', 'hive_id', id);
-          await del('feedings', 'hive_id', id);
-          await del('treatments', 'hive_id', id);
-          await del('diseases', 'hive_id', id);
-        } else if (coll === 'apiaries') {
-          // Find all hives in this apiary and cascade-delete their records
-          const hivesRes = await client.from('hives').select('id').eq('apiary_id', id);
-          const hiveIds = (hivesRes.data || []).map(h => h.id);
-          for (const hid of hiveIds) {
-            await del('queens', 'hive_id', hid);
-            await del('frames', 'hive_id', hid);
-            await del('inspections', 'hive_id', hid);
-            await del('harvests', 'hive_id', hid);
-            await del('feedings', 'hive_id', hid);
-            await del('treatments', 'hive_id', hid);
-            await del('diseases', 'hive_id', hid);
-          }
-          await del('hives', 'apiary_id', id);
-        } else if (coll === 'queens') {
-          // No child records depend on queen
-        }
         const { error } = await client.from(table).delete().eq('id', id);
         if (error) console.warn('[CloudSync] remove error (' + coll + '):', error.message);
       } catch (e) {
@@ -849,82 +406,96 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
     },
 
     // ---- Bulk fetch from Supabase on login ----
-    async syncFromCloud(force, downloadOnly) {
+    async syncFromCloud(force) {
       if (force === undefined) force = false;
-      if (downloadOnly === undefined) downloadOnly = false;
       if (!this._supabaseAvailable()) return false;
       const uid = this._userId();
       if (!uid) return false;
       const client = BM.Auth.getClient();
-      const tables = ['apiaries', 'hives', 'queens', 'inspections', 'frames', 'harvests', 'feedings', 'treatments', 'diseases', 'inventory'];
+      if (!client) return false;
+      const tables = ['apiaries','hives','queens','inspections','frames','harvests','feedings','treatments','diseases','inventory'];
+      // First, download from cloud and merge into local (so we don't lose newer cloud data)
+      for (const t of tables) {
+        try {
+          const res = await client.from(t).select('*').eq('user_id', uid);
+          const cloudItems = res.data || [];
+          // Map cloud items to our camelCase format
+          const map = {
+            apiaryId: 'apiary_id', hiveId: 'hive_id', queenId: 'queen_id',
+            boxType: 'box_type', frameCount: 'frame_count', nfcTag: 'nfc_tag',
+            installedAt: 'installed_at', birthDate: 'birth_date', markedColor: 'marked_color',
+            performanceScore: 'performance_score', varroaCount: 'varroa_count',
+            broodFrames: 'brood_frames', honeyFrames: 'honey_frames', pollenFrames: 'pollen_frames',
+            queenSeen: 'queen_seen', eggsPattern: 'eggs_pattern',
+            positionInApiary: 'position_in_apiary', amountKg: 'amount_kg',
+            audioData: 'audio_data', apiaryName: 'apiary_name'
+          };
+          const reverseMap = {};
+          for (const [k, v] of Object.entries(map)) {
+            reverseMap[v] = k;
+          }
+          const cloudMap = new Map();
+          for (const cloudItem of cloudItems) {
+            const obj = {};
+            for (const [dbKey, value] of Object.entries(cloudItem)) {
+              const camelKey = reverseMap[dbKey] || dbKey;
+              obj[camelKey] = value;
+            }
+            cloudMap.set(obj.id, obj);
+          }
+          // Merge with local
+          const localList = this.state[t] || [];
+          for (const localItem of localList) {
+            const cloudItem = cloudMap.get(localItem.id);
+            if (cloudItem) {
+              // If cloud exists, compare timestamps and keep the newer
+              const localTime = new Date(localItem.updatedAt).getTime();
+              const cloudTime = new Date(cloudItem.updatedAt).getTime();
+              if (cloudTime > localTime) {
+                // Cloud is newer, update local
+                Object.assign(localItem, cloudItem);
+              }
+            } else {
+              // No cloud item for this local id, keep local (it will be uploaded later)
+            }
+          }
+          // Add any cloud items that are not present locally
+          for (const cloudItem of cloudItems) {
+            const obj = {};
+            for (const [dbKey, value] of Object.entries(cloudItem)) {
+              const camelKey = reverseMap[dbKey] || dbKey;
+              obj[camelKey] = value;
+            }
+            if (!localList.some(item => item.id === obj.id)) {
+              localList.push(obj);
+            }
+          }
+          // Update the state with the merged list
+          this.state[t] = localList;
+        } catch (e) {
+          console.warn('[CloudSync] download/merge error (' + t + '):', e.message);
+        }
+      }
+      // Save merged state to localStorage
+      this.save();
+      // Now upload the merged local state to cloud
       let uploaded = 0;
-      let isLocalEmpty = true;
-
-      // ONCE local'deki verileri Supabase'e yaz (downloadOnly modda atla)
-      if (!downloadOnly) {
-        for (const t of tables) {
-          const local = this.state[t] || [];
-          if (local.length > 0) isLocalEmpty = false;
-          for (const item of local) {
-            try {
-              const payload = this._mapToDb(t, item);
-              const { error } = await client.from(t).upsert(payload);
-              if (!error) uploaded = uploaded + 1;
-            } catch (e) {}
+      for (const t of tables) {
+        const local = this.state[t] || [];
+        for (const item of local) {
+          try {
+            const payload = this._mapToDb(t, item);
+            const { error } = await client.from(t).upsert(payload);
+            if (!error) uploaded++;
+          } catch (e) {
+            console.warn('[CloudSync] upload error (' + t + '):', e.message);
           }
         }
-      } else {
-        // downloadOnly - sadece upload miktarını sayma, ama cloud'dan cek
-        for (const t of tables) {
-          if ((this.state[t] || []).length > 0) isLocalEmpty = false;
-        }
       }
-
-      // Cloud'dan cek - downloadOnly modda cloud source of truth, normal modda merge
-      if (isLocalEmpty || force) {
-        const reverseMap = {
-          apiary_id: 'apiaryId', hive_id: 'hiveId', queen_id: 'queenId',
-          box_type: 'boxType', frame_count: 'frameCount', nfc_tag: 'nfcTag',
-          installed_at: 'installedAt', birth_date: 'birthDate', marked_color: 'markedColor',
-          performance_score: 'performanceScore', varroa_count: 'varroaCount',
-          brood_frames: 'broodFrames', honey_frames: 'honeyFrames', pollen_frames: 'pollenFrames',
-          queen_seen: 'queenSeen', eggs_pattern: 'eggsPattern',
-          position_in_apiary: 'positionInApiary', amount_kg: 'amountKg',
-          audio_data: 'audioData'
-        };
-        const fromDb = function(row) {
-          const obj = {};
-          for (const k in row) obj[reverseMap[k] || k] = row[k];
-          return obj;
-        };
-        for (const t of tables) {
-          try {
-            const res = await client.from(t).select('*').eq('user_id', uid);
-            const data = res.data;
-            if (data && data.length) {
-              const cloudItems = data.map(fromDb);
-              if (downloadOnly) {
-                // Download-only mode: REPLACE local with cloud (cloud is source of truth)
-                this.state[t] = cloudItems;
-              } else {
-                // Normal mode: merge - add cloud items not in local
-                const localIds = {};
-                (this.state[t] || []).forEach(function(x) { localIds[x.id] = true; });
-                const newItems = cloudItems.filter(function(x) { return !localIds[x.id]; });
-                this.state[t] = (this.state[t] || []).concat(newItems);
-              }
-            } else if (downloadOnly) {
-              // Cloud empty - in download-only mode, keep local empty too
-              this.state[t] = [];
-            }
-          } catch (e) {}
-        }
-      }
-      this.save();
       if (uploaded > 0) BM.Toast.show('☁️ ' + uploaded + ' kayıt buluta yüklendi', 'success');
       if (typeof App !== 'undefined' && App.render) App.render(App.currentView || 'dashboard');
       return true;
-    },
+},
 
     // Cascade delete
     cascadeDeleteHive(hiveId) {
@@ -940,6 +511,8 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   BM.SCHEMA = SCHEMA;
 })(window);
 
+
+/* ===== js\core\ui.js ===== */
 /* ===== js/ui.js ===== */
 // ============================================================
 // UI Components — Modal, Toast, Tabs (Spec 03 §3.1)
@@ -974,15 +547,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
             data[k] = v;
           }
         }
-        if (this.cb) {
-          const result = this.cb(data);
-          // Support async callbacks (Promise) - wait for it to finish
-          if (result && typeof result.then === 'function') {
-            result.then(r => { if (r !== false) this.close(); }).catch(e => { console.error('Modal callback error:', e); this.close(); });
-          } else if (result !== false) {
-            this.close();
-          }
-        }
+        if (this.cb && this.cb(data) !== false) this.close();
       };
       this.cb = onSubmit;
       const foot = document.querySelector('.modal__foot');
@@ -1157,6 +722,344 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   Object.assign(BM, { Modal, Toast, Tabs, Wizard });
 })(window);
 
+
+/* ===== js\core\auth.js ===== */
+/* ===== js/modules/auth.js ===== */
+// ============================================================
+// Supabase Auth + Cloud Sync (Optional - falls back to localStorage)
+// ============================================================
+(function (global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  // Config from Vercel env vars (injected at runtime) or hardcoded fallback
+  const SUPABASE_URL = (typeof window !== 'undefined' && window.__SUPABASE_URL__) || null;
+  const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.__SUPABASE_ANON_KEY__) || null;
+
+  let _client = null;
+  let _user = null;
+  let _session = null;
+
+  function isConfigured() {
+    return !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+  }
+
+  function getClient() {
+    if (!isConfigured()) return null;
+    if (!_client) {
+      try {
+        _client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } catch (e) {
+        console.warn('Supabase init failed:', e);
+        return null;
+      }
+    }
+    return _client;
+  }
+
+  // ---- Auth ----
+  async function signUp(email, password) {
+    const c = getClient();
+    if (!c) return { data: null, error: { message: 'Supabase yapılandırılmamış' } };
+    const result = await c.auth.signUp({ email, password });
+    if (result.data?.user) {
+      _user = result.data.user;
+      _session = result.data.session;
+      localStorage.setItem('beemaster-auth-token', _session?.access_token || '');
+      // Create profile
+      await c.from('profiles').upsert({ id: _user.id, email: _user.email });
+    }
+    return result;
+  }
+
+  async function signIn(email, password) {
+    const c = getClient();
+    if (!c) return { data: null, error: { message: 'Supabase yapılandırılmamış' } };
+    const result = await c.auth.signInWithPassword({ email, password });
+    if (result.data?.user) {
+      _user = result.data.user;
+      _session = result.data.session;
+      localStorage.setItem('beemaster-auth-token', _session?.access_token || '');
+    }
+    return result;
+  }
+
+  async function signOut() {
+    const c = getClient();
+    if (c) await c.auth.signOut();
+    _user = null;
+    _session = null;
+    localStorage.removeItem('beemaster-auth-token');
+  }
+
+  function getUser() { return _user; }
+  function isAuthenticated() { return !!_user; }
+
+  // ---- UI: Show login modal ----
+  let _authMode = 'login'; // 'login' | 'register'
+
+  function showLoginModal() {
+    if (typeof BM === 'undefined' || !BM.Modal) {
+      alert('Giriş için lütfen bekleyin, sayfa yükleniyor...');
+      return;
+    }
+    if (_user) {
+      // Show profile + logout if already logged in - temiz tasarim
+      const email = BM.esc(_user.email || '');
+      const userId = (_user.id || '').substring(0, 8);
+      const createdAt = _user.created_at ? new Date(_user.created_at).toLocaleDateString('tr-TR') : '';
+      const stats = BM.Storage.state || {};
+      const totalRecords = (stats.hives?.length || 0) + (stats.inspections?.length || 0) + (stats.feedings?.length || 0);
+
+      BM.Modal.open('👤 Hesabım',
+        `<div style="padding:var(--space-1) 0">
+          <!-- Avatar + Email Header -->
+          <div style="display:flex;align-items:center;gap:var(--space-4);padding:var(--space-4);background:linear-gradient(135deg, var(--primary-color) 0%, #f59e0b 100%);border-radius:var(--radius-lg);margin-bottom:var(--space-4);color:#fff">
+            <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;flex-shrink:0">
+              ${email.charAt(0).toUpperCase()}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:11px;opacity:0.85;text-transform:uppercase;letter-spacing:0.04em">Giriş Yapıldı ✓</div>
+              <div style="font-size:16px;font-weight:700;margin-top:4px;word-break:break-all">${email}</div>
+              ${createdAt ? `<div style="font-size:11px;opacity:0.8;margin-top:4px">Üyelik: ${createdAt}</div>` : ''}
+            </div>
+          </div>
+
+          <!-- Cloud Status -->
+          <div style="padding:var(--space-3);background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-md);margin-bottom:var(--space-3)">
+            <div style="display:flex;align-items:center;gap:var(--space-2)">
+              <span style="font-size:20px">☁️</span>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:700;color:#16a34a">Supabase Bağlı</div>
+                <div style="font-size:11px;color:var(--text-secondary)">Tüm değişiklikler buluta kaydediliyor</div>
+              </div>
+              <span class="badge badge--ok" style="background:#16a34a;color:#fff">AKTİF</span>
+            </div>
+          </div>
+
+          <!-- Stats -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2);margin-bottom:var(--space-4)">
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);text-align:center">
+              <div style="font-size:20px;font-weight:700;color:var(--primary-color)">${stats.hives?.length || 0}</div>
+              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Kovan</div>
+            </div>
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);text-align:center">
+              <div style="font-size:20px;font-weight:700;color:var(--primary-color)">${stats.inspections?.length || 0}</div>
+              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Muayene</div>
+            </div>
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);text-align:center">
+              <div style="font-size:20px;font-weight:700;color:var(--primary-color)">${stats.feedings?.length || 0}</div>
+              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Besleme</div>
+            </div>
+          </div>
+
+          <!-- Account Info -->
+          <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);margin-bottom:var(--space-3)">
+            <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:var(--space-2)">Hesap Bilgileri</div>
+            <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;font-size:13px">
+              <span style="color:var(--text-secondary)">Kullanıcı ID</span>
+              <span style="font-family:monospace;font-size:12px">${userId}...</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;font-size:13px">
+              <span style="color:var(--text-secondary)">E-posta doğrulandı</span>
+              <span>${_user.email_confirmed_at ? '✅' : '⏳ Bekliyor'}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;font-size:13px">
+              <span style="color:var(--text-secondary)">Toplam kayıt</span>
+              <span><strong>${totalRecords}</strong></span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+            <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.Storage.syncFromCloud(),300)">
+              🔄 Buluttan Yenile
+            </button>
+            <button type="button" class="btn btn--danger" onclick="BM.Auth.doLogout()">
+              🚪 Çıkış Yap
+            </button>
+          </div>
+        </div>`,
+        () => false
+      );
+      return;
+    }
+
+    _authMode = 'login';
+
+    const renderBody = () => `
+      <div style="padding:var(--space-2) 0">
+        <div style="display:flex;gap:var(--space-1);margin-bottom:var(--space-4);background:var(--bg-tertiary);padding:4px;border-radius:var(--radius-md)">
+          <button type="button" id="auth-tab-login" class="btn ${_authMode === 'login' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('login')">🔑 Giriş Yap</button>
+          <button type="button" id="auth-tab-register" class="btn ${_authMode === 'register' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('register')">📝 Kayıt Ol</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-3)">
+          ${_authMode === 'login' ? 'Hesabınızla giriş yapın — tüm verileriniz buluttan yüklenecek.' : 'Yeni hesap oluşturun — verileriniz Supabase bulutuna kaydedilecek.'}
+        </p>
+        <label class="field"><span class="field-label">E-posta</span>
+          <input class="input" type="email" id="auth-email" placeholder="ornek@gmail.com" autocomplete="email"></label>
+        <label class="field"><span class="field-label">Şifre (en az 6 karakter)</span>
+          <input class="input" type="password" id="auth-password" placeholder="••••••" autocomplete="${_authMode === 'login' ? 'current' : 'new'}-password"></label>
+        <div id="auth-error" style="color:var(--danger);font-size:12px;margin-top:var(--space-2);min-height:18px"></div>
+        <div style="margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--n-800);font-size:11px;color:var(--text-muted)">
+          💡 Giriş yapmadan da uygulamayı kullanabilirsiniz. Verileriniz cihazınızda (localStorage) saklanır. Giriş yaparsanız bulutla senkronize olur.
+        </div>
+      </div>`;
+
+    BM.Modal.open('🐝 BeeMaster AI', renderBody(), async () => {
+      const email = document.getElementById('auth-email')?.value.trim();
+      const password = document.getElementById('auth-password')?.value;
+      const errEl = document.getElementById('auth-error');
+      if (!email || !password) {
+        if (errEl) errEl.textContent = 'E-posta ve şifre gerekli';
+        return false;
+      }
+      if (password.length < 6) {
+        if (errEl) errEl.textContent = 'Şifre en az 6 karakter olmalı';
+        return false;
+      }
+      let result;
+      if (_authMode === 'register') {
+        result = await signUp(email, password);
+        if (result.error?.message?.toLowerCase().includes('already')) {
+          // Kullanıcı zaten var, sign in dene
+          result = await signIn(email, password);
+        }
+      } else {
+        result = await signIn(email, password);
+      }
+      if (result.error) {
+        if (errEl) errEl.textContent = (result.error.message || 'Giriş başarısız') + (result.error.code ? ' (' + result.error.code + ')' : '');
+        return false;
+      }
+      if (result.data?.user) {
+        BM.Toast.show('Hoş geldiniz! 🌐 Bulut senkronizasyonu aktif', 'success');
+        updateAuthBtn();
+        if (BM.Storage) BM.Storage.syncFromCloud();
+        return true;
+      }
+      return false;
+    });
+  }
+
+  function switchTab(mode) {
+    _authMode = mode;
+    document.getElementById('modal-body').innerHTML = renderBody();
+  }
+
+  function renderBody() {
+    return `
+      <div style="padding:var(--space-2) 0">
+        <div style="display:flex;gap:var(--space-1);margin-bottom:var(--space-4);background:var(--bg-tertiary);padding:4px;border-radius:var(--radius-md)">
+          <button type="button" id="auth-tab-login" class="btn ${_authMode === 'login' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('login')">🔑 Giriş Yap</button>
+          <button type="button" id="auth-tab-register" class="btn ${_authMode === 'register' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('register')">📝 Kayıt Ol</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-3)">
+          ${_authMode === 'login' ? 'Hesabınızla giriş yapın.' : 'Yeni hesap oluşturun.'}
+        </p>
+        <label class="field"><span class="field-label">E-posta</span>
+          <input class="input" type="email" id="auth-email" placeholder="ornek@gmail.com" autocomplete="email"></label>
+        <label class="field"><span class="field-label">Şifre (en az 6 karakter)</span>
+          <input class="input" type="password" id="auth-password" placeholder="••••••" autocomplete="${_authMode === 'login' ? 'current' : 'new'}-password"></label>
+        <div id="auth-error" style="color:var(--danger);font-size:12px;margin-top:var(--space-2);min-height:18px"></div>
+        <div style="margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--n-800);font-size:11px;color:var(--text-muted)">
+          💡 Giriş yapmadan da kullanabilirsiniz. Giriş = bulut senkronizasyonu.
+        </div>
+      </div>`;
+  }
+
+  function updateAuthBtn() {
+    const btn = document.getElementById('auth-btn');
+    if (!btn) return;
+    if (_user) {
+      btn.textContent = '👤';
+      btn.title = _user.email + ' (çıkış için tıkla)';
+      btn.style.fontSize = '18px';
+    } else {
+      btn.textContent = '🔐';
+      btn.title = 'Giriş Yap / Kayıt Ol';
+    }
+    updateSidebarUser();
+  }
+
+  function updateSidebarUser() {
+    const avatar = document.getElementById('sidebar-user-avatar');
+    const name = document.getElementById('sidebar-user-name');
+    const role = document.getElementById('sidebar-user-role');
+    if (!avatar || !name || !role) return;
+    if (_user) {
+      const email = _user.email || '';
+      avatar.textContent = email.charAt(0).toUpperCase() || '👤';
+      avatar.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+      name.textContent = email.split('@')[0] || email;
+      role.textContent = '✅ ' + (BM.Storage.list('apiaries').length) + ' üs · Supabase bağlı';
+    } else {
+      avatar.textContent = '?';
+      avatar.style.background = 'var(--bg-tertiary)';
+      name.textContent = 'Giriş Yap';
+      role.textContent = 'Misafir · Veriler cihazınızda';
+    }
+  }
+
+  async function doLogout() {
+    await signOut();
+    updateAuthBtn();
+    BM.Toast.show('Çıkış yapıldı. Veriler cihazınızda kalmaya devam ediyor.', 'info');
+    BM.Modal.close();
+    if (typeof App !== 'undefined' && App.render) App.render('dashboard');
+  }
+
+  // ---- Check existing session on load ----
+  async function initFromStorage() {
+    const token = localStorage.getItem('beemaster-auth-token');
+    if (!token) return;
+    // Wait for Supabase to load if not yet ready
+    if (!window.supabase) {
+      let wait = 0;
+      while (!window.supabase && wait < 3000) {
+        await new Promise(r => setTimeout(r, 100));
+        wait += 100;
+      }
+    }
+    if (!isConfigured()) return;
+    const c = getClient();
+    if (!c) return;
+    try {
+      const { data, error } = await c.auth.getUser(token);
+      if (error) {
+        // Token invalid - temizle
+        localStorage.removeItem('beemaster-auth-token');
+        return;
+      }
+      if (data?.user) {
+        _user = data.user;
+        _session = { access_token: token };
+        updateAuthBtn();
+      }
+    } catch (e) {
+      console.warn('[Auth] initFromStorage error:', e);
+    }
+  }
+
+  BM.Auth = {
+    isConfigured,
+    getClient,
+    signUp,
+    signIn,
+    signOut,
+    getUser,
+    isAuthenticated,
+    showLoginModal,
+    switchTab,
+    updateAuthBtn,
+    updateSidebarUser,
+    doLogout,
+    initFromStorage
+  };
+})(window);
+
+
+/* ===== js\modules\apiaries.js ===== */
 /* ===== js/modules/apiaries.js ===== */
 // ============================================================
 // Apiaries Module — Spec 05_Modules/Apiaries.md
@@ -1382,8 +1285,8 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
                 ${alerts ? `<span class="badge badge--danger">${alerts} uyarı</span>` : ''}
               </div>
               <div class="row-list__info">
-                📍 ${BM.esc(a.location)}${a.lat && a.lng ? ` · GPS: ${a.lat.toFixed(3)}, ${a.lng.toFixed(3)}` : ''}${a.flora ? ` · 🌸 ${BM.esc(a.flora)}` : ''}
-              </div>
+                              📍 ${BM.esc(a.location)}${a.lat && a.lng ? ` · GPS: ${Number(a.lat).toFixed(3)}, ${Number(a.lng).toFixed(3)}` : ''}${a.flora ? ` · 🌸 ${BM.esc(a.flora)}` : ''}
+                            </div>
               ${a.notes ? `<div class="row-list__info" style="font-style:italic;margin-top:2px">"${BM.esc(a.notes)}"</div>` : ''}
             </div>
             <div style="text-align:right;min-width:110px;flex-shrink:0">
@@ -1420,7 +1323,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         el.innerHTML = '<div class="empty"><div class="empty__icon">📍</div><div class="empty__title">Koordinatlı üs yok</div><div class="empty__sub">Üs eklerken Enlem/Boylam girersen haritada görünür</div></div>';
         return;
       }
-      const center = [withCoords[0].lat, withCoords[0].lng];
+      const center = [Number(withCoords[0].lat), Number(withCoords[0].lng)];
       this._mapInstance = L.map(el, { zoomControl: true }).setView(center, 11);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
@@ -1429,7 +1332,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       withCoords.forEach(a => {
         const hc = BM.Storage.list('hives').filter(h => h.apiaryId === a.id).length;
         const honey = BM.Storage.list('harvests').filter(h => h.apiaryId === a.id).reduce((s, h) => s + h.weight, 0);
-        const marker = L.marker([a.lat, a.lng]).addTo(this._mapInstance);
+        const marker = L.marker([Number(a.lat), Number(a.lng)]).addTo(this._mapInstance);
         marker.bindPopup(`
           <div style="font-family:system-ui;min-width:200px">
             <div style="font-weight:700;font-size:14px;margin-bottom:4px">📍 ${BM.esc(a.name)}</div>
@@ -1443,7 +1346,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         `);
       });
       if (withCoords.length > 1) {
-        const bounds = L.latLngBounds(withCoords.map(a => [a.lat, a.lng]));
+        const bounds = L.latLngBounds(withCoords.map(a => [Number(a.lat), Number(a.lng)]));
         this._mapInstance.fitBounds(bounds, { padding: [40, 40] });
       }
     },
@@ -1459,16 +1362,9 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   BM.apiaries = apiariesModule;
 })(window);
 
-/* ===== js/modules/hives.js ===== */
-// ============================================================
-// Hives Module — Spec 05_Modules/Hives.md + Frames.md
-// HV-01..08: CRUD, detay, çerçeve haritası, taşıma, birleştirme
-// ============================================================
-(function (global) {
-  'use strict';
-  const BM = global.BM = global.BM || {};
 
-  const hivesModule = {
+/* ===== js\modules\hives.js ===== */
+const hivesModule = {
     add() {
       if (!BM.Storage.list('apiaries').length) {
         BM.Toast.show('Önce arı üssü ekleyin', 'error');
@@ -1524,8 +1420,8 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
            <input class="input" name="installedAt" type="date" value="${BM.today()}"></label>
          <label class="field"><span class="field-label">Notlar</span>
            <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
-        async (d) => {
-          const h = await BM.Storage.add('hives', {
+        (d) => {
+          const h = BM.Storage.add('hives', {
             ...d,
             status: 'active',
             queenId: null,
@@ -1536,7 +1432,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
           // Otomatik çerçeve oluştur
           const fc = h.frameCount;
           for (let p = 1; p <= fc; p++) {
-            await BM.Storage.add('frames', {
+            BM.Storage.add('frames', {
               hiveId: h.id, position: p,
               frameType: p <= 3 ? 'brood' : (p <= 6 ? 'honey' : 'foundation'),
               foundationType: 'wax', status: 'in_use',
@@ -1583,41 +1479,32 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
          <label class="field"><span class="field-label">Notlar</span>
            <textarea class="textarea" name="notes" rows="2">${BM.esc(h.notes || '')}</textarea></label>`,
         async (d) => {
-          try {
-            const newCount = parseInt(d.frameCount) || 10;
-            d.frameCount = newCount;
-            
-            await BM.Storage.update('hives', id, d);
-            
-            // Sync frame records to match new frameCount
-            const existingFrames = BM.Storage.list('frames').filter(f => f.hiveId === id).sort((a, b) => a.position - b.position);
-            const oldCount = existingFrames.length;
-            
-            if (newCount > oldCount) {
-              for (let p = oldCount + 1; p <= newCount; p++) {
-                await BM.Storage.add('frames', {
-                  hiveId: id, position: p,
-                  frameType: p <= 3 ? 'brood' : (p <= 6 ? 'honey' : 'foundation'),
-                  foundationType: 'wax', status: 'in_use',
-                  cyclesCompleted: 0, waxAgeMonths: 0
-                });
-              }
-            } else if (newCount < oldCount) {
-              const toRemove = existingFrames.slice(newCount);
-              
-              for (const f of toRemove) {
-                await BM.Storage.remove('frames', f.id);
-              }
+          const newCount = parseInt(d.frameCount) || 10;
+          d.frameCount = newCount;
+          await BM.Storage.update('hives', id, d);
+          // Sync frame records to match new frameCount
+          const existingFrames = BM.Storage.list('frames').filter(f => f.hiveId === id).sort((a, b) => a.position - b.position);
+          const oldCount = existingFrames.length;
+          if (newCount > oldCount) {
+            // Add new frames at the end
+            for (let p = oldCount + 1; p <= newCount; p++) {
+              await BM.Storage.add('frames', {
+                hiveId: id, position: p,
+                frameType: p <= 3 ? 'brood' : (p <= 6 ? 'honey' : 'foundation'),
+                foundationType: 'wax', status: 'in_use',
+                cyclesCompleted: 0, waxAgeMonths: 0
+              });
             }
-            
-            BM.Toast.show('Kovan güncellendi ✓', 'success');
-            App.render('hives');
-            return true;
-          } catch (e) {
-            console.error('[HiveEdit] ERROR:', e.message, e.stack);
-            BM.Toast.show('Hata: ' + e.message, 'error');
-            return true;
+          } else if (newCount < oldCount) {
+            // Remove excess frames from the end
+            const toRemove = existingFrames.slice(newCount);
+            for (const f of toRemove) {
+              await BM.Storage.remove('frames', f.id);
+            }
           }
+          BM.Toast.show('Kovan güncellendi ✓', 'success');
+          App.render('hives');
+          return true;
         }
       );
     },
@@ -1986,7 +1873,74 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         }
       );
     }
-,
+  };
+
+  BM.hives = hivesModule;
+
+
+/* ===== js\modules\frames.js ===== */
+const framesModule = {
+    edit(frameId, hiveId) {
+      const f = BM.Storage.get('frames', frameId);
+      if (!f) return;
+      const summary = BM.Storage.list('frames').filter(x => x.hiveId === hiveId).reduce((acc, x) => {
+        acc[x.frameType] = (acc[x.frameType] || 0) + 1; return acc;
+      }, {});
+      BM.Modal.open('Çerçeve #' + f.position + ' — Detay',
+        `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:var(--space-2);margin-bottom:var(--space-4)">
+          <div style="background:rgba(249,115,22,0.15);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:var(--orange)">${summary.brood || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Yumurtalık</div></div>
+          <div style="background:rgba(245,158,11,0.15);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:var(--honey-500)">${summary.honey || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Bal</div></div>
+          <div style="background:rgba(168,85,247,0.12);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:#a855f7">${summary.pollen || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Polen</div></div>
+          <div style="background:var(--bg-tertiary);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:var(--text-secondary)">${summary.foundation || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Perga</div></div>
+          <div style="background:transparent;border:1px dashed var(--n-700);padding:var(--space-3);border-radius:var(--radius-md);text-align:center"><div style="font-size:18px;font-weight:800;color:var(--text-muted)">${summary.empty || 0}</div><div style="font-size:10px;color:var(--text-secondary)">Boş</div></div>
+        </div>
+        <label class="field"><span class="field-label">Tip</span>
+          <select class="select" name="frameType">
+            ${['brood','honey','pollen','perga','foundation','empty'].map(t => `<option value="${t}"${f.frameType === t ? ' selected' : ''}>${({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',perga:'Perga (Polen+Bal)',foundation:'Ham Petek',empty:'Boş'})[t]}</option>`).join('')}
+          </select></label>
+        <div class="field-row">
+          <label class="field"><span class="field-label">Temel</span>
+            <select class="select" name="foundationType">
+              <option value="wax"${f.foundationType === 'wax' ? ' selected' : ''}>Mum</option>
+              <option value="plastic"${f.foundationType === 'plastic' ? ' selected' : ''}>Plastik</option>
+              <option value="foundationless"${f.foundationType === 'foundationless' ? ' selected' : ''}>Temesiz</option>
+            </select></label>
+          <label class="field"><span class="field-label">Durum</span>
+            <select class="select" name="status">
+              ${[
+                {v:'in_use', l:'Kullanımda'},
+                {v:'extracted', l:'Çıkarıldı'},
+                {v:'cleaning', l:'Temizleniyor'},
+                {v:'stored', l:'Depoda'},
+                {v:'retired', l:'Emekli'}
+              ].map(o => `<option value="${o.v}"${f.status === o.v ? ' selected' : ''}>${o.l}</option>`).join('')}
+            </select></label>
+        </div>
+        <div class="field-row">
+          <label class="field"><span class="field-label">Döngü</span>
+            <input class="input" name="cyclesCompleted" type="number" min="0" value="${f.cyclesCompleted}"></label>
+          <label class="field"><span class="field-label">Petek Yaşı (ay)</span>
+            <input class="input" name="waxAgeMonths" type="number" min="0" value="${f.waxAgeMonths || 0}"></label>
+        </div>
+        <label class="field"><span class="field-label">Son Bal Alımı</span>
+          <input class="input" name="lastExtractedAt" type="date" value="${f.lastExtractedAt || ''}"></label>
+        <label class="field"><span class="field-label">Notlar</span>
+          <textarea class="textarea" name="notes" rows="2">${BM.esc(f.notes || '')}</textarea></label>
+        <div style="margin-top:var(--space-4);padding-top:var(--space-2);border-top:1px solid var(--n-800);display:flex;gap:var(--space-2);justify-content:flex-end;">
+          <button type="button" class="btn btn--sm" onclick="BM.frames.upgradeCycle('${f.id}', '${hiveId}')">Döngü Tamamla (+1)</button>
+          <button type="button" class="btn btn--sm" onclick="BM.frames.ageWax('${f.id}', '${hiveId}')">Petek Yaşı (+1 ay)</button>
+          <button type="button" class="btn btn--danger btn--sm" onclick="BM.frames.retire('${f.id}', '${hiveId}')">Emekli Et</button>
+        </div>`,
+        (d) => {
+          d.cyclesCompleted = parseInt(d.cyclesCompleted) || 0;
+          d.waxAgeMonths = parseInt(d.waxAgeMonths) || 0;
+          BM.Storage.update('frames', frameId, d);
+          BM.Toast.show('Çerçeve güncellendi ✓', 'success');
+          BM.hives._renderTab(hiveId, 'frames');
+          return true;
+        }
+      );
+    },
 
     // FR-04: Cerceve dongu tamamla (upgrade)
     upgradeCycle(frameId, hiveId) {
@@ -2029,8 +1983,9 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
 
   BM.hives = hivesModule;
   BM.frames = framesModule;
-})(window);
 
+
+/* ===== js\modules\inspections.js ===== */
 /* ===== js/modules/inspections.js ===== */
 // ============================================================
 // Inspections Module — Spec 05_Modules/Hive_Inspections.md
@@ -2620,16 +2575,1349 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   BM.inspections = inspectionsModule;
 })(window);
 
-/* ===== js/modules/crud.js ===== */
-// ============================================================
-// CRUD modülleri — Queens, Harvest, Feeding, Treatments, Diseases, Inventory
-// ============================================================
-(function (global) {
-  'use strict';
-  const BM = global.BM = global.BM || {};
 
-  // ============ QUEENS ============
-  const queensModule = {
+/* ===== js\modules\harvest.js ===== */
+const harvestModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Yeni Hasat',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Ağırlık (kg) *</span>
+             <input class="input" name="weight" type="number" step="0.1" min="0" required value="2.5"></label>
+           <label class="field"><span class="field-label">Kalite</span>
+             <select class="select" name="quality"><option value="A">A (Premium)</option><option value="B" selected>B (Standart)</option><option value="C">C (Endüstri)</option></select></label>
+           <label class="field"><span class="field-label">Çerçeve</span>
+             <input class="input" name="frames" type="number" min="0" value="2"></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => {
+          d.weight = parseFloat(d.weight) || 0;
+          d.frames = parseInt(d.frames) || 0;
+          const h = BM.Storage.get('hives', d.hiveId);
+          if (h) d.apiaryId = h.apiaryId;
+          BM.Storage.add('harvests', d);
+          BM.Toast.show('Hasat kaydedildi ✓', 'success');
+          App.render('harvest');
+          return true;
+        }
+      );
+    },
+    edit(id) {
+      const h = BM.Storage.get('harvests', id);
+      if (!h) return;
+      const hOpts = BM.Storage.list('hives').map(x => `<option value="${x.id}"${x.id === h.hiveId ? ' selected' : ''}>${BM.esc(x.name)}</option>`).join('');
+      BM.Modal.open('Hasat Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${h.date}"></label>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Ağırlık (kg) *</span>
+             <input class="input" name="weight" type="number" step="0.1" required value="${h.weight}"></label>
+           <label class="field"><span class="field-label">Kalite</span>
+             <select class="select" name="quality">${[
+                {v:'A', l:'A (Premium)'},
+                {v:'B', l:'B (Standart)'},
+                {v:'C', l:'C (Endüstri)'}
+              ].map(o => `<option value="${o.v}"${h.quality === o.v ? ' selected' : ''}>${o.l}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Çerçeve</span>
+             <input class="input" name="frames" type="number" value="${h.frames || 0}"></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(h.notes || '')}</textarea></label>`,
+        (d) => { d.weight = parseFloat(d.weight) || 0; d.frames = parseInt(d.frames) || 0; BM.Storage.update('harvests', id, d); BM.Toast.show('Hasat güncellendi ✓', 'success'); App.render('harvest'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu hasat kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('harvests', id);
+        BM.Toast.show('Hasat silindi', 'info');
+        App.render('harvest');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('harvests').sort((a, b) => b.date.localeCompare(a.date));
+      const total = list.reduce((s, h) => s + h.weight, 0);
+      // Monthly chart
+      const byMonth = {};
+      list.forEach(h => { const m = h.date.slice(0, 7); byMonth[m] = (byMonth[m] || 0) + h.weight; });
+      const months = Object.keys(byMonth).sort().slice(-6);
+      const max = Math.max(...months.map(m => byMonth[m]), 1);
+      const monthLabels = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Bal Hasadı</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${BM.fmt(total)} kg toplam · ${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.harvest.add()">+ Yeni Hasat</button>
+      </div>
+      <div class="card" style="margin-bottom:var(--space-4)">
+        <div class="card-head"><div class="card-title">Aylık Hasat Trendi</div></div>
+        <div class="chart">${months.length ? months.map(m => {
+          const v = byMonth[m];
+          const h = Math.max(4, (v / max) * 100);
+          const label = monthLabels[parseInt(m.split('-')[1]) - 1];
+          return `<div class="chart__col"><div class="chart__val">${BM.fmt(v)}kg</div><div class="chart__bar" style="height:${h}%"></div><div class="chart__label">${label}</div></div>`;
+        }).join('') : '<div style="margin:auto;color:var(--text-secondary)">Veri yok</div>'}</div>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.honey}</div><div class="empty__title">Henüz hasat yok</div><button class="btn btn--primary" onclick="BM.harvest.add()">+ İlk Hasat</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(h => {
+        const hive = BM.Storage.get('hives', h.hiveId);
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:rgba(245,158,11,0.15);color:var(--honey-500)">🍯</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(hive ? hive.name : '?')} · ${h.weight} kg <span class="badge badge--info">Kalite ${h.quality}</span></div>
+            <div class="timeline__meta">${BM.dateStr(h.date)} · ${h.frames || 0} çerçeve${h.notes ? ' · ' + BM.esc(h.notes) : ''}</div>
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.harvest.edit('${h.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.harvest.del('${h.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ FEEDING ============
+  const feedingModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Yeni Besleme',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Tip *</span>
+             <select class="select" name="type" required onchange="BM.feeding.updateUnit(this)">
+               ${['sugar_syrup','sugar_syrup_1to1','fondant','pollen_patty','candy','honey_water','invert_syrup','protein_patty'].map(t => `<option value="${t}">${BM.T.feedType(t).tr}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label" id="feed-unit-label">Miktar (L) *</span>
+             <input class="input" name="amountKg" type="number" step="0.1" min="0" required value="1.0"></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Sebep</span>
+             <select class="select" name="reason">
+               ${['weak_colony','winter_prep','drought','supplement','stimulative'].map(r => `<option value="${r}">${BM.T.reason(r)}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status"><option value="planned">Planlı</option><option value="in_progress">Sürüyor</option><option value="completed" selected>Tamamlandı</option></select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { d.amountKg = parseFloat(d.amountKg) || 0; BM.Storage.add('feedings', d); BM.Toast.show('Besleme kaydedildi ✓', 'success'); App.render('feeding'); return true; }
+      );
+    },
+    edit(id) {
+      const f = BM.Storage.get('feedings', id); if (!f) return;
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === f.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Besleme Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${f.date}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Tip</span>
+             <select class="select" name="type">${['sugar_syrup','sugar_syrup_1to1','fondant','pollen_patty','candy','honey_water','invert_syrup','protein_patty'].map(t => `<option value="${t}"${f.type === t ? ' selected' : ''}>${BM.T.feedType(t).tr}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Miktar (kg)</span>
+             <input class="input" name="amountKg" type="number" step="0.1" value="${f.amountKg}"></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Sebep</span>
+             <select class="select" name="reason">${['weak_colony','winter_prep','drought','supplement','stimulative'].map(r => `<option value="${r}"${f.reason === r ? ' selected' : ''}>${BM.T.reason(r)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status">${['planned','in_progress','completed'].map(s => `<option value="${s}"${f.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}</select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(f.notes || '')}</textarea></label>`,
+        (d) => { d.amountKg = parseFloat(d.amountKg) || 0; BM.Storage.update('feedings', id, d); BM.Toast.show('Besleme güncellendi ✓', 'success'); App.render('feeding'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu besleme kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('feedings', id);
+        BM.Toast.show('Besleme silindi', 'info');
+        App.render('feeding');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('feedings').sort((a, b) => b.date.localeCompare(a.date));
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Besleme</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.feeding.add()">+ Yeni Besleme</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.feeding}</div><div class="empty__title">Henüz besleme kaydı yok</div><button class="btn btn--primary" onclick="BM.feeding.add()">+ İlk Besleme</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(f => {
+        const h = BM.Storage.get('hives', f.hiveId);
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:rgba(249,115,22,0.15);color:#f97316">🌾</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${f.amountKg} ${BM.T.feedType(f.type).unit} ${BM.T.feedType(f.type).tr} <span class="badge ${BM.T.statusCls(f.status)}">${BM.T.status(f.status)}</span></div>
+            <div class="timeline__meta">${BM.dateStr(f.date)} · ${BM.T.reason(f.reason)}${f.notes ? ' · ' + BM.esc(f.notes) : ''}</div>
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.feeding.edit('${f.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.feeding.del('${f.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ TREATMENTS ============
+  const treatmentsModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Yeni Tedavi',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Ürün *</span>
+             <input class="input" name="product" required placeholder="Örn: Apivar"></label>
+           <label class="field"><span class="field-label">Dozaj</span>
+             <input class="input" name="dosage" placeholder="2 şerit"></label>
+         </div>
+         <label class="field"><span class="field-label">Süre</span>
+           <input class="input" name="duration" placeholder="42 gün"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Varroa Önce</span>
+             <input class="input" name="varroaBefore" type="number" min="0" value="0"></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status"><option value="planned">Planlı</option><option value="in_progress" selected>Sürüyor</option><option value="completed">Tamamlandı</option></select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { d.varroaBefore = parseInt(d.varroaBefore) || 0; BM.Storage.add('treatments', d); BM.Toast.show('Tedavi kaydedildi ✓', 'success'); App.render('treatments'); return true; }
+      );
+    },
+    edit(id) {
+      const t = BM.Storage.get('treatments', id); if (!t) return;
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === t.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Tedavi Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${t.date}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Ürün *</span>
+             <input class="input" name="product" required value="${BM.esc(t.product)}"></label>
+           <label class="field"><span class="field-label">Dozaj</span>
+             <input class="input" name="dosage" value="${BM.esc(t.dosage || '')}"></label>
+         </div>
+         <label class="field"><span class="field-label">Süre</span>
+           <input class="input" name="duration" value="${BM.esc(t.duration || '')}"></label>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Önce</span>
+             <input class="input" name="varroaBefore" type="number" value="${t.varroaBefore || 0}"></label>
+           <label class="field"><span class="field-label">Sonra</span>
+             <input class="input" name="varroaAfter" type="number" value="${t.varroaAfter || ''}"></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status">${['planned','in_progress','completed'].map(s => `<option value="${s}"${t.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}</select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(t.notes || '')}</textarea></label>`,
+        (d) => { d.varroaBefore = parseInt(d.varroaBefore) || 0; d.varroaAfter = d.varroaAfter ? parseInt(d.varroaAfter) : null; BM.Storage.update('treatments', id, d); BM.Toast.show('Tedavi güncellendi ✓', 'success'); App.render('treatments'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu tedavi kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('treatments', id);
+        BM.Toast.show('Tedavi silindi', 'info');
+        App.render('treatments');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('treatments').sort((a, b) => b.date.localeCompare(a.date));
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Tedaviler</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.treatments.add()">+ Yeni Tedavi</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.treatments}</div><div class="empty__title">Henüz tedavi kaydı yok</div><button class="btn btn--primary" onclick="BM.treatments.add()">+ İlk Tedavi</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(t => {
+        const h = BM.Storage.get('hives', t.hiveId);
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:rgba(168,85,247,0.15);color:#a855f7">💊</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${BM.esc(t.product)} <span class="badge ${BM.T.statusCls(t.status)}">${BM.T.status(t.status)}</span></div>
+            <div class="timeline__meta">${BM.dateStr(t.date)} · ${BM.esc(t.dosage || '-')} · ${BM.esc(t.duration || '')}${t.varroaBefore != null ? ' · Varroa önce: ' + t.varroaBefore : ''}${t.varroaAfter != null ? ' → sonra: ' + t.varroaAfter : ''}</div>
+            ${t.notes ? `<div class="timeline__meta" style="margin-top:4px;color:var(--text-secondary)">${BM.esc(t.notes)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.treatments.edit('${t.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.treatments.del('${t.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ DISEASES ============
+  const diseasesModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Hastalık Kaydı',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Hastalık *</span>
+             <select class="select" name="disease" required>
+               ${['varroosis','nosemosis','foulbrood','chalkbrood','sacbrood','small_hive_beetle'].map(d => `<option value="${d}">${BM.T.disease(d)}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label">Şiddet *</span>
+             <select class="select" name="severity" required>
+               <option value="low">Düşük</option>
+               <option value="medium" selected>Orta</option>
+               <option value="high">Yüksek</option>
+             </select></label>
+         </div>
+         <label class="field"><span class="field-label">Tedavi</span>
+           <input class="input" name="treatment" placeholder="Uygulanan tedavi"></label>
+         <label class="field"><span class="field-label">Durum</span>
+           <select class="select" name="status">
+             <option value="active">Aktif</option>
+             <option value="treating" selected>Tedavide</option>
+             <option value="resolved">Çözüldü</option>
+           </select></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { BM.Storage.add('diseases', d); BM.Toast.show('Hastalık kaydı eklendi ✓', 'success'); App.render('diseases'); return true; }
+      );
+    },
+    edit(id) {
+      const d = BM.Storage.get('diseases', id); if (!d) return;
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === d.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Hastalık Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${d.date}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Hastalık</span>
+             <select class="select" name="disease">${['varroosis','nosemosis','foulbrood','chalkbrood','sacbrood','small_hive_beetle'].map(x => `<option value="${x}"${d.disease === x ? ' selected' : ''}>${BM.T.disease(x)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Şiddet</span>
+             <select class="select" name="severity">${[
+                {v:'low', l:'Düşük'},
+                {v:'medium', l:'Orta'},
+                {v:'high', l:'Yüksek'}
+              ].map(o => `<option value="${o.v}"${d.severity === o.v ? ' selected' : ''}>${o.l}</option>`).join('')}</select></label>
+         </div>
+         <label class="field"><span class="field-label">Tedavi</span>
+           <input class="input" name="treatment" value="${BM.esc(d.treatment || '')}"></label>
+         <label class="field"><span class="field-label">Durum</span>
+           <select class="select" name="status">${['active','treating','resolved'].map(s => `<option value="${s}"${d.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}</select></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(d.notes || '')}</textarea></label>`,
+        (d) => { BM.Storage.update('diseases', id, d); BM.Toast.show('Hastalık güncellendi ✓', 'success'); App.render('diseases'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu hastalık kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('diseases', id);
+        BM.Toast.show('Kayıt silindi', 'info');
+        App.render('diseases');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('diseases').sort((a, b) => b.date.localeCompare(a.date));
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Hastalıklar</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.diseases.add()">+ Yeni Kayıt</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.diseases}</div><div class="empty__title">Aktif hastalık yok 🎉</div><button class="btn btn--primary" onclick="BM.diseases.add()">+ Kayıt Ekle</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(d => {
+        const h = BM.Storage.get('hives', d.hiveId);
+        const sev = d.severity === 'high' ? 'danger' : d.severity === 'medium' ? 'warn' : 'info';
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:var(--danger-bg);color:var(--danger)">🦠</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${BM.T.disease(d.disease)} <span class="badge badge--${sev}">${d.severity}</span></div>
+            <div class="timeline__meta">${BM.dateStr(d.date)} · <span class="badge ${BM.T.statusCls(d.status)}">${BM.T.status(d.status)}</span>${d.treatment ? ' · Tedavi: ' + BM.esc(d.treatment) : ''}</div>
+            ${d.notes ? `<div class="timeline__meta" style="margin-top:4px;color:var(--text-secondary)">${BM.esc(d.notes)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.diseases.edit('${d.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.diseases.del('${d.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ INVENTORY ============
+  const inventoryModule = {
+    add() {
+      BM.Modal.open('Yeni Envanter Kalemi',
+        `<label class="field"><span class="field-label">Malzeme *</span>
+           <input class="input" name="name" required placeholder="Örn: Apivar şerit"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Kategori</span>
+             <select class="select" name="category">${['medication','feed','equipment','consumable'].map(c => `<option value="${c}">${BM.T.invCat(c)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Birim</span>
+             <select class="select" name="unit"><option>adet</option><option>kg</option><option>litre</option><option>paket</option><option>kutu</option></select></label>
+         </div>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Miktar *</span>
+             <input class="input" name="quantity" type="number" step="0.1" required value="1"></label>
+           <label class="field"><span class="field-label">Min Stok</span>
+             <input class="input" name="minStock" type="number" value="5"></label>
+           <label class="field"><span class="field-label">Fiyat (₺)</span>
+             <input class="input" name="costTry" type="number" step="0.01" value="0"></label>
+         </div>
+         <label class="field"><span class="field-label">Tedarikçi</span>
+           <input class="input" name="supplier"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { d.quantity = parseFloat(d.quantity) || 0; d.minStock = parseFloat(d.minStock) || 0; d.costTry = parseFloat(d.costTry) || 0; BM.Storage.add('inventory', d); BM.Toast.show('Envanter eklendi ✓', 'success'); App.render('inventory'); return true; }
+      );
+    },
+    edit(id) {
+      const i = BM.Storage.get('inventory', id); if (!i) return;
+      BM.Modal.open('Envanter Düzenle',
+        `<label class="field"><span class="field-label">Malzeme *</span>
+           <input class="input" name="name" required value="${BM.esc(i.name)}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Kategori</span>
+             <select class="select" name="category">${['medication','feed','equipment','consumable'].map(c => `<option value="${c}"${i.category === c ? ' selected' : ''}>${BM.T.invCat(c)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Birim</span>
+             <select class="select" name="unit">${['adet','kg','litre','paket','kutu'].map(u => `<option${i.unit === u ? ' selected' : ''}>${u}</option>`).join('')}</select></label>
+         </div>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Miktar</span>
+             <input class="input" name="quantity" type="number" step="0.1" value="${i.quantity}"></label>
+           <label class="field"><span class="field-label">Min</span>
+             <input class="input" name="minStock" type="number" value="${i.minStock || 0}"></label>
+           <label class="field"><span class="field-label">Fiyat (₺)</span>
+             <input class="input" name="costTry" type="number" step="0.01" value="${i.costTry || 0}"></label>
+         </div>
+         <label class="field"><span class="field-label">Tedarikçi</span>
+           <input class="input" name="supplier" value="${BM.esc(i.supplier || '')}"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(i.notes || '')}</textarea></label>`,
+        (d) => { d.quantity = parseFloat(d.quantity) || 0; d.minStock = parseFloat(d.minStock) || 0; d.costTry = parseFloat(d.costTry) || 0; BM.Storage.update('inventory', id, d); BM.Toast.show('Envanter güncellendi ✓', 'success'); App.render('inventory'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu kalemi silmek istiyor musunuz?', () => {
+        BM.Storage.remove('inventory', id);
+        BM.Toast.show('Silindi', 'info');
+        App.render('inventory');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('inventory');
+      const lowStock = list.filter(i => i.quantity <= i.minStock);
+      const totalValue = list.reduce((s, i) => s + (i.quantity * (i.costTry || 0)), 0);
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Envanter</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kalem · ₺${BM.fmt(totalValue, 0)} değer${lowStock.length ? ' · ' + lowStock.length + ' düşük stok' : ''}</div></div>
+        <button class="btn btn--primary" onclick="BM.inventory.add()">+ Yeni Malzeme</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.inventory}</div><div class="empty__title">Envanter boş</div><button class="btn btn--primary" onclick="BM.inventory.add()">+ İlk Malzeme</button></div></div>` :
+      `<div class="card"><div class="row-list">${list.map(i => {
+        const low = i.quantity <= i.minStock;
+        return `<div class="row-list__item" style="${low ? 'background:var(--danger-bg);margin:0 -18px;padding:11px 18px' : ''}">
+          <div class="row-list__dot ${low ? 'row-list__dot--r' : 'row-list__dot--g'}"></div>
+          <div class="row-list__main">
+            <div class="row-list__name">${BM.esc(i.name)} <span class="badge badge--info">${BM.T.invCat(i.category)}</span>${low ? ' <span class="badge badge--danger">Düşük Stok</span>' : ''}</div>
+            <div class="row-list__info">${i.quantity} ${i.unit} / min ${i.minStock} ${i.unit}${i.supplier ? ' · ' + BM.esc(i.supplier) : ''}${i.costTry ? ' · ₺' + BM.fmt(i.costTry, 2) + '/' + i.unit : ''}</div>
+          </div>
+          <div style="text-align:right;min-width:80px;flex-shrink:0">
+            <div style="font-size:16px;font-weight:700">${i.quantity} ${i.unit}</div>
+            <div style="font-size:10px;color:var(--text-secondary)">₺${BM.fmt(i.quantity * (i.costTry || 0), 0)}</div>
+          </div>
+          <div class="row-list__actions">
+            <button class="btn btn--sm" onclick="BM.inventory.edit('${i.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.inventory.del('${i.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  BM.queens = queensModule;
+  BM.harvest = harvestModule;
+
+
+/* ===== js\modules\feeding.js ===== */
+const feedingModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Yeni Besleme',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Tip *</span>
+             <select class="select" name="type" required onchange="BM.feeding.updateUnit(this)">
+               ${['sugar_syrup','sugar_syrup_1to1','fondant','pollen_patty','candy','honey_water','invert_syrup','protein_patty'].map(t => `<option value="${t}">${BM.T.feedType(t).tr}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label" id="feed-unit-label">Miktar (L) *</span>
+             <input class="input" name="amountKg" type="number" step="0.1" min="0" required value="1.0"></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Sebep</span>
+             <select class="select" name="reason">
+               ${['weak_colony','winter_prep','drought','supplement','stimulative'].map(r => `<option value="${r}">${BM.T.reason(r)}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status"><option value="planned">Planlı</option><option value="in_progress">Sürüyor</option><option value="completed" selected>Tamamlandı</option></select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { d.amountKg = parseFloat(d.amountKg) || 0; BM.Storage.add('feedings', d); BM.Toast.show('Besleme kaydedildi ✓', 'success'); App.render('feeding'); return true; }
+      );
+    },
+    edit(id) {
+      const f = BM.Storage.get('feedings', id); if (!f) return;
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === f.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Besleme Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${f.date}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Tip</span>
+             <select class="select" name="type">${['sugar_syrup','sugar_syrup_1to1','fondant','pollen_patty','candy','honey_water','invert_syrup','protein_patty'].map(t => `<option value="${t}"${f.type === t ? ' selected' : ''}>${BM.T.feedType(t).tr}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Miktar (kg)</span>
+             <input class="input" name="amountKg" type="number" step="0.1" value="${f.amountKg}"></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Sebep</span>
+             <select class="select" name="reason">${['weak_colony','winter_prep','drought','supplement','stimulative'].map(r => `<option value="${r}"${f.reason === r ? ' selected' : ''}>${BM.T.reason(r)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status">${['planned','in_progress','completed'].map(s => `<option value="${s}"${f.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}</select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(f.notes || '')}</textarea></label>`,
+        (d) => { d.amountKg = parseFloat(d.amountKg) || 0; BM.Storage.update('feedings', id, d); BM.Toast.show('Besleme güncellendi ✓', 'success'); App.render('feeding'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu besleme kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('feedings', id);
+        BM.Toast.show('Besleme silindi', 'info');
+        App.render('feeding');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('feedings').sort((a, b) => b.date.localeCompare(a.date));
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Besleme</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.feeding.add()">+ Yeni Besleme</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.feeding}</div><div class="empty__title">Henüz besleme kaydı yok</div><button class="btn btn--primary" onclick="BM.feeding.add()">+ İlk Besleme</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(f => {
+        const h = BM.Storage.get('hives', f.hiveId);
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:rgba(249,115,22,0.15);color:#f97316">🌾</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${f.amountKg} ${BM.T.feedType(f.type).unit} ${BM.T.feedType(f.type).tr} <span class="badge ${BM.T.statusCls(f.status)}">${BM.T.status(f.status)}</span></div>
+            <div class="timeline__meta">${BM.dateStr(f.date)} · ${BM.T.reason(f.reason)}${f.notes ? ' · ' + BM.esc(f.notes) : ''}</div>
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.feeding.edit('${f.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.feeding.del('${f.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ TREATMENTS ============
+  const treatmentsModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Yeni Tedavi',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Ürün *</span>
+             <input class="input" name="product" required placeholder="Örn: Apivar"></label>
+           <label class="field"><span class="field-label">Dozaj</span>
+             <input class="input" name="dosage" placeholder="2 şerit"></label>
+         </div>
+         <label class="field"><span class="field-label">Süre</span>
+           <input class="input" name="duration" placeholder="42 gün"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Varroa Önce</span>
+             <input class="input" name="varroaBefore" type="number" min="0" value="0"></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status"><option value="planned">Planlı</option><option value="in_progress" selected>Sürüyor</option><option value="completed">Tamamlandı</option></select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { d.varroaBefore = parseInt(d.varroaBefore) || 0; BM.Storage.add('treatments', d); BM.Toast.show('Tedavi kaydedildi ✓', 'success'); App.render('treatments'); return true; }
+      );
+    },
+    edit(id) {
+      const t = BM.Storage.get('treatments', id); if (!t) return;
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === t.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Tedavi Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${t.date}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Ürün *</span>
+             <input class="input" name="product" required value="${BM.esc(t.product)}"></label>
+           <label class="field"><span class="field-label">Dozaj</span>
+             <input class="input" name="dosage" value="${BM.esc(t.dosage || '')}"></label>
+         </div>
+         <label class="field"><span class="field-label">Süre</span>
+           <input class="input" name="duration" value="${BM.esc(t.duration || '')}"></label>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Önce</span>
+             <input class="input" name="varroaBefore" type="number" value="${t.varroaBefore || 0}"></label>
+           <label class="field"><span class="field-label">Sonra</span>
+             <input class="input" name="varroaAfter" type="number" value="${t.varroaAfter || ''}"></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status">${['planned','in_progress','completed'].map(s => `<option value="${s}"${t.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}</select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(t.notes || '')}</textarea></label>`,
+        (d) => { d.varroaBefore = parseInt(d.varroaBefore) || 0; d.varroaAfter = d.varroaAfter ? parseInt(d.varroaAfter) : null; BM.Storage.update('treatments', id, d); BM.Toast.show('Tedavi güncellendi ✓', 'success'); App.render('treatments'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu tedavi kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('treatments', id);
+        BM.Toast.show('Tedavi silindi', 'info');
+        App.render('treatments');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('treatments').sort((a, b) => b.date.localeCompare(a.date));
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Tedaviler</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.treatments.add()">+ Yeni Tedavi</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.treatments}</div><div class="empty__title">Henüz tedavi kaydı yok</div><button class="btn btn--primary" onclick="BM.treatments.add()">+ İlk Tedavi</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(t => {
+        const h = BM.Storage.get('hives', t.hiveId);
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:rgba(168,85,247,0.15);color:#a855f7">💊</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${BM.esc(t.product)} <span class="badge ${BM.T.statusCls(t.status)}">${BM.T.status(t.status)}</span></div>
+            <div class="timeline__meta">${BM.dateStr(t.date)} · ${BM.esc(t.dosage || '-')} · ${BM.esc(t.duration || '')}${t.varroaBefore != null ? ' · Varroa önce: ' + t.varroaBefore : ''}${t.varroaAfter != null ? ' → sonra: ' + t.varroaAfter : ''}</div>
+            ${t.notes ? `<div class="timeline__meta" style="margin-top:4px;color:var(--text-secondary)">${BM.esc(t.notes)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.treatments.edit('${t.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.treatments.del('${t.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ DISEASES ============
+  const diseasesModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Hastalık Kaydı',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Hastalık *</span>
+             <select class="select" name="disease" required>
+               ${['varroosis','nosemosis','foulbrood','chalkbrood','sacbrood','small_hive_beetle'].map(d => `<option value="${d}">${BM.T.disease(d)}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label">Şiddet *</span>
+             <select class="select" name="severity" required>
+               <option value="low">Düşük</option>
+               <option value="medium" selected>Orta</option>
+               <option value="high">Yüksek</option>
+             </select></label>
+         </div>
+         <label class="field"><span class="field-label">Tedavi</span>
+           <input class="input" name="treatment" placeholder="Uygulanan tedavi"></label>
+         <label class="field"><span class="field-label">Durum</span>
+           <select class="select" name="status">
+             <option value="active">Aktif</option>
+             <option value="treating" selected>Tedavide</option>
+             <option value="resolved">Çözüldü</option>
+           </select></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { BM.Storage.add('diseases', d); BM.Toast.show('Hastalık kaydı eklendi ✓', 'success'); App.render('diseases'); return true; }
+      );
+    },
+    edit(id) {
+      const d = BM.Storage.get('diseases', id); if (!d) return;
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === d.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Hastalık Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${d.date}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Hastalık</span>
+             <select class="select" name="disease">${['varroosis','nosemosis','foulbrood','chalkbrood','sacbrood','small_hive_beetle'].map(x => `<option value="${x}"${d.disease === x ? ' selected' : ''}>${BM.T.disease(x)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Şiddet</span>
+             <select class="select" name="severity">${[
+                {v:'low', l:'Düşük'},
+                {v:'medium', l:'Orta'},
+                {v:'high', l:'Yüksek'}
+              ].map(o => `<option value="${o.v}"${d.severity === o.v ? ' selected' : ''}>${o.l}</option>`).join('')}</select></label>
+         </div>
+         <label class="field"><span class="field-label">Tedavi</span>
+           <input class="input" name="treatment" value="${BM.esc(d.treatment || '')}"></label>
+         <label class="field"><span class="field-label">Durum</span>
+           <select class="select" name="status">${['active','treating','resolved'].map(s => `<option value="${s}"${d.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}</select></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(d.notes || '')}</textarea></label>`,
+        (d) => { BM.Storage.update('diseases', id, d); BM.Toast.show('Hastalık güncellendi ✓', 'success'); App.render('diseases'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu hastalık kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('diseases', id);
+        BM.Toast.show('Kayıt silindi', 'info');
+        App.render('diseases');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('diseases').sort((a, b) => b.date.localeCompare(a.date));
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Hastalıklar</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.diseases.add()">+ Yeni Kayıt</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.diseases}</div><div class="empty__title">Aktif hastalık yok 🎉</div><button class="btn btn--primary" onclick="BM.diseases.add()">+ Kayıt Ekle</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(d => {
+        const h = BM.Storage.get('hives', d.hiveId);
+        const sev = d.severity === 'high' ? 'danger' : d.severity === 'medium' ? 'warn' : 'info';
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:var(--danger-bg);color:var(--danger)">🦠</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${BM.T.disease(d.disease)} <span class="badge badge--${sev}">${d.severity}</span></div>
+            <div class="timeline__meta">${BM.dateStr(d.date)} · <span class="badge ${BM.T.statusCls(d.status)}">${BM.T.status(d.status)}</span>${d.treatment ? ' · Tedavi: ' + BM.esc(d.treatment) : ''}</div>
+            ${d.notes ? `<div class="timeline__meta" style="margin-top:4px;color:var(--text-secondary)">${BM.esc(d.notes)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.diseases.edit('${d.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.diseases.del('${d.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ INVENTORY ============
+  const inventoryModule = {
+    add() {
+      BM.Modal.open('Yeni Envanter Kalemi',
+        `<label class="field"><span class="field-label">Malzeme *</span>
+           <input class="input" name="name" required placeholder="Örn: Apivar şerit"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Kategori</span>
+             <select class="select" name="category">${['medication','feed','equipment','consumable'].map(c => `<option value="${c}">${BM.T.invCat(c)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Birim</span>
+             <select class="select" name="unit"><option>adet</option><option>kg</option><option>litre</option><option>paket</option><option>kutu</option></select></label>
+         </div>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Miktar *</span>
+             <input class="input" name="quantity" type="number" step="0.1" required value="1"></label>
+           <label class="field"><span class="field-label">Min Stok</span>
+             <input class="input" name="minStock" type="number" value="5"></label>
+           <label class="field"><span class="field-label">Fiyat (₺)</span>
+             <input class="input" name="costTry" type="number" step="0.01" value="0"></label>
+         </div>
+         <label class="field"><span class="field-label">Tedarikçi</span>
+           <input class="input" name="supplier"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { d.quantity = parseFloat(d.quantity) || 0; d.minStock = parseFloat(d.minStock) || 0; d.costTry = parseFloat(d.costTry) || 0; BM.Storage.add('inventory', d); BM.Toast.show('Envanter eklendi ✓', 'success'); App.render('inventory'); return true; }
+      );
+    },
+    edit(id) {
+      const i = BM.Storage.get('inventory', id); if (!i) return;
+      BM.Modal.open('Envanter Düzenle',
+        `<label class="field"><span class="field-label">Malzeme *</span>
+           <input class="input" name="name" required value="${BM.esc(i.name)}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Kategori</span>
+             <select class="select" name="category">${['medication','feed','equipment','consumable'].map(c => `<option value="${c}"${i.category === c ? ' selected' : ''}>${BM.T.invCat(c)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Birim</span>
+             <select class="select" name="unit">${['adet','kg','litre','paket','kutu'].map(u => `<option${i.unit === u ? ' selected' : ''}>${u}</option>`).join('')}</select></label>
+         </div>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Miktar</span>
+             <input class="input" name="quantity" type="number" step="0.1" value="${i.quantity}"></label>
+           <label class="field"><span class="field-label">Min</span>
+             <input class="input" name="minStock" type="number" value="${i.minStock || 0}"></label>
+           <label class="field"><span class="field-label">Fiyat (₺)</span>
+             <input class="input" name="costTry" type="number" step="0.01" value="${i.costTry || 0}"></label>
+         </div>
+         <label class="field"><span class="field-label">Tedarikçi</span>
+           <input class="input" name="supplier" value="${BM.esc(i.supplier || '')}"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(i.notes || '')}</textarea></label>`,
+        (d) => { d.quantity = parseFloat(d.quantity) || 0; d.minStock = parseFloat(d.minStock) || 0; d.costTry = parseFloat(d.costTry) || 0; BM.Storage.update('inventory', id, d); BM.Toast.show('Envanter güncellendi ✓', 'success'); App.render('inventory'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu kalemi silmek istiyor musunuz?', () => {
+        BM.Storage.remove('inventory', id);
+        BM.Toast.show('Silindi', 'info');
+        App.render('inventory');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('inventory');
+      const lowStock = list.filter(i => i.quantity <= i.minStock);
+      const totalValue = list.reduce((s, i) => s + (i.quantity * (i.costTry || 0)), 0);
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Envanter</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kalem · ₺${BM.fmt(totalValue, 0)} değer${lowStock.length ? ' · ' + lowStock.length + ' düşük stok' : ''}</div></div>
+        <button class="btn btn--primary" onclick="BM.inventory.add()">+ Yeni Malzeme</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.inventory}</div><div class="empty__title">Envanter boş</div><button class="btn btn--primary" onclick="BM.inventory.add()">+ İlk Malzeme</button></div></div>` :
+      `<div class="card"><div class="row-list">${list.map(i => {
+        const low = i.quantity <= i.minStock;
+        return `<div class="row-list__item" style="${low ? 'background:var(--danger-bg);margin:0 -18px;padding:11px 18px' : ''}">
+          <div class="row-list__dot ${low ? 'row-list__dot--r' : 'row-list__dot--g'}"></div>
+          <div class="row-list__main">
+            <div class="row-list__name">${BM.esc(i.name)} <span class="badge badge--info">${BM.T.invCat(i.category)}</span>${low ? ' <span class="badge badge--danger">Düşük Stok</span>' : ''}</div>
+            <div class="row-list__info">${i.quantity} ${i.unit} / min ${i.minStock} ${i.unit}${i.supplier ? ' · ' + BM.esc(i.supplier) : ''}${i.costTry ? ' · ₺' + BM.fmt(i.costTry, 2) + '/' + i.unit : ''}</div>
+          </div>
+          <div style="text-align:right;min-width:80px;flex-shrink:0">
+            <div style="font-size:16px;font-weight:700">${i.quantity} ${i.unit}</div>
+            <div style="font-size:10px;color:var(--text-secondary)">₺${BM.fmt(i.quantity * (i.costTry || 0), 0)}</div>
+          </div>
+          <div class="row-list__actions">
+            <button class="btn btn--sm" onclick="BM.inventory.edit('${i.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.inventory.del('${i.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  BM.queens = queensModule;
+  BM.harvest = harvestModule;
+  BM.feeding = feedingModule;
+
+
+/* ===== js\modules\treatments.js ===== */
+const treatmentsModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Yeni Tedavi',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Ürün *</span>
+             <input class="input" name="product" required placeholder="Örn: Apivar"></label>
+           <label class="field"><span class="field-label">Dozaj</span>
+             <input class="input" name="dosage" placeholder="2 şerit"></label>
+         </div>
+         <label class="field"><span class="field-label">Süre</span>
+           <input class="input" name="duration" placeholder="42 gün"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Varroa Önce</span>
+             <input class="input" name="varroaBefore" type="number" min="0" value="0"></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status"><option value="planned">Planlı</option><option value="in_progress" selected>Sürüyor</option><option value="completed">Tamamlandı</option></select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { d.varroaBefore = parseInt(d.varroaBefore) || 0; BM.Storage.add('treatments', d); BM.Toast.show('Tedavi kaydedildi ✓', 'success'); App.render('treatments'); return true; }
+      );
+    },
+    edit(id) {
+      const t = BM.Storage.get('treatments', id); if (!t) return;
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === t.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Tedavi Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${t.date}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Ürün *</span>
+             <input class="input" name="product" required value="${BM.esc(t.product)}"></label>
+           <label class="field"><span class="field-label">Dozaj</span>
+             <input class="input" name="dosage" value="${BM.esc(t.dosage || '')}"></label>
+         </div>
+         <label class="field"><span class="field-label">Süre</span>
+           <input class="input" name="duration" value="${BM.esc(t.duration || '')}"></label>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Önce</span>
+             <input class="input" name="varroaBefore" type="number" value="${t.varroaBefore || 0}"></label>
+           <label class="field"><span class="field-label">Sonra</span>
+             <input class="input" name="varroaAfter" type="number" value="${t.varroaAfter || ''}"></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status">${['planned','in_progress','completed'].map(s => `<option value="${s}"${t.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}</select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(t.notes || '')}</textarea></label>`,
+        (d) => { d.varroaBefore = parseInt(d.varroaBefore) || 0; d.varroaAfter = d.varroaAfter ? parseInt(d.varroaAfter) : null; BM.Storage.update('treatments', id, d); BM.Toast.show('Tedavi güncellendi ✓', 'success'); App.render('treatments'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu tedavi kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('treatments', id);
+        BM.Toast.show('Tedavi silindi', 'info');
+        App.render('treatments');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('treatments').sort((a, b) => b.date.localeCompare(a.date));
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Tedaviler</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.treatments.add()">+ Yeni Tedavi</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.treatments}</div><div class="empty__title">Henüz tedavi kaydı yok</div><button class="btn btn--primary" onclick="BM.treatments.add()">+ İlk Tedavi</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(t => {
+        const h = BM.Storage.get('hives', t.hiveId);
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:rgba(168,85,247,0.15);color:#a855f7">💊</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${BM.esc(t.product)} <span class="badge ${BM.T.statusCls(t.status)}">${BM.T.status(t.status)}</span></div>
+            <div class="timeline__meta">${BM.dateStr(t.date)} · ${BM.esc(t.dosage || '-')} · ${BM.esc(t.duration || '')}${t.varroaBefore != null ? ' · Varroa önce: ' + t.varroaBefore : ''}${t.varroaAfter != null ? ' → sonra: ' + t.varroaAfter : ''}</div>
+            ${t.notes ? `<div class="timeline__meta" style="margin-top:4px;color:var(--text-secondary)">${BM.esc(t.notes)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.treatments.edit('${t.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.treatments.del('${t.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ DISEASES ============
+  const diseasesModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Hastalık Kaydı',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Hastalık *</span>
+             <select class="select" name="disease" required>
+               ${['varroosis','nosemosis','foulbrood','chalkbrood','sacbrood','small_hive_beetle'].map(d => `<option value="${d}">${BM.T.disease(d)}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label">Şiddet *</span>
+             <select class="select" name="severity" required>
+               <option value="low">Düşük</option>
+               <option value="medium" selected>Orta</option>
+               <option value="high">Yüksek</option>
+             </select></label>
+         </div>
+         <label class="field"><span class="field-label">Tedavi</span>
+           <input class="input" name="treatment" placeholder="Uygulanan tedavi"></label>
+         <label class="field"><span class="field-label">Durum</span>
+           <select class="select" name="status">
+             <option value="active">Aktif</option>
+             <option value="treating" selected>Tedavide</option>
+             <option value="resolved">Çözüldü</option>
+           </select></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { BM.Storage.add('diseases', d); BM.Toast.show('Hastalık kaydı eklendi ✓', 'success'); App.render('diseases'); return true; }
+      );
+    },
+    edit(id) {
+      const d = BM.Storage.get('diseases', id); if (!d) return;
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === d.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Hastalık Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${d.date}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Hastalık</span>
+             <select class="select" name="disease">${['varroosis','nosemosis','foulbrood','chalkbrood','sacbrood','small_hive_beetle'].map(x => `<option value="${x}"${d.disease === x ? ' selected' : ''}>${BM.T.disease(x)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Şiddet</span>
+             <select class="select" name="severity">${[
+                {v:'low', l:'Düşük'},
+                {v:'medium', l:'Orta'},
+                {v:'high', l:'Yüksek'}
+              ].map(o => `<option value="${o.v}"${d.severity === o.v ? ' selected' : ''}>${o.l}</option>`).join('')}</select></label>
+         </div>
+         <label class="field"><span class="field-label">Tedavi</span>
+           <input class="input" name="treatment" value="${BM.esc(d.treatment || '')}"></label>
+         <label class="field"><span class="field-label">Durum</span>
+           <select class="select" name="status">${['active','treating','resolved'].map(s => `<option value="${s}"${d.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}</select></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(d.notes || '')}</textarea></label>`,
+        (d) => { BM.Storage.update('diseases', id, d); BM.Toast.show('Hastalık güncellendi ✓', 'success'); App.render('diseases'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu hastalık kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('diseases', id);
+        BM.Toast.show('Kayıt silindi', 'info');
+        App.render('diseases');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('diseases').sort((a, b) => b.date.localeCompare(a.date));
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Hastalıklar</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.diseases.add()">+ Yeni Kayıt</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.diseases}</div><div class="empty__title">Aktif hastalık yok 🎉</div><button class="btn btn--primary" onclick="BM.diseases.add()">+ Kayıt Ekle</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(d => {
+        const h = BM.Storage.get('hives', d.hiveId);
+        const sev = d.severity === 'high' ? 'danger' : d.severity === 'medium' ? 'warn' : 'info';
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:var(--danger-bg);color:var(--danger)">🦠</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${BM.T.disease(d.disease)} <span class="badge badge--${sev}">${d.severity}</span></div>
+            <div class="timeline__meta">${BM.dateStr(d.date)} · <span class="badge ${BM.T.statusCls(d.status)}">${BM.T.status(d.status)}</span>${d.treatment ? ' · Tedavi: ' + BM.esc(d.treatment) : ''}</div>
+            ${d.notes ? `<div class="timeline__meta" style="margin-top:4px;color:var(--text-secondary)">${BM.esc(d.notes)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.diseases.edit('${d.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.diseases.del('${d.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ INVENTORY ============
+  const inventoryModule = {
+    add() {
+      BM.Modal.open('Yeni Envanter Kalemi',
+        `<label class="field"><span class="field-label">Malzeme *</span>
+           <input class="input" name="name" required placeholder="Örn: Apivar şerit"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Kategori</span>
+             <select class="select" name="category">${['medication','feed','equipment','consumable'].map(c => `<option value="${c}">${BM.T.invCat(c)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Birim</span>
+             <select class="select" name="unit"><option>adet</option><option>kg</option><option>litre</option><option>paket</option><option>kutu</option></select></label>
+         </div>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Miktar *</span>
+             <input class="input" name="quantity" type="number" step="0.1" required value="1"></label>
+           <label class="field"><span class="field-label">Min Stok</span>
+             <input class="input" name="minStock" type="number" value="5"></label>
+           <label class="field"><span class="field-label">Fiyat (₺)</span>
+             <input class="input" name="costTry" type="number" step="0.01" value="0"></label>
+         </div>
+         <label class="field"><span class="field-label">Tedarikçi</span>
+           <input class="input" name="supplier"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { d.quantity = parseFloat(d.quantity) || 0; d.minStock = parseFloat(d.minStock) || 0; d.costTry = parseFloat(d.costTry) || 0; BM.Storage.add('inventory', d); BM.Toast.show('Envanter eklendi ✓', 'success'); App.render('inventory'); return true; }
+      );
+    },
+    edit(id) {
+      const i = BM.Storage.get('inventory', id); if (!i) return;
+      BM.Modal.open('Envanter Düzenle',
+        `<label class="field"><span class="field-label">Malzeme *</span>
+           <input class="input" name="name" required value="${BM.esc(i.name)}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Kategori</span>
+             <select class="select" name="category">${['medication','feed','equipment','consumable'].map(c => `<option value="${c}"${i.category === c ? ' selected' : ''}>${BM.T.invCat(c)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Birim</span>
+             <select class="select" name="unit">${['adet','kg','litre','paket','kutu'].map(u => `<option${i.unit === u ? ' selected' : ''}>${u}</option>`).join('')}</select></label>
+         </div>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Miktar</span>
+             <input class="input" name="quantity" type="number" step="0.1" value="${i.quantity}"></label>
+           <label class="field"><span class="field-label">Min</span>
+             <input class="input" name="minStock" type="number" value="${i.minStock || 0}"></label>
+           <label class="field"><span class="field-label">Fiyat (₺)</span>
+             <input class="input" name="costTry" type="number" step="0.01" value="${i.costTry || 0}"></label>
+         </div>
+         <label class="field"><span class="field-label">Tedarikçi</span>
+           <input class="input" name="supplier" value="${BM.esc(i.supplier || '')}"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(i.notes || '')}</textarea></label>`,
+        (d) => { d.quantity = parseFloat(d.quantity) || 0; d.minStock = parseFloat(d.minStock) || 0; d.costTry = parseFloat(d.costTry) || 0; BM.Storage.update('inventory', id, d); BM.Toast.show('Envanter güncellendi ✓', 'success'); App.render('inventory'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu kalemi silmek istiyor musunuz?', () => {
+        BM.Storage.remove('inventory', id);
+        BM.Toast.show('Silindi', 'info');
+        App.render('inventory');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('inventory');
+      const lowStock = list.filter(i => i.quantity <= i.minStock);
+      const totalValue = list.reduce((s, i) => s + (i.quantity * (i.costTry || 0)), 0);
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Envanter</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kalem · ₺${BM.fmt(totalValue, 0)} değer${lowStock.length ? ' · ' + lowStock.length + ' düşük stok' : ''}</div></div>
+        <button class="btn btn--primary" onclick="BM.inventory.add()">+ Yeni Malzeme</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.inventory}</div><div class="empty__title">Envanter boş</div><button class="btn btn--primary" onclick="BM.inventory.add()">+ İlk Malzeme</button></div></div>` :
+      `<div class="card"><div class="row-list">${list.map(i => {
+        const low = i.quantity <= i.minStock;
+        return `<div class="row-list__item" style="${low ? 'background:var(--danger-bg);margin:0 -18px;padding:11px 18px' : ''}">
+          <div class="row-list__dot ${low ? 'row-list__dot--r' : 'row-list__dot--g'}"></div>
+          <div class="row-list__main">
+            <div class="row-list__name">${BM.esc(i.name)} <span class="badge badge--info">${BM.T.invCat(i.category)}</span>${low ? ' <span class="badge badge--danger">Düşük Stok</span>' : ''}</div>
+            <div class="row-list__info">${i.quantity} ${i.unit} / min ${i.minStock} ${i.unit}${i.supplier ? ' · ' + BM.esc(i.supplier) : ''}${i.costTry ? ' · ₺' + BM.fmt(i.costTry, 2) + '/' + i.unit : ''}</div>
+          </div>
+          <div style="text-align:right;min-width:80px;flex-shrink:0">
+            <div style="font-size:16px;font-weight:700">${i.quantity} ${i.unit}</div>
+            <div style="font-size:10px;color:var(--text-secondary)">₺${BM.fmt(i.quantity * (i.costTry || 0), 0)}</div>
+          </div>
+          <div class="row-list__actions">
+            <button class="btn btn--sm" onclick="BM.inventory.edit('${i.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.inventory.del('${i.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  BM.queens = queensModule;
+  BM.harvest = harvestModule;
+  BM.feeding = feedingModule;
+  BM.feeding.updateUnit = function(selectEl) {
+    const info = BM.T.feedType(selectEl.value);
+    const label = document.getElementById('feed-unit-label');
+    const input = selectEl.closest('form')?.querySelector('input[name="amountKg"]');
+    if (label) label.textContent = 'Miktar (' + info.unit + ') *';
+    if (input) input.step = info.density >= 1.1 ? '0.1' : '0.05';
+  };
+  BM.feeding.formatAmount = function(type, amount) {
+    const info = BM.T.feedType(type);
+    if (info.unit === 'L' && info.density !== 1) {
+      return amount + ' ' + info.unit + ' (≈ ' + (amount * info.density).toFixed(2) + ' kg)';
+    }
+    return amount + ' ' + info.unit;
+  };
+  BM.treatments = treatmentsModule;
+
+
+/* ===== js\modules\diseases.js ===== */
+const diseasesModule = {
+    add(presetHiveId) {
+      if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Hastalık Kaydı',
+        `<label class="field"><span class="field-label">Kovan *</span>
+           <select class="select" name="hiveId" required>${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih *</span>
+           <input class="input" name="date" type="date" required value="${BM.today()}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Hastalık *</span>
+             <select class="select" name="disease" required>
+               ${['varroosis','nosemosis','foulbrood','chalkbrood','sacbrood','small_hive_beetle'].map(d => `<option value="${d}">${BM.T.disease(d)}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label">Şiddet *</span>
+             <select class="select" name="severity" required>
+               <option value="low">Düşük</option>
+               <option value="medium" selected>Orta</option>
+               <option value="high">Yüksek</option>
+             </select></label>
+         </div>
+         <label class="field"><span class="field-label">Tedavi</span>
+           <input class="input" name="treatment" placeholder="Uygulanan tedavi"></label>
+         <label class="field"><span class="field-label">Durum</span>
+           <select class="select" name="status">
+             <option value="active">Aktif</option>
+             <option value="treating" selected>Tedavide</option>
+             <option value="resolved">Çözüldü</option>
+           </select></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { BM.Storage.add('diseases', d); BM.Toast.show('Hastalık kaydı eklendi ✓', 'success'); App.render('diseases'); return true; }
+      );
+    },
+    edit(id) {
+      const d = BM.Storage.get('diseases', id); if (!d) return;
+      const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${h.id === d.hiveId ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      BM.Modal.open('Hastalık Düzenle',
+        `<label class="field"><span class="field-label">Kovan</span>
+           <select class="select" name="hiveId">${hOpts}</select></label>
+         <label class="field"><span class="field-label">Tarih</span>
+           <input class="input" name="date" type="date" required value="${d.date}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Hastalık</span>
+             <select class="select" name="disease">${['varroosis','nosemosis','foulbrood','chalkbrood','sacbrood','small_hive_beetle'].map(x => `<option value="${x}"${d.disease === x ? ' selected' : ''}>${BM.T.disease(x)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Şiddet</span>
+             <select class="select" name="severity">${[
+                {v:'low', l:'Düşük'},
+                {v:'medium', l:'Orta'},
+                {v:'high', l:'Yüksek'}
+              ].map(o => `<option value="${o.v}"${d.severity === o.v ? ' selected' : ''}>${o.l}</option>`).join('')}</select></label>
+         </div>
+         <label class="field"><span class="field-label">Tedavi</span>
+           <input class="input" name="treatment" value="${BM.esc(d.treatment || '')}"></label>
+         <label class="field"><span class="field-label">Durum</span>
+           <select class="select" name="status">${['active','treating','resolved'].map(s => `<option value="${s}"${d.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}</select></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(d.notes || '')}</textarea></label>`,
+        (d) => { BM.Storage.update('diseases', id, d); BM.Toast.show('Hastalık güncellendi ✓', 'success'); App.render('diseases'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu hastalık kaydını silmek istiyor musunuz?', () => {
+        BM.Storage.remove('diseases', id);
+        BM.Toast.show('Kayıt silindi', 'info');
+        App.render('diseases');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('diseases').sort((a, b) => b.date.localeCompare(a.date));
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Hastalıklar</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kayıt</div></div>
+        <button class="btn btn--primary" onclick="BM.diseases.add()">+ Yeni Kayıt</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.diseases}</div><div class="empty__title">Aktif hastalık yok 🎉</div><button class="btn btn--primary" onclick="BM.diseases.add()">+ Kayıt Ekle</button></div></div>` :
+      `<div class="card"><div class="timeline">${list.map(d => {
+        const h = BM.Storage.get('hives', d.hiveId);
+        const sev = d.severity === 'high' ? 'danger' : d.severity === 'medium' ? 'warn' : 'info';
+        return `<div class="timeline__item">
+          <div class="timeline__icon" style="background:var(--danger-bg);color:var(--danger)">🦠</div>
+          <div class="timeline__body">
+            <div class="timeline__title">${BM.esc(h ? h.name : '?')} · ${BM.T.disease(d.disease)} <span class="badge badge--${sev}">${d.severity}</span></div>
+            <div class="timeline__meta">${BM.dateStr(d.date)} · <span class="badge ${BM.T.statusCls(d.status)}">${BM.T.status(d.status)}</span>${d.treatment ? ' · Tedavi: ' + BM.esc(d.treatment) : ''}</div>
+            ${d.notes ? `<div class="timeline__meta" style="margin-top:4px;color:var(--text-secondary)">${BM.esc(d.notes)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:var(--space-1);align-items:flex-start">
+            <button class="btn btn--sm" onclick="BM.diseases.edit('${d.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.diseases.del('${d.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  // ============ INVENTORY ============
+  const inventoryModule = {
+    add() {
+      BM.Modal.open('Yeni Envanter Kalemi',
+        `<label class="field"><span class="field-label">Malzeme *</span>
+           <input class="input" name="name" required placeholder="Örn: Apivar şerit"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Kategori</span>
+             <select class="select" name="category">${['medication','feed','equipment','consumable'].map(c => `<option value="${c}">${BM.T.invCat(c)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Birim</span>
+             <select class="select" name="unit"><option>adet</option><option>kg</option><option>litre</option><option>paket</option><option>kutu</option></select></label>
+         </div>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Miktar *</span>
+             <input class="input" name="quantity" type="number" step="0.1" required value="1"></label>
+           <label class="field"><span class="field-label">Min Stok</span>
+             <input class="input" name="minStock" type="number" value="5"></label>
+           <label class="field"><span class="field-label">Fiyat (₺)</span>
+             <input class="input" name="costTry" type="number" step="0.01" value="0"></label>
+         </div>
+         <label class="field"><span class="field-label">Tedarikçi</span>
+           <input class="input" name="supplier"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { d.quantity = parseFloat(d.quantity) || 0; d.minStock = parseFloat(d.minStock) || 0; d.costTry = parseFloat(d.costTry) || 0; BM.Storage.add('inventory', d); BM.Toast.show('Envanter eklendi ✓', 'success'); App.render('inventory'); return true; }
+      );
+    },
+    edit(id) {
+      const i = BM.Storage.get('inventory', id); if (!i) return;
+      BM.Modal.open('Envanter Düzenle',
+        `<label class="field"><span class="field-label">Malzeme *</span>
+           <input class="input" name="name" required value="${BM.esc(i.name)}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Kategori</span>
+             <select class="select" name="category">${['medication','feed','equipment','consumable'].map(c => `<option value="${c}"${i.category === c ? ' selected' : ''}>${BM.T.invCat(c)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Birim</span>
+             <select class="select" name="unit">${['adet','kg','litre','paket','kutu'].map(u => `<option${i.unit === u ? ' selected' : ''}>${u}</option>`).join('')}</select></label>
+         </div>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Miktar</span>
+             <input class="input" name="quantity" type="number" step="0.1" value="${i.quantity}"></label>
+           <label class="field"><span class="field-label">Min</span>
+             <input class="input" name="minStock" type="number" value="${i.minStock || 0}"></label>
+           <label class="field"><span class="field-label">Fiyat (₺)</span>
+             <input class="input" name="costTry" type="number" step="0.01" value="${i.costTry || 0}"></label>
+         </div>
+         <label class="field"><span class="field-label">Tedarikçi</span>
+           <input class="input" name="supplier" value="${BM.esc(i.supplier || '')}"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(i.notes || '')}</textarea></label>`,
+        (d) => { d.quantity = parseFloat(d.quantity) || 0; d.minStock = parseFloat(d.minStock) || 0; d.costTry = parseFloat(d.costTry) || 0; BM.Storage.update('inventory', id, d); BM.Toast.show('Envanter güncellendi ✓', 'success'); App.render('inventory'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu kalemi silmek istiyor musunuz?', () => {
+        BM.Storage.remove('inventory', id);
+        BM.Toast.show('Silindi', 'info');
+        App.render('inventory');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('inventory');
+      const lowStock = list.filter(i => i.quantity <= i.minStock);
+      const totalValue = list.reduce((s, i) => s + (i.quantity * (i.costTry || 0)), 0);
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Envanter</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kalem · ₺${BM.fmt(totalValue, 0)} değer${lowStock.length ? ' · ' + lowStock.length + ' düşük stok' : ''}</div></div>
+        <button class="btn btn--primary" onclick="BM.inventory.add()">+ Yeni Malzeme</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.inventory}</div><div class="empty__title">Envanter boş</div><button class="btn btn--primary" onclick="BM.inventory.add()">+ İlk Malzeme</button></div></div>` :
+      `<div class="card"><div class="row-list">${list.map(i => {
+        const low = i.quantity <= i.minStock;
+        return `<div class="row-list__item" style="${low ? 'background:var(--danger-bg);margin:0 -18px;padding:11px 18px' : ''}">
+          <div class="row-list__dot ${low ? 'row-list__dot--r' : 'row-list__dot--g'}"></div>
+          <div class="row-list__main">
+            <div class="row-list__name">${BM.esc(i.name)} <span class="badge badge--info">${BM.T.invCat(i.category)}</span>${low ? ' <span class="badge badge--danger">Düşük Stok</span>' : ''}</div>
+            <div class="row-list__info">${i.quantity} ${i.unit} / min ${i.minStock} ${i.unit}${i.supplier ? ' · ' + BM.esc(i.supplier) : ''}${i.costTry ? ' · ₺' + BM.fmt(i.costTry, 2) + '/' + i.unit : ''}</div>
+          </div>
+          <div style="text-align:right;min-width:80px;flex-shrink:0">
+            <div style="font-size:16px;font-weight:700">${i.quantity} ${i.unit}</div>
+            <div style="font-size:10px;color:var(--text-secondary)">₺${BM.fmt(i.quantity * (i.costTry || 0), 0)}</div>
+          </div>
+          <div class="row-list__actions">
+            <button class="btn btn--sm" onclick="BM.inventory.edit('${i.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.inventory.del('${i.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  BM.queens = queensModule;
+  BM.harvest = harvestModule;
+  BM.feeding = feedingModule;
+  BM.feeding.updateUnit = function(selectEl) {
+    const info = BM.T.feedType(selectEl.value);
+    const label = document.getElementById('feed-unit-label');
+    const input = selectEl.closest('form')?.querySelector('input[name="amountKg"]');
+    if (label) label.textContent = 'Miktar (' + info.unit + ') *';
+    if (input) input.step = info.density >= 1.1 ? '0.1' : '0.05';
+  };
+  BM.feeding.formatAmount = function(type, amount) {
+    const info = BM.T.feedType(type);
+    if (info.unit === 'L' && info.density !== 1) {
+      return amount + ' ' + info.unit + ' (≈ ' + (amount * info.density).toFixed(2) + ' kg)';
+    }
+    return amount + ' ' + info.unit;
+  };
+  BM.treatments = treatmentsModule;
+  BM.diseases = diseasesModule;
+
+
+/* ===== js\modules\queens.js ===== */
+const queensModule = {
     add(presetHiveId) {
       if (!BM.Storage.list('hives').length) { BM.Toast.show('Önce kovan ekleyin', 'error'); return; }
       const hOpts = BM.Storage.list('hives').map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
@@ -3237,6 +4525,99 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   };
 
   BM.queens = queensModule;
+
+
+/* ===== js\modules\inventory.js ===== */
+const inventoryModule = {
+    add() {
+      BM.Modal.open('Yeni Envanter Kalemi',
+        `<label class="field"><span class="field-label">Malzeme *</span>
+           <input class="input" name="name" required placeholder="Örn: Apivar şerit"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Kategori</span>
+             <select class="select" name="category">${['medication','feed','equipment','consumable'].map(c => `<option value="${c}">${BM.T.invCat(c)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Birim</span>
+             <select class="select" name="unit"><option>adet</option><option>kg</option><option>litre</option><option>paket</option><option>kutu</option></select></label>
+         </div>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Miktar *</span>
+             <input class="input" name="quantity" type="number" step="0.1" required value="1"></label>
+           <label class="field"><span class="field-label">Min Stok</span>
+             <input class="input" name="minStock" type="number" value="5"></label>
+           <label class="field"><span class="field-label">Fiyat (₺)</span>
+             <input class="input" name="costTry" type="number" step="0.01" value="0"></label>
+         </div>
+         <label class="field"><span class="field-label">Tedarikçi</span>
+           <input class="input" name="supplier"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+        (d) => { d.quantity = parseFloat(d.quantity) || 0; d.minStock = parseFloat(d.minStock) || 0; d.costTry = parseFloat(d.costTry) || 0; BM.Storage.add('inventory', d); BM.Toast.show('Envanter eklendi ✓', 'success'); App.render('inventory'); return true; }
+      );
+    },
+    edit(id) {
+      const i = BM.Storage.get('inventory', id); if (!i) return;
+      BM.Modal.open('Envanter Düzenle',
+        `<label class="field"><span class="field-label">Malzeme *</span>
+           <input class="input" name="name" required value="${BM.esc(i.name)}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Kategori</span>
+             <select class="select" name="category">${['medication','feed','equipment','consumable'].map(c => `<option value="${c}"${i.category === c ? ' selected' : ''}>${BM.T.invCat(c)}</option>`).join('')}</select></label>
+           <label class="field"><span class="field-label">Birim</span>
+             <select class="select" name="unit">${['adet','kg','litre','paket','kutu'].map(u => `<option${i.unit === u ? ' selected' : ''}>${u}</option>`).join('')}</select></label>
+         </div>
+         <div class="field-row--3">
+           <label class="field"><span class="field-label">Miktar</span>
+             <input class="input" name="quantity" type="number" step="0.1" value="${i.quantity}"></label>
+           <label class="field"><span class="field-label">Min</span>
+             <input class="input" name="minStock" type="number" value="${i.minStock || 0}"></label>
+           <label class="field"><span class="field-label">Fiyat (₺)</span>
+             <input class="input" name="costTry" type="number" step="0.01" value="${i.costTry || 0}"></label>
+         </div>
+         <label class="field"><span class="field-label">Tedarikçi</span>
+           <input class="input" name="supplier" value="${BM.esc(i.supplier || '')}"></label>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(i.notes || '')}</textarea></label>`,
+        (d) => { d.quantity = parseFloat(d.quantity) || 0; d.minStock = parseFloat(d.minStock) || 0; d.costTry = parseFloat(d.costTry) || 0; BM.Storage.update('inventory', id, d); BM.Toast.show('Envanter güncellendi ✓', 'success'); App.render('inventory'); return true; }
+      );
+    },
+    del(id) {
+      BM.Modal.confirm('Bu kalemi silmek istiyor musunuz?', () => {
+        BM.Storage.remove('inventory', id);
+        BM.Toast.show('Silindi', 'info');
+        App.render('inventory');
+      });
+    },
+    render() {
+      const list = BM.Storage.list('inventory');
+      const lowStock = list.filter(i => i.quantity <= i.minStock);
+      const totalValue = list.reduce((s, i) => s + (i.quantity * (i.costTry || 0)), 0);
+      return `<div class="actions-bar">
+        <div><h2 style="font-size:18px;font-weight:700">Envanter</h2><div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${list.length} kalem · ₺${BM.fmt(totalValue, 0)} değer${lowStock.length ? ' · ' + lowStock.length + ' düşük stok' : ''}</div></div>
+        <button class="btn btn--primary" onclick="BM.inventory.add()">+ Yeni Malzeme</button>
+      </div>
+      ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.inventory}</div><div class="empty__title">Envanter boş</div><button class="btn btn--primary" onclick="BM.inventory.add()">+ İlk Malzeme</button></div></div>` :
+      `<div class="card"><div class="row-list">${list.map(i => {
+        const low = i.quantity <= i.minStock;
+        return `<div class="row-list__item" style="${low ? 'background:var(--danger-bg);margin:0 -18px;padding:11px 18px' : ''}">
+          <div class="row-list__dot ${low ? 'row-list__dot--r' : 'row-list__dot--g'}"></div>
+          <div class="row-list__main">
+            <div class="row-list__name">${BM.esc(i.name)} <span class="badge badge--info">${BM.T.invCat(i.category)}</span>${low ? ' <span class="badge badge--danger">Düşük Stok</span>' : ''}</div>
+            <div class="row-list__info">${i.quantity} ${i.unit} / min ${i.minStock} ${i.unit}${i.supplier ? ' · ' + BM.esc(i.supplier) : ''}${i.costTry ? ' · ₺' + BM.fmt(i.costTry, 2) + '/' + i.unit : ''}</div>
+          </div>
+          <div style="text-align:right;min-width:80px;flex-shrink:0">
+            <div style="font-size:16px;font-weight:700">${i.quantity} ${i.unit}</div>
+            <div style="font-size:10px;color:var(--text-secondary)">₺${BM.fmt(i.quantity * (i.costTry || 0), 0)}</div>
+          </div>
+          <div class="row-list__actions">
+            <button class="btn btn--sm" onclick="BM.inventory.edit('${i.id}')">Düzenle</button>
+            <button class="btn btn--sm btn--danger" onclick="BM.inventory.del('${i.id}')">Sil</button>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`}`;
+    }
+  };
+
+  BM.queens = queensModule;
   BM.harvest = harvestModule;
   BM.feeding = feedingModule;
   BM.feeding.updateUnit = function(selectEl) {
@@ -3256,8 +4637,9 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   BM.treatments = treatmentsModule;
   BM.diseases = diseasesModule;
   BM.inventory = inventoryModule;
-})(window);
 
+
+/* ===== js\modules\dashboard.js ===== */
 /* ===== js/modules/dashboard.js ===== */
 // ============================================================
 // Dashboard, Analytics, Reports, Settings, Onboarding, Notify, App
@@ -3840,6 +5222,15 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   notifyModule.load();
 })(window);
 
+
+/* ===== js\modules\crud.js ===== */
+(function (global) {
+  'use strict';
+  // This file is intentionally left empty.
+  // The modules are now loaded as separate files: queens.js, feeding.js, harvest.js, treatments.js, diseases.js, inventory.js
+})(window);
+
+
 /* ===== js/app.js ===== */
 // ============================================================
 // App Controller — Router, navigation, init
@@ -4115,11 +5506,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         BM.Auth.initFromStorage().then(() => {
           if (BM.Auth.isAuthenticated()) {
             console.log('[Auth] Auto-logged in as', BM.Auth.getUser().email);
-            if (BM.Storage && typeof BM.Storage.loadFromCloud === 'function') {
-              BM.Storage.loadFromCloud().then(() => {
-                App.render(App.currentView || 'dashboard');
-              });
-            } else if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') {
+            if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') {
               BM.Storage.syncFromCloud();
             }
           }
@@ -4136,3 +5523,4 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   BM.App = App;
   global.App = App;
 })(window);
+
