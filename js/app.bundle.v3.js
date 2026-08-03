@@ -380,8 +380,6 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
 
   // ---- Check existing session on load ----
   async function initFromStorage() {
-    const token = localStorage.getItem('beemaster-auth-token');
-    if (!token) return;
     // Wait for Supabase to load if not yet ready
     if (!window.supabase) {
       let wait = 0;
@@ -394,16 +392,34 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
     const c = getClient();
     if (!c) return;
     try {
-      const { data, error } = await c.auth.getUser(token);
+      // Use Supabase's own session storage (sb-...-auth-token key, persists + auto-refreshes)
+      const { data, error } = await c.auth.getSession();
       if (error) {
-        // Token invalid - temizle
-        localStorage.removeItem('beemaster-auth-token');
+        console.warn('[Auth] getSession error:', error.message);
         return;
       }
-      if (data?.user) {
-        _user = data.user;
-        _session = { access_token: token };
+      if (data?.session?.user) {
+        _user = data.session.user;
+        _session = data.session;
+        // Mirror to our key for backward compat
+        localStorage.setItem('beemaster-auth-token', data.session.access_token || '');
         updateAuthBtn();
+        // Also listen for token refresh events
+        c.auth.onAuthStateChange((event, session) => {
+          if (event === 'TOKEN_REFRESHED' && session) {
+            _session = session;
+            _user = session.user;
+            localStorage.setItem('beemaster-auth-token', session.access_token || '');
+          } else if (event === 'SIGNED_OUT') {
+            _user = null;
+            _session = null;
+            localStorage.removeItem('beemaster-auth-token');
+            updateAuthBtn();
+          }
+        });
+      } else {
+        // No session - clean up legacy key
+        localStorage.removeItem('beemaster-auth-token');
       }
     } catch (e) {
       console.warn('[Auth] initFromStorage error:', e);
