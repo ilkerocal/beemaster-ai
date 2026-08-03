@@ -847,7 +847,15 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
             data[k] = v;
           }
         }
-        if (this.cb && this.cb(data) !== false) this.close();
+        if (this.cb) {
+          const result = this.cb(data);
+          // Support async callbacks (Promise) - wait for it to finish
+          if (result && typeof result.then === 'function') {
+            result.then(r => { if (r !== false) this.close(); }).catch(e => { console.error('Modal callback error:', e); this.close(); });
+          } else if (result !== false) {
+            this.close();
+          }
+        }
       };
       this.cb = onSubmit;
       const foot = document.querySelector('.modal__foot');
