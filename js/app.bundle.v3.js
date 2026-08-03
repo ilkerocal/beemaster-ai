@@ -681,33 +681,22 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
     },
 
     async loadFromCloud() {
-      // Called by App.init after auth check
+      // Called by App.init after auth check - ALWAYS download-only, never upload local demo data
       const uid = BM.Auth && BM.Auth.getUser && BM.Auth.getUser()?.id;
       if (!uid) return false;
-      const isEmpty = (!this.state.hives || this.state.hives.length === 0) &&
-                      (!this.state.apiaries || this.state.apiaries.length === 0);
-      if (!isEmpty) {
-        // Local has data - just sync any new items to cloud
-        console.log('[Storage.loadFromCloud] Local has data, syncing to cloud');
-        if (typeof this.syncFromCloud === 'function') {
-          await this.syncFromCloud(true);
-        }
-        return true;
-      }
-      // Local empty - load from cloud
-      console.log('[Storage.loadFromCloud] Local empty, loading from cloud');
+      console.log('[Storage.loadFromCloud] Loading from cloud (download-only mode)');
       if (typeof this.syncFromCloud === 'function') {
-        await this.syncFromCloud(true);
+        await this.syncFromCloud(true, true);  // force=true, downloadOnly=true
       }
       const stillEmpty = (!this.state.hives || this.state.hives.length === 0) &&
                           (!this.state.apiaries || this.state.apiaries.length === 0);
       if (stillEmpty) {
-        // Cloud also empty - new user, seed demo data
-        console.log('[Storage.loadFromCloud] Cloud empty, seeding demo data');
+        // Cloud empty - this is a new user, seed demo data and upload to cloud
+        console.log('[Storage.loadFromCloud] Cloud empty, seeding demo data for new user');
         this.state = seedData();
         this.save();
         if (typeof this.syncFromCloud === 'function') {
-          await this.syncFromCloud(true);
+          await this.syncFromCloud(false, false);  // normal mode - upload demo to cloud
         }
       }
       return true;
@@ -860,8 +849,9 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
     },
 
     // ---- Bulk fetch from Supabase on login ----
-    async syncFromCloud(force) {
+    async syncFromCloud(force, downloadOnly) {
       if (force === undefined) force = false;
+      if (downloadOnly === undefined) downloadOnly = false;
       if (!this._supabaseAvailable()) return false;
       const uid = this._userId();
       if (!uid) return false;
@@ -870,16 +860,23 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       let uploaded = 0;
       let isLocalEmpty = true;
 
-      // ONCE local'deki verileri Supabase'e yaz
-      for (const t of tables) {
-        const local = this.state[t] || [];
-        if (local.length > 0) isLocalEmpty = false;
-        for (const item of local) {
-          try {
-            const payload = this._mapToDb(t, item);
-            const { error } = await client.from(t).upsert(payload);
-            if (!error) uploaded = uploaded + 1;
-          } catch (e) {}
+      // ONCE local'deki verileri Supabase'e yaz (downloadOnly modda atla)
+      if (!downloadOnly) {
+        for (const t of tables) {
+          const local = this.state[t] || [];
+          if (local.length > 0) isLocalEmpty = false;
+          for (const item of local) {
+            try {
+              const payload = this._mapToDb(t, item);
+              const { error } = await client.from(t).upsert(payload);
+              if (!error) uploaded = uploaded + 1;
+            } catch (e) {}
+          }
+        }
+      } else {
+        // downloadOnly - sadece upload miktarını sayma, ama cloud'dan cek
+        for (const t of tables) {
+          if ((this.state[t] || []).length > 0) isLocalEmpty = false;
         }
       }
 
