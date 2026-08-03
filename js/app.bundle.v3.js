@@ -241,7 +241,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
 
           <!-- Actions -->
           <div style="display:flex;flex-direction:column;gap:var(--space-2)">
-            <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.Storage.syncFromCloud(),300)">
+            <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>{ if(BM.Storage.loadFromCloud) BM.Storage.loadFromCloud().then(()=>App.render(App.currentView||'dashboard')); },300)">
               🔄 Buluttan Yenile
             </button>
             <button type="button" class="btn btn--danger" onclick="BM.Auth.doLogout()">
@@ -304,7 +304,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       if (result.data?.user) {
         BM.Toast.show('Hoş geldiniz! 🌐 Bulut senkronizasyonu aktif', 'success');
         updateAuthBtn();
-        if (BM.CloudSync) BM.CloudSync.syncFromCloud();
+        if (BM.Storage && typeof BM.Storage.loadFromCloud === 'function') { BM.Storage.loadFromCloud().then(() => App.render(App.currentView || 'dashboard')); }
         return true;
       }
       return false;
@@ -617,39 +617,58 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       this.init();
     },
 
-    async init() {
+    init() {
       if (!this.load()) {
-        // No local data - check if user is authenticated, load from cloud
-        await new Promise(r => setTimeout(r, 200));
+        // No local data - check if user is authenticated
         const isAuth = BM.Auth && BM.Auth.isAuthenticated && BM.Auth.isAuthenticated();
         const uid = BM.Auth && BM.Auth.getUser && BM.Auth.getUser()?.id;
-        // Start with empty state
-        this.state = {
-          apiaries: [], hives: [], queens: [], frames: [],
-          inspections: [], harvests: [], feedings: [],
-          treatments: [], diseases: [], inventory: []
-        };
         if (isAuth && uid) {
-          // User is logged in - try to load from cloud first
-          if (typeof this.syncFromCloud === 'function') {
-            await this.syncFromCloud(true);
-          }
-          // If cloud is empty too, this is a new user - seed demo data
-          if (this.state.hives.length === 0 && this.state.apiaries.length === 0) {
-            console.log('[Storage.init] New user, seeding demo data');
-            this.state = seedData();
-            // Save and upload to cloud so next login has the data
-            this.save();
-            if (typeof this.syncFromCloud === 'function') {
-              await this.syncFromCloud(true);
-            }
-          }
+          // Start with empty state, will be populated by loadFromCloud
+          this.state = {
+            apiaries: [], hives: [], queens: [], frames: [],
+            inspections: [], harvests: [], feedings: [],
+            treatments: [], diseases: [], inventory: []
+          };
+          this.save();
         } else {
-          // Not logged in - seed demo data
+          // Guest mode - seed demo data
           this.state = seedData();
           this.save();
         }
       }
+    },
+
+    async loadFromCloud() {
+      // Called by App.init after auth check
+      const uid = BM.Auth && BM.Auth.getUser && BM.Auth.getUser()?.id;
+      if (!uid) return false;
+      const isEmpty = (!this.state.hives || this.state.hives.length === 0) &&
+                      (!this.state.apiaries || this.state.apiaries.length === 0);
+      if (!isEmpty) {
+        // Local has data - just sync any new items to cloud
+        console.log('[Storage.loadFromCloud] Local has data, syncing to cloud');
+        if (typeof this.syncFromCloud === 'function') {
+          await this.syncFromCloud(true);
+        }
+        return true;
+      }
+      // Local empty - load from cloud
+      console.log('[Storage.loadFromCloud] Local empty, loading from cloud');
+      if (typeof this.syncFromCloud === 'function') {
+        await this.syncFromCloud(true);
+      }
+      const stillEmpty = (!this.state.hives || this.state.hives.length === 0) &&
+                          (!this.state.apiaries || this.state.apiaries.length === 0);
+      if (stillEmpty) {
+        // Cloud also empty - new user, seed demo data
+        console.log('[Storage.loadFromCloud] Cloud empty, seeding demo data');
+        this.state = seedData();
+        this.save();
+        if (typeof this.syncFromCloud === 'function') {
+          await this.syncFromCloud(true);
+        }
+      }
+      return true;
     },
 
     // CRUD generic - with Supabase cloud sync
@@ -4016,7 +4035,11 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         BM.Auth.initFromStorage().then(() => {
           if (BM.Auth.isAuthenticated()) {
             console.log('[Auth] Auto-logged in as', BM.Auth.getUser().email);
-            if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') {
+            if (BM.Storage && typeof BM.Storage.loadFromCloud === 'function') {
+              BM.Storage.loadFromCloud().then(() => {
+                App.render(App.currentView || 'dashboard');
+              });
+            } else if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') {
               BM.Storage.syncFromCloud();
             }
           }
