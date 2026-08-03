@@ -3891,6 +3891,26 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       try { localStorage.setItem('bm-theme', next); } catch (e) {}
     },
 
+    toggleSidebar() {
+      const sb = document.getElementById('app-sidebar');
+      const bd = document.getElementById('sidebar-backdrop');
+      if (!sb) return;
+      const isOpen = sb.classList.contains('sidebar--open');
+      if (isOpen) {
+        this.closeSidebar();
+      } else {
+        sb.classList.add('sidebar--open');
+        if (bd) bd.classList.add('active');
+      }
+    },
+
+    closeSidebar() {
+      const sb = document.getElementById('app-sidebar');
+      const bd = document.getElementById('sidebar-backdrop');
+      if (sb) sb.classList.remove('sidebar--open');
+      if (bd) bd.classList.remove('active');
+    },
+
     quickAdd() {
       BM.Modal.open('+ Hızlı Ekle',
         `<div style="display:grid;gap:var(--space-3);padding:var(--space-2) 0">
@@ -3956,6 +3976,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       // Sidebar
       const sb = document.getElementById('app-sidebar');
       sb.innerHTML = `
+        <button type="button" class="sidebar-close" onclick="App.closeSidebar()" aria-label="Menüyü Kapat">×</button>
         <div class="sidebar__brand">
           <div class="sidebar__brand-mark">🐝</div>
           <div class="sidebar__brand-name">BeeMaster AI</div>
@@ -3964,14 +3985,14 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
           ${NAV.map(g => `
             <div class="sidebar__group">${g.group}</div>
             ${g.items.map(it => `
-              <button type="button" class="nav-item${it.view === App.currentView ? ' nav-item--active' : ''}" data-view="${it.view}" onclick="App.nav('${it.view}')">
+              <button type="button" class="nav-item${it.view === App.currentView ? ' nav-item--active' : ''}" data-view="${it.view}" onclick="App.nav('${it.view}');App.closeSidebar()">
                 <span class="nav-item__icon">${it.icon}</span>${it.label}
               </button>
             `).join('')}
           `).join('')}
         </nav>
         <div class="sidebar__foot">
-          <div class="user-card" id="sidebar-user-card" onclick="if(window.BM&&BM.Auth&&BM.Auth.isAuthenticated&&BM.Auth.isAuthenticated()){App.nav('settings')}else{if(window.BM&&BM.Auth&&BM.Auth.showLoginModal)BM.Auth.showLoginModal()}">
+          <div class="user-card" id="sidebar-user-card" onclick="if(window.BM&&BM.Auth&&BM.Auth.isAuthenticated&&BM.Auth.isAuthenticated()){App.nav('settings');App.closeSidebar()}else{if(window.BM&&BM.Auth&&BM.Auth.showLoginModal)BM.Auth.showLoginModal()}">
             <div class="user-card__avatar" id="sidebar-user-avatar">?</div>
             <div>
               <div class="user-card__name" id="sidebar-user-name">Giriş Yap</div>
@@ -3980,6 +4001,15 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
           </div>
         </div>
       `;
+
+      // Sidebar backdrop for mobile
+      if (!document.getElementById('sidebar-backdrop')) {
+        const bd = document.createElement('div');
+        bd.id = 'sidebar-backdrop';
+        bd.className = 'sidebar-backdrop';
+        bd.onclick = () => App.closeSidebar();
+        document.body.appendChild(bd);
+      }
 
       // Bottom nav (mobile)
       const bn = document.getElementById('app-bottom-nav');

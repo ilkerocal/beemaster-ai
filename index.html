@@ -1315,7 +1315,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
 <script src="js/supabase-config.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/app.bundle.v3.js?v=v3.0.1"></script>
+<script src="js/app.bundle.v3.js?v=v3.0.2"></script>
 </head>
 <body>
   <!-- Boot screen — instantly visible, hides when App.init completes -->
@@ -1343,6 +1343,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
         <p id="page-subtitle">Genel bakış · Eğil, Diyarbakır</p>
       </div>
       <div class="header-actions">
+        <button class="btn btn--icon btn--ghost sidebar-toggle" onclick="App.toggleSidebar()" title="Menü" aria-label="Menüyü Aç">☰</button>
         <button class="btn btn--icon btn--ghost" onclick="BM.Toast.show('Arama yakında','info')" title="Ara">🔍</button>
         <button class="btn btn--icon btn--ghost" onclick="App.toggleTheme()" id="theme-toggle" title="Tema">🌙</button>
         <button class="btn btn--icon btn--ghost" onclick="BM.notify.check()" title="Bildirimler">🔔</button>
