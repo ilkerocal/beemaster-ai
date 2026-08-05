@@ -1826,8 +1826,6 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
 };
 
 BM.hives = hivesModule;
-
-  BM.frames = framesModule;
 })(window);
 
 /* ===== js/modules/inspections.js ===== */
