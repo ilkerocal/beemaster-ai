@@ -19,7 +19,7 @@
       this.el.onclick = (e) => { if (e.target === this.el) this.close(); };
       document.getElementById('modal-title').textContent = title;
       document.getElementById('modal-body').innerHTML = html;
-      document.getElementById('modal-form').onsubmit = (e) => {
+      document.getElementById('modal-form').onsubmit = async (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
         const data = {};
@@ -32,7 +32,17 @@
             data[k] = v;
           }
         }
-        if (this.cb && this.cb(data) !== false) this.close();
+        // Disable submit button while processing
+        const submitBtn = document.getElementById('modal-submit');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '⏳ Kaydediliyor...'; }
+        try {
+          const result = this.cb ? await this.cb(data) : true;
+          if (result !== false) this.close();
+        } catch (err) {
+          console.error('[Modal] submit error:', err);
+          BM.Toast.show('Hata: ' + err.message, 'error');
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Kaydet'; }
+        }
       };
       this.cb = onSubmit;
       const foot = document.querySelector('.modal__foot');

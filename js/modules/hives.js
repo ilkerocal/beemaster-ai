@@ -54,8 +54,8 @@ const hivesModule = {
          <input class="input" name="installedAt" type="date" value="${BM.today()}"></label>
        <label class="field"><span class="field-label">Notlar</span>
          <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
-      (d) => {
-        const h = BM.Storage.add('hives', {
+      async (d) => {
+        const h = await BM.Storage.add('hives', {
           ...d,
           status: 'active',
           queenId: null,
@@ -63,10 +63,10 @@ const hivesModule = {
           frameCount: parseInt(d.frameCount) || 10,
           positionInApiary: parseInt(d.positionInApiary) || 1
         });
-        // Otomatik çerçeve oluştur
+        // Otomatik çerçeve oluştur (her birini bekle ki cloud'a da yazılsın)
         const fc = h.frameCount;
         for (let p = 1; p <= fc; p++) {
-          BM.Storage.add('frames', {
+          await BM.Storage.add('frames', {
             hiveId: h.id, position: p,
             frameType: p <= 3 ? 'brood' : (p <= 6 ? 'honey' : 'foundation'),
             foundationType: 'wax', status: 'in_use',
@@ -237,7 +237,7 @@ const hivesModule = {
     const html = `
       <div class="actions-bar">
         <div>
-          <a class="link" style="color:var(--honey-500);font-weight:600;cursor:pointer" onclick="App.render('hives')">← Kovanlar</a>
+          <a class="link" style="color:var(--honey-500);font-weight:600;cursor:pointer" onclick="App.nav('hives')">← Kovanlar</a>
           <h1 style="font-size:24px;font-weight:700;margin-top:6px">${BM.esc(h.name)}</h1>
           <div style="color:var(--text-secondary);font-size:13px">
             ${BM.esc(apiary ? apiary.name : 'Atanmamış')} · ${BM.T.strain(h.strain)} · ${BM.T.box(h.boxType)} · NFC: ${BM.esc(h.nfcTag || '-')}
@@ -286,6 +286,23 @@ const hivesModule = {
   _renderTab(id, tabId) {
     const el = document.getElementById('hive-tab-content');
     if (tabId === 'frames') {
+      // Backfill: eğer kovan için frame yoksa otomatik oluştur
+      const hive = BM.Storage.get('hives', id);
+      if (hive) {
+        const existing = BM.Storage.list('frames').filter(f => f.hiveId === id);
+        const expected = hive.frameCount || 10;
+        if (existing.length < expected) {
+          // Eksik frame'leri oluştur
+          for (let p = existing.length + 1; p <= expected; p++) {
+            BM.Storage.add('frames', {
+              hiveId: id, position: p,
+              frameType: p <= 3 ? 'brood' : (p <= 6 ? 'honey' : 'foundation'),
+              foundationType: 'wax', status: 'in_use',
+              cyclesCompleted: 0, waxAgeMonths: 0
+            });
+          }
+        }
+      }
       const frames = BM.Storage.list('frames').filter(f => f.hiveId === id).sort((a, b) => a.position - b.position);
       const summary = {brood:0,honey:0,pollen:0,perga:0,foundation:0,empty:0};
       frames.forEach(f => { if (summary[f.frameType] !== undefined) summary[f.frameType]++; });

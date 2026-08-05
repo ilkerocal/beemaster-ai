@@ -3820,9 +3820,13 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       this.viewParam = param;
 
       // Close sidebar on mobile
-      document.getElementById('app-sidebar').classList.remove('sidebar--open');
+      const sb = document.getElementById('app-sidebar');
+      if (sb) sb.classList.remove('sidebar--open');
+      // Close sidebar backdrop
+      const bd = document.getElementById('sidebar-backdrop');
+      if (bd) bd.classList.remove('active');
 
-      // Update active states
+      // Update active states - remove all view--active
       document.querySelectorAll('.view').forEach(v => v.classList.remove('view--active'));
       document.querySelectorAll('[data-view]').forEach(n => n.classList.remove('nav-item--active', 'bottom-nav__item--active'));
 
