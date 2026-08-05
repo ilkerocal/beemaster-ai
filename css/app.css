@@ -550,8 +550,31 @@ ul, ol { list-style: none; }
   /* Header daha kompakt */
   .app__header .page-title h1 { font-size: 16px; }
   .app__header .page-title p { font-size: 11px; }
-  /* + Ekle butonunu sadece text gizle */
-  .header-actions .btn--primary { padding: 8px 10px; font-size: 13px; }
+  /* + Ekle butonunu sadece text gizle - sadece icon gözüksün */
+  .header-actions .btn--primary {
+    padding: 6px 10px !important;
+    font-size: 14px !important;
+    min-width: 36px;
+    min-height: 36px;
+  }
+  /* Diğer header butonları */
+  .app__header .btn--icon { padding: 6px !important; }
+  /* Dashboard hızlı işlemler butonları kompakt */
+  .btn {
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+  }
+  .btn--lg { padding: 12px 14px !important; font-size: 14px !important; }
+  .btn--sm { padding: 6px 10px !important; font-size: 12px !important; }
+  /* Dashboard hero kartları */
+  .stats-grid { gap: var(--space-2); }
+  .stat { padding: var(--space-3); }
+  .stat__icon { width: 32px; height: 32px; font-size: 18px; }
+  .stat__value { font-size: 18px; }
+  .stat__label { font-size: 10px; }
+  /* Card başlıkları */
+  .card-title { font-size: 14px; }
+  .card-sub { font-size: 11px; }
 }
 @media (max-width: 640px) {
   .field-row, .field-row--3 { grid-template-columns: 1fr; }

@@ -313,10 +313,12 @@ const hivesModule = {
             };
             BM.Storage.state.frames.push(frameObj);
             // Cloud sync (async, fire and forget)
-            BM.Storage._syncAdd && BM.Storage._syncAdd('frames', frameObj);
+            if (BM.Storage._syncAdd) BM.Storage._syncAdd('frames', frameObj);
           }
           BM.Storage.save();
-          BM.Bus.emit('change:frames', frameObj);
+          // Use last frame obj for emit (avoid ReferenceError)
+          const lastFrame = BM.Storage.state.frames[BM.Storage.state.frames.length - 1];
+          if (lastFrame) BM.Bus.emit('change:frames', lastFrame);
         }
       }
       const frames = BM.Storage.list('frames').filter(f => f.hiveId === id).sort((a, b) => a.position - b.position);
