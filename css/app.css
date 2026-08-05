@@ -525,10 +525,14 @@ ul, ol { list-style: none; }
   /* Mobile backdrop when sidebar open */
   .sidebar-backdrop {
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
     background: rgba(0,0,0,0.5);
     z-index: 199;
     display: none;
+    cursor: pointer;
   }
   .sidebar-backdrop.active { display: block; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
