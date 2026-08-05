@@ -546,7 +546,8 @@ ul, ol { list-style: none; }
   .app__main { padding: var(--space-4); padding-bottom: 100px; }
   /* Header mobile adjustments */
   .app__header { padding: 0 var(--space-4); height: 60px; }
-  .app__header .btn { padding: 8px; }
+  .app__header .btn { padding: 6px 10px; font-size: 12px; height: 32px; }
+  .app__header .btn--primary { padding: 6px 12px; }
   /* Hamburger menu — sadece mobilde görünür */
   .sidebar-toggle { display: none !important; }
   /* Header her zaman sidebar/backdrop'tan üstte (z-index) */

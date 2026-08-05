@@ -3880,6 +3880,9 @@ BM.frames = framesModule;
         sb.classList.add('sidebar--open');
         bd.classList.add('active');
         document.body.classList.add('sidebar-open');
+        // Hamburger'ı gizle — sidebar açıkken X butonu sidebar içinde
+        const hb = document.querySelector('.sidebar-toggle');
+        if (hb) hb.style.display = 'none';
       }
     },
 
@@ -3889,6 +3892,9 @@ BM.frames = framesModule;
       if (sb) sb.classList.remove('sidebar--open');
       if (bd) bd.classList.remove('active');
       document.body.classList.remove('sidebar-open');
+      // Hamburger'ı geri göster
+      const hb = document.querySelector('.sidebar-toggle');
+      if (hb) hb.style.display = '';
     },
 
     quickAdd() {
