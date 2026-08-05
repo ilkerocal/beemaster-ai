@@ -3879,6 +3879,7 @@ BM.frames = framesModule;
       } else {
         sb.classList.add('sidebar--open');
         bd.classList.add('active');
+        document.body.classList.add('sidebar-open');
       }
     },
 
@@ -3887,6 +3888,7 @@ BM.frames = framesModule;
       const bd = document.getElementById('sidebar-backdrop');
       if (sb) sb.classList.remove('sidebar--open');
       if (bd) bd.classList.remove('active');
+      document.body.classList.remove('sidebar-open');
     },
 
     quickAdd() {

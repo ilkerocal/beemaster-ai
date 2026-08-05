@@ -504,6 +504,8 @@ ul, ol { list-style: none; }
     visibility: visible !important;
     pointer-events: auto;
   }
+  /* Sidebar açıkken hamburger'ı gizle (X butonu sidebar'da var) */
+  body.sidebar-open .sidebar-toggle { display: none !important; }
   /* Sidebar close button — sadece mobilde görünür */
   .sidebar-close {
     position: absolute;
