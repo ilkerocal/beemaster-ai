@@ -63,16 +63,23 @@ const hivesModule = {
           frameCount: parseInt(d.frameCount) || 10,
           positionInApiary: parseInt(d.positionInApiary) || 1
         });
-        // Otomatik çerçeve oluştur (her birini bekle ki cloud'a da yazılsın)
+        // Otomatik çerçeve oluştur (senkron localStorage + fire-and-forget cloud sync)
         const fc = h.frameCount;
         for (let p = 1; p <= fc; p++) {
-          await BM.Storage.add('frames', {
+          const frameObj = {
+            id: BM.uid(),
             hiveId: h.id, position: p,
             frameType: p <= 3 ? 'brood' : (p <= 6 ? 'honey' : 'foundation'),
             foundationType: 'wax', status: 'in_use',
-            cyclesCompleted: 0, waxAgeMonths: 0
-          });
+            cyclesCompleted: 0, waxAgeMonths: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          BM.Storage.state.frames.push(frameObj);
+          BM.Storage._syncAdd && BM.Storage._syncAdd('frames', frameObj);
         }
+        BM.Storage.save();
+        BM.Bus.emit('change:frames', h);
         BM.Toast.show('Kovan eklendi ✓', 'success');
         App.render('hives');
         return true;
@@ -286,21 +293,30 @@ const hivesModule = {
   _renderTab(id, tabId) {
     const el = document.getElementById('hive-tab-content');
     if (tabId === 'frames') {
-      // Backfill: eğer kovan için frame yoksa otomatik oluştur
+      // Backfill: eğer kovan için frame yoksa otomatik oluştur (senkron, callback'ler beklenmeden)
       const hive = BM.Storage.get('hives', id);
       if (hive) {
         const existing = BM.Storage.list('frames').filter(f => f.hiveId === id);
         const expected = hive.frameCount || 10;
         if (existing.length < expected) {
-          // Eksik frame'leri oluştur
+          // Eksik frame'leri oluştur — async çağrıları fire-and-forget
           for (let p = existing.length + 1; p <= expected; p++) {
-            BM.Storage.add('frames', {
+            // localStorage'a direkt yaz, async cloud sync arka planda olsun
+            const frameObj = {
+              id: BM.uid(),
               hiveId: id, position: p,
               frameType: p <= 3 ? 'brood' : (p <= 6 ? 'honey' : 'foundation'),
               foundationType: 'wax', status: 'in_use',
-              cyclesCompleted: 0, waxAgeMonths: 0
-            });
+              cyclesCompleted: 0, waxAgeMonths: 0,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            BM.Storage.state.frames.push(frameObj);
+            // Cloud sync (async, fire and forget)
+            BM.Storage._syncAdd && BM.Storage._syncAdd('frames', frameObj);
           }
+          BM.Storage.save();
+          BM.Bus.emit('change:frames', frameObj);
         }
       }
       const frames = BM.Storage.list('frames').filter(f => f.hiveId === id).sort((a, b) => a.position - b.position);
