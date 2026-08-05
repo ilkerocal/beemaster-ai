@@ -3865,12 +3865,12 @@ BM.frames = framesModule;
         bd.addEventListener('click', () => this.closeSidebar());
         document.body.appendChild(bd);
       }
-      // Ensure backdrop fills viewport (mobile browser quirks)
+      // Backdrop: sadece sidebar'ın SAĞINDA kalsın, sidebar'ı örtmesin
       bd.style.position = 'fixed';
       bd.style.top = '0';
-      bd.style.left = '0';
-      bd.style.width = '100%';
-      bd.style.height = '100%';
+      bd.style.left = '260px';  // sidebar genişliği
+      bd.style.right = '0';
+      bd.style.bottom = '0';
       bd.style.zIndex = '199';
       if (!sb) { console.warn('App.toggleSidebar: sidebar element not found'); return; }
       const isOpen = sb.classList.contains('sidebar--open');
