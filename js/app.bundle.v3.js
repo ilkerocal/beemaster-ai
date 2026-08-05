@@ -3865,6 +3865,13 @@ BM.frames = framesModule;
         bd.addEventListener('click', () => this.closeSidebar());
         document.body.appendChild(bd);
       }
+      // Ensure backdrop fills viewport (mobile browser quirks)
+      bd.style.position = 'fixed';
+      bd.style.top = '0';
+      bd.style.left = '0';
+      bd.style.width = '100%';
+      bd.style.height = '100%';
+      bd.style.zIndex = '199';
       if (!sb) { console.warn('App.toggleSidebar: sidebar element not found'); return; }
       const isOpen = sb.classList.contains('sidebar--open');
       if (isOpen) {
