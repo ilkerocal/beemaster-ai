@@ -3852,6 +3852,34 @@ BM.frames = framesModule;
       try { localStorage.setItem('bm-theme', next); } catch (e) {}
     },
 
+    toggleSidebar() {
+      const sb = document.getElementById('app-sidebar');
+      let bd = document.getElementById('sidebar-backdrop');
+      // Lazy create backdrop
+      if (!bd) {
+        bd = document.createElement('div');
+        bd.id = 'sidebar-backdrop';
+        bd.className = 'sidebar-backdrop';
+        bd.onclick = () => this.closeSidebar();
+        document.body.appendChild(bd);
+      }
+      if (!sb) { console.warn('App.toggleSidebar: sidebar element not found'); return; }
+      const isOpen = sb.classList.contains('sidebar--open');
+      if (isOpen) {
+        this.closeSidebar();
+      } else {
+        sb.classList.add('sidebar--open');
+        bd.classList.add('active');
+      }
+    },
+
+    closeSidebar() {
+      const sb = document.getElementById('app-sidebar');
+      const bd = document.getElementById('sidebar-backdrop');
+      if (sb) sb.classList.remove('sidebar--open');
+      if (bd) bd.classList.remove('active');
+    },
+
     quickAdd() {
       BM.Modal.open('+ Hızlı Ekle',
         `<div style="display:grid;gap:var(--space-3);padding:var(--space-2) 0">
