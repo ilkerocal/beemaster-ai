@@ -3623,6 +3623,10 @@ BM.hives = hivesModule;
           <button class="btn" onclick="App.exportData()">📥 JSON Dışa Aktar</button>
           <button class="btn" onclick="App.importData()">📤 JSON İçe Aktar</button>
           <button class="btn btn--danger" onclick="App.resetData()">🗑️ Tüm Veriyi Sıfırla</button>
+          <button class="btn btn--danger" onclick="App.resetCloudData()">☁️ Bulut Verisini Sıfırla</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:var(--space-2)">
+          Bulut verisi: giriş yaptığınız hesaptaki tüm verileri sunucudan siler
         </div>
       </div>`;
     }
@@ -4256,6 +4260,44 @@ BM.frames = framesModule;
       BM.Modal.confirm('⚠️ TÜM veriler silinecek ve örnek verilerle değiştirilecek. Bu işlem geri alınamaz!', () => {
         BM.Storage.reset();
         BM.Toast.show('Veriler sıfırlandı', 'info');
+        App.nav('dashboard');
+      });
+    },
+
+    // Buluttaki TÜM verileri sil — login sonrası 22 kovan gibi eski test verilerini temizle
+    async resetCloudData() {
+      if (!BM.Auth || !BM.Auth.isAuthenticated || !BM.Auth.isAuthenticated()) {
+        BM.Toast.show('Önce giriş yapın', 'error');
+        return;
+      }
+      BM.Modal.confirm('☁️ Buluttaki TÜM veriler (kullanıcınızın hesabındaki) silinecek. Bu işlem geri alınamaz! Devam?', async () => {
+        const tables = ['apiaries', 'hives', 'queens', 'frames', 'inspections', 'harvests', 'feedings', 'treatments', 'diseases', 'inventory'];
+        const client = BM.Auth.getClient();
+        const token = localStorage.getItem('beemaster-auth-token');
+        let deleted = 0;
+        BM.Toast.show('Bulut verileri siliniyor...', 'info');
+        for (const t of tables) {
+          try {
+            const r = await fetch(`https://assfwtjbvuuxclioqsih.supabase.co/rest/v1/${t}?user_id=neq.00000000-0000-0000-0000-000000000000`, {
+              method: 'DELETE',
+              headers: {
+                'apikey': window.__SUPABASE_ANON_KEY__,
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            if (r.ok) deleted++;
+          } catch (e) {
+            console.log('Delete error', t, e);
+          }
+        }
+        // Local state'i de temizle
+        BM.Storage.state = {
+          apiaries: [], hives: [], queens: [], frames: [],
+          inspections: [], harvests: [], feedings: [],
+          treatments: [], diseases: [], inventory: []
+        };
+        BM.Storage.save();
+        BM.Toast.show(`✅ ${deleted} tablodan tüm veriler silindi`, 'success');
         App.nav('dashboard');
       });
     },
