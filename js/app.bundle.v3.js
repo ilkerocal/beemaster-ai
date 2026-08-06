@@ -305,7 +305,15 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       if (result.data?.user) {
         BM.Toast.show('Hoş geldiniz! 🌐 Bulut senkronizasyonu aktif', 'success');
         updateAuthBtn();
-        if (BM.CloudSync) BM.CloudSync.syncFromCloud();
+        // Login sonrası: local state'i temizle, cloud'dan çekilecek
+        if (BM.Storage) {
+          BM.Storage.state = {};
+          BM.Storage.save();
+          // Cloud'dan senkronize et
+          setTimeout(() => {
+            if (BM.CloudSync) BM.CloudSync.syncFromCloud();
+          }, 300);
+        }
         return true;
       }
       return false;
@@ -2099,7 +2107,10 @@ BM.hives = hivesModule;
       BM.Wizard.open('🔬 Muayene Sihirbazı', steps, (s) => {
         // queenSeen değerini koru — boolean'a çevirme!
         if (s.queenSeen === 'cell' || s.queenSeen === 'new') s.queenSeen = 'seen';
-        s.aiAnomalies = this.detectAnomalies(s).length;
+        // AI anomalileri tespit et ve JSON olarak kaydet
+        const anomalies = this.detectAnomalies(s);
+        s.aiAnomalies = JSON.stringify(anomalies);
+        s.aiAnomaliesCount = anomalies.length;
         // Fotograflari ve ses kaydini state'den al
         s.photos = this._state.photos || [];
         s.audioData = this._state.audioData || null;
@@ -2380,7 +2391,15 @@ BM.hives = hivesModule;
       ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.inspections}</div><div class="empty__title">Henüz muayene yok</div><button class="btn btn--primary" onclick="BM.inspections.add()">🔬 İlk Muayeneyi Başlat</button></div></div>` :
       `<div class="card"><div class="timeline">${list.map(i => {
         const h = BM.Storage.get('hives', i.hiveId);
-        const aiBadge = i.aiAnomalies ? `<span class="badge badge--warn">🤖 ${i.aiAnomalies}</span>` : '';
+        const aiBadge = (() => {
+          if (!i.aiAnomalies) return '';
+          if (typeof i.aiAnomalies === 'string' && i.aiAnomalies !== '0') {
+            try { const arr = JSON.parse(i.aiAnomalies); if (arr.length) return `<span class="badge badge--warn">🤖 ${arr.length}</span>`; } catch(e) {}
+          } else if (typeof i.aiAnomalies === 'number' && i.aiAnomalies > 0) {
+            return `<span class="badge badge--warn">🤖 ${i.aiAnomalies}</span>`;
+          }
+          return '';
+        })();
         const modeIcon = i.mode === 'voice' ? ' 🎙' : i.mode === 'photo' ? ' 📷' : '';
         const photoCount = i.photos ? i.photos.length : 0;
         const hasAudio = i.audio ? true : false;
@@ -2420,7 +2439,18 @@ BM.hives = hivesModule;
         `<img src="${p}" style="max-width:120px;border-radius:8px;margin:4px;box-shadow:0 2px 8px #0005;cursor:pointer" onclick="window.open('${p}','_blank')" title="Büyütmek için tıkla">`
       ).join('') : '<span style="color:var(--text-muted);font-size:12px">Fotoğraf eklenmedi</span>';
       const audioHtml = i.audio ? `<audio controls src="${i.audio}" style="width:100%;margin-top:8px"></audio>` : '';
-      const anomalies = i.aiAnomalies ? JSON.parse(i.aiAnomalies) : [];
+      const aiRaw = i.aiAnomalies;
+      let anomalies = [];
+      if (aiRaw) {
+        if (typeof aiRaw === 'string') {
+          try { anomalies = JSON.parse(aiRaw); } catch(e) { anomalies = []; }
+        } else if (Array.isArray(aiRaw)) {
+          anomalies = aiRaw;
+        } else if (typeof aiRaw === 'number' && aiRaw > 0) {
+          // Eski veri: sadece sayı var, içerik bilinmiyor
+          anomalies = [{ icon: '🤖', severity: 'medium', title: aiRaw + ' anomali tespit edildi', explanation: 'Önceki muayenede AI analizi yapıldı', why: 'Detaylı bilgi için yeni muayene yapın' }];
+        }
+      }
       const anomalyHtml = anomalies.length ? anomalies.map(a =>
         `<div style="background:${a.severity === 'high' ? 'rgba(239,68,68,0.15)' : a.severity === 'medium' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)'};border-left:3px solid ${a.severity === 'high' ? 'var(--danger)' : a.severity === 'medium' ? 'var(--warning)' : 'var(--success)'};padding:var(--space-3);margin:var(--space-2) 0;border-radius:6px">
           <div style="display:flex;gap:var(--space-2);align-items:flex-start">
