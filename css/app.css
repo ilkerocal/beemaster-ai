@@ -444,6 +444,8 @@ ul, ol { list-style: none; }
 
 /* AI Card */
 .ai-card { background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(168,85,247,0.04)); border: 1px solid rgba(245,158,11,0.2); }
+.ai-card * { pointer-events: none; }
+.ai-card button, .ai-card a, .ai-card [onclick], .ai-card input, .ai-card select { pointer-events: auto; }
 .ai-item { display: flex; gap: var(--space-3); padding: var(--space-3); background: var(--bg-card); border-radius: var(--radius-md); margin-bottom: var(--space-2); border: 1px solid var(--n-800); }
 .ai-item__icon { width: 32px; height: 32px; border-radius: var(--radius-md); background: rgba(245,158,11,0.12); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
 .ai-item__title { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
