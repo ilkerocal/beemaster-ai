@@ -307,7 +307,11 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         updateAuthBtn();
         // Login sonrası: local state'i temizle, cloud'dan çekilecek
         if (BM.Storage) {
-          BM.Storage.state = {};
+          BM.Storage.state = {
+            apiaries: [], hives: [], queens: [], frames: [],
+            inspections: [], harvests: [], feedings: [],
+            treatments: [], diseases: [], inventory: []
+          };
           BM.Storage.save();
           // Cloud'dan senkronize et
           setTimeout(() => {
@@ -640,6 +644,8 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       const id = BM.uid();
       const now = new Date().toISOString();
       const obj = { id, createdAt: now, updatedAt: now, ...data };
+      // Ensure collection array exists (sync durumlarında gerekli)
+      if (!this.state[coll]) this.state[coll] = [];
       this.state[coll].push(obj);
       this.save();
       BM.Bus.emit('change:' + coll, obj);
