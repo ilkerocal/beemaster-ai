@@ -77,6 +77,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
     reason: s => ({weak_colony:'Zayıf koloni',winter_prep:'Kış hazırlığı',drought:'Kuraklık',supplement:'Ek besin',stimulative:'Teşvik'}[s] || s),
     disease: s => ({varroosis:'Varroosis',nosemosis:'Nosema',foulbrood:'Yavru Çürüğü',chalkbrood:'Kireç Hastalığı',sacbrood:'Torba Hastalığı',small_hive_beetle:'KKB'}[s] || s),
     invCat: s => ({medication:'İlaç',feed:'Yem',equipment:'Ekipman',consumable:'Sarf'}[s] || s),
+    weather: s => ({sunny:'☀️ Güneşli',cloudy:'☁️ Bulutlu',rainy:'🌧 Yağmurlu',snowy:'❄️ Karlı',windy:'💨 Rüzgarlı',stormy:'⛈ Fırtınalı',partly_cloudy:'⛅ Parçalı Bulutlu',hot:'🔥 Sıcak',cold:'🥶 Soğuk'}[s] || s),
     status: s => ({active:'Aktif',weak:'Zayıf',dead:'Ölü',sold:'Satıldı',merged:'Birleşti',treating:'Tedavide',planned:'Planlı',completed:'Tamamlandı',in_progress:'Sürüyor',resolved:'Çözüldü',superseded:'Değiştirildi',missing:'Kayıp',ok:'İYİ',good:'İYİ',warning:'DİKKAT',danger:'ACİL'}[s] || s),
     statusCls: s => ['good','ok','active','completed','resolved'].includes(s) ? 'badge--ok' : ['danger','dead'].includes(s) ? 'badge--danger' : 'badge--warn',
     statusDot: s => ['good','ok','active','completed','resolved'].includes(s) ? 'row-list__dot--g' : ['danger','dead'].includes(s) ? 'row-list__dot--r' : 'row-list__dot--y',
@@ -3937,6 +3938,45 @@ BM.frames = framesModule;
       document.documentElement.setAttribute('data-theme', next);
       document.getElementById('theme-toggle').textContent = next === 'dark' ? '🌙' : '☀️';
       try { localStorage.setItem('bm-theme', next); } catch (e) {}
+    },
+
+    toggleSidebar() {
+      const sb = document.getElementById('app-sidebar');
+      let bd = document.getElementById('sidebar-backdrop');
+      if (!bd) {
+        bd = document.createElement('div');
+        bd.id = 'sidebar-backdrop';
+        bd.className = 'sidebar-backdrop';
+        bd.addEventListener('click', () => this.closeSidebar());
+        document.body.appendChild(bd);
+      }
+      bd.style.position = 'fixed';
+      bd.style.top = '0';
+      bd.style.left = '260px';
+      bd.style.right = '0';
+      bd.style.bottom = '0';
+      bd.style.zIndex = '199';
+      if (!sb) return;
+      const isOpen = sb.classList.contains('sidebar--open');
+      if (isOpen) {
+        this.closeSidebar();
+      } else {
+        sb.classList.add('sidebar--open');
+        bd.classList.add('active');
+        document.body.classList.add('sidebar-open');
+        const hb = document.querySelector('.sidebar-toggle');
+        if (hb) hb.style.display = 'none';
+      }
+    },
+
+    closeSidebar() {
+      const sb = document.getElementById('app-sidebar');
+      const bd = document.getElementById('sidebar-backdrop');
+      if (sb) sb.classList.remove('sidebar--open');
+      if (bd) bd.classList.remove('active');
+      document.body.classList.remove('sidebar-open');
+      const hb = document.querySelector('.sidebar-toggle');
+      if (hb) hb.style.display = '';
     },
 
     quickAdd() {
