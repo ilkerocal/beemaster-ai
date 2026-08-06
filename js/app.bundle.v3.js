@@ -2117,7 +2117,6 @@ BM.hives = hivesModule;
         s.mode = this._state.mode || 'form';
         s.photoTag = this._state.photoTag || '';
         BM.Storage.add('inspections', s);
-        const anomalies = this.detectAnomalies(s);
         if (anomalies.filter(a => a.severity === 'high').length > 0) {
           BM.Toast.show(`Muayene kaydedildi. ${anomalies.length} anomali!`, 'warn');
         } else {
