@@ -16,7 +16,7 @@ const framesModule = {
         </div>
         <label class="field"><span class="field-label">Tip</span>
           <select class="select" name="frameType">
-            ${['brood','honey','pollen','perga','foundation','empty'].map(t => `<option value="${t}"${f.frameType === t ? ' selected' : ''}>${({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',perga:'Perga (Polen+Bal)',foundation:'Ham Petek',empty:'Boş'})[t]}</option>`).join('')}
+            ${['brood','honey','pollen','perga','foundation'].map(t => `<option value="${t}"${f.frameType === t ? ' selected' : ''}>${({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',perga:'Perga (Polen+Bal)',foundation:'Ham Petek'})[t]}</option>`).join('')}
           </select></label>
         <div class="field-row">
           <label class="field"><span class="field-label">Temel</span>
