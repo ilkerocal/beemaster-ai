@@ -1701,6 +1701,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
             <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:rgba(249,115,22,0.4)"></span>${summary.brood} Yumurtalık</div>
             <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:rgba(245,158,11,0.4)"></span>${summary.honey} Bal</div>
             <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:rgba(168,85,247,0.4)"></span>${summary.pollen} Polen</div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:linear-gradient(135deg,rgba(168,85,247,0.5),rgba(245,158,11,0.5))"></span>${summary.perga} Perga</div>
             <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:var(--bg-card);border:1px solid var(--n-700)"></span>${summary.foundation} Ham Petek</div>
             <div style="display:flex;align-items:center;gap:6px;margin-left:auto;color:var(--danger)"><span style="width:14px;height:14px;border-radius:3px;background:var(--danger)"></span>🔴 Değişim gerekli (≥5 döngü)</div>
           </div>
@@ -1868,7 +1869,7 @@ BM.hives = hivesModule;
       } else if (d.varroaCount >= 3) {
         out.push({ icon: '⚡', severity: 'medium', title: 'Varroa takibi', explanation: `${d.varroaCount} adet varroa`, why: 'İzleme önerilir, eşik 6.' });
       }
-      if (d.queenSeen === 'absent' && prevInsp && prevInsp.queenSeen === true) {
+      if (d.queenSeen === 'absent' && prevInsp && (prevInsp.queenSeen === true || prevInsp.queenSeen === 'seen' || prevInsp.queenSeen === 'cell' || prevInsp.queenSeen === 'new')) {
         out.push({ icon: '👑', severity: 'high', title: 'Ana arı kaybı riski', explanation: 'Önceki muayenede görülüyordu, şimdi yok', why: '2 hafta içinde kontrol etmezsen topluluk söner.' });
       }
       const power = { very_strong: 5, strong: 4, medium: 3, weak: 2, very_weak: 1 };
@@ -2096,7 +2097,8 @@ BM.hives = hivesModule;
       ];
 
       BM.Wizard.open('🔬 Muayene Sihirbazı', steps, (s) => {
-        s.queenSeen = s.queenSeen === 'seen' || s.queenSen === 'cell' || s.queenSeen === 'new';
+        // queenSeen değerini koru — boolean'a çevirme!
+        if (s.queenSeen === 'cell' || s.queenSeen === 'new') s.queenSeen = 'seen';
         s.aiAnomalies = this.detectAnomalies(s).length;
         // Fotograflari ve ses kaydini state'den al
         s.photos = this._state.photos || [];
@@ -2334,7 +2336,7 @@ BM.hives = hivesModule;
         ['Bal Çerçeve', a.honeyFrames, b.honeyFrames, a.honeyFrames - b.honeyFrames],
         ['Popülasyon', BM.T.pop(a.population), BM.T.pop(b.population), null],
         ['Yumurta', a.eggsPattern || '-', b.eggsPattern || '-', null],
-        ['Ana Arı', a.queenSeen ? 'Görüldü' : 'Görülmedi', b.queenSeen ? 'Görüldü' : 'Görülmedi', null],
+        ['Ana Arı', ['Görüldü', 'Yok', 'Bilinmiyor'].includes(a.queenSeen) ? 'Görüldü' : ['seen','cell','new'].includes(a.queenSeen) ? 'Görüldü' : 'Yok', ['seen','cell','new'].includes(b.queenSeen) ? 'Görüldü' : b.queenSeen === 'absent' ? 'Yok' : 'Bilinmiyor', null],
         ['Notlar', BM.esc(a.notes || '-'), BM.esc(b.notes || '-'), null]
       ];
       const html = `
