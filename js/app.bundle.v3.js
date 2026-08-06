@@ -4016,6 +4016,136 @@ BM.frames = framesModule;
       if (hb) hb.style.display = '';
     },
 
+    // Global arama — tüm modüllerde arar
+    search() {
+      const searchable = [
+        { coll: 'apiaries',    icon: '📍', label: 'Üs',        fields: ['name', 'address', 'notes'], view: 'apiaries' },
+        { coll: 'hives',       icon: '🏠', label: 'Kovan',     fields: ['name', 'nfcTag', 'notes', 'strain', 'boxType'], view: 'hives' },
+        { coll: 'queens',      icon: '👑', label: 'Ana Arı',   fields: ['name', 'markingColor', 'supplier'], view: 'queens' },
+        { coll: 'inspections', icon: '📋', label: 'Muayene',   fields: ['notes', 'date'], view: 'inspections' },
+        { coll: 'harvests',    icon: '🍯', label: 'Hasat',     fields: ['notes', 'quality'], view: 'harvest' },
+        { coll: 'feedings',    icon: '🌾', label: 'Besleme',   fields: ['notes'], view: 'feeding' },
+        { coll: 'treatments',  icon: '💊', label: 'Tedavi',    fields: ['product', 'notes'], view: 'treatment' },
+        { coll: 'diseases',    icon: '🦠', label: 'Hastalık',  fields: ['notes'], view: 'disease' }
+      ];
+
+      const html = `
+        <div style="padding:var(--space-2) 0">
+          <div style="position:relative;margin-bottom:var(--space-4)">
+            <input type="text" id="search-input" class="input" placeholder="Üs, kovan, ana arı, muayene notu..." 
+              style="width:100%;padding:var(--space-4) var(--space-4) var(--space-4) 44px;font-size:15px;border-radius:var(--radius-md);border:1px solid var(--n-700);background:var(--bg-secondary)" autofocus>
+            <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:18px;opacity:0.6">🔍</span>
+          </div>
+          <div id="search-results" style="max-height:50vh;overflow:auto">
+            <div style="text-align:center;color:var(--text-muted);padding:var(--space-4)">Yazmaya başlayın...</div>
+          </div>
+          <div style="margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--n-800);font-size:11px;color:var(--text-muted);display:flex;gap:var(--space-3)">
+            <span>💡 ${BM.Storage.list('hives').length} kovan</span>
+            <span>• ${BM.Storage.list('apiaries').length} üs</span>
+            <span>• ${BM.Storage.list('inspections').length} muayene</span>
+          </div>
+        </div>`;
+
+      BM.Modal.open('🔍 Arama', html, () => {});
+
+      const input = document.getElementById('search-input');
+      const results = document.getElementById('search-results');
+
+      const escapeHtml = s => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+      const performSearch = (q) => {
+        q = q.trim().toLowerCase();
+        if (!q) {
+          results.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:var(--space-4)">Yazmaya başlayın...</div>';
+          return;
+        }
+        const matches = [];
+        for (const s of searchable) {
+          const items = BM.Storage.list(s.coll);
+          for (const it of items) {
+            for (const f of s.fields) {
+              const v = String(it[f] || '').toLowerCase();
+              if (v && v.includes(q)) {
+                let subtitle = '';
+                if (s.coll === 'hives') {
+                  const ap = BM.Storage.get('apiaries', it.apiaryId);
+                  subtitle = `${ap ? escapeHtml(ap.name) : 'Üssüz'} · ${BM.T.strain(it.strain)} · ${BM.T.box(it.boxType)}`;
+                } else if (s.coll === 'apiaries') {
+                  subtitle = `${BM.Storage.list('hives').filter(h => h.apiaryId === it.id).length} kovan`;
+                } else if (s.coll === 'queens') {
+                  subtitle = `${it.birthDate || ''} · ${BM.T.strain(it.strain)}`;
+                } else if (s.coll === 'inspections') {
+                  const h = BM.Storage.get('hives', it.hiveId);
+                  subtitle = `${BM.dateStr(it.date)} · ${h ? escapeHtml(h.name) : '?'} · Varroa: ${it.varroaCount}`;
+                } else if (s.coll === 'harvests') {
+                  const h = BM.Storage.get('hives', it.hiveId);
+                  subtitle = `${BM.dateStr(it.date)} · ${h ? escapeHtml(h.name) : '?'} · ${it.weight} kg`;
+                }
+                matches.push({
+                  collection: s,
+                  item: it,
+                  field: f,
+                  subtitle,
+                  fieldMatch: v.indexOf(q) >= 0 ? f : null
+                });
+                break; // Her item'dan 1 match yeter
+              }
+            }
+          }
+        }
+        if (!matches.length) {
+          results.innerHTML = `<div style="text-align:center;color:var(--text-muted);padding:var(--space-6)">
+            <div style="font-size:32px;margin-bottom:var(--space-2)">🤷</div>
+            <div>"<strong>${escapeHtml(q)}</strong>" için sonuç yok</div>
+          </div>`;
+          return;
+        }
+        results.innerHTML = `<div style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-2)">${matches.length} sonuç</div>` +
+          matches.slice(0, 50).map(m => {
+            const view = m.collection.view;
+            const id = m.item.id;
+            const titleHtml = (() => {
+              const name = m.item.name || `${m.collection.label} #${id.slice(-6)}`;
+              const lower = escapeHtml(name).toLowerCase();
+              const qEsc = escapeHtml(q);
+              const idx = lower.indexOf(q.toLowerCase());
+              if (idx < 0) return escapeHtml(name);
+              return escapeHtml(name.slice(0, idx)) + '<mark style="background:var(--honey-500);color:var(--n-950);padding:0 2px;border-radius:2px">' + escapeHtml(name.slice(idx, idx + q.length)) + '</mark>' + escapeHtml(name.slice(idx + q.length));
+            })();
+            return `<div class="card" style="padding:var(--space-3);margin-bottom:var(--space-2);cursor:pointer;display:flex;align-items:center;gap:var(--space-3)" onclick="BM.Modal.close();setTimeout(()=>App.handleSearchResult('${view}','${id}','${m.collection.coll}'),200)">
+              <div style="font-size:20px">${m.collection.icon}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:14px">${titleHtml}</div>
+                <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${m.subtitle || m.collection.label}</div>
+              </div>
+              <div style="font-size:11px;color:var(--text-muted)">${m.collection.label}</div>
+            </div>`;
+          }).join('');
+      };
+
+      input.addEventListener('input', e => performSearch(e.target.value));
+      // Enter ile ilk sonuca git
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          const first = results.querySelector('.card');
+          if (first) first.click();
+        }
+      });
+      // ESC ile kapat
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Escape') BM.Modal.close();
+      });
+    },
+
+    // Arama sonucuna tıklayınca detaya git
+    handleSearchResult(view, id, coll) {
+      if (coll === 'hives') {
+        this.nav(view, id);  // nav fonksiyonu zaten detail'i yönlendirir
+      } else {
+        this.nav(view);
+      }
+    },
+
     quickAdd() {
       BM.Modal.open('+ Hızlı Ekle',
         `<div style="display:grid;gap:var(--space-3);padding:var(--space-2) 0">
