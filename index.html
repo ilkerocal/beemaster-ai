@@ -525,7 +525,14 @@ ul, ol { list-style: none; }
 @media (max-width: 640px) {
   .field-row, .field-row--3 { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
-  .app__header { padding: 0 var(--space-4); }
+  .app__header { padding: 0 var(--space-3); min-height: 56px; height: 56px; gap: 8px; }
+  .app__header > div { display: flex; align-items: center; }
+  .app__header .btn { padding: 0 !important; height: 36px; min-height: 36px; min-width: 36px; }
+  .app__header .btn--icon { width: 36px; min-width: 36px; }
+  .app__header .btn--primary { padding: 0 10px !important; min-width: 60px; }
+  .app__header .page-title h1 { font-size: 14px; line-height: 1.2; }
+  .app__header .page-title p { font-size: 10px; line-height: 1.2; }
+  .header-actions { gap: 2px !important; flex-wrap: nowrap; }
   .stat__value { font-size: 22px; }
 }
 
@@ -1178,7 +1185,14 @@ ul, ol { list-style: none; }
 @media (max-width: 640px) {
   .field-row, .field-row--3 { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
-  .app__header { padding: 0 var(--space-4); }
+  .app__header { padding: 0 var(--space-3); min-height: 56px; height: 56px; gap: 8px; }
+  .app__header > div { display: flex; align-items: center; }
+  .app__header .btn { padding: 0 !important; height: 36px; min-height: 36px; min-width: 36px; }
+  .app__header .btn--icon { width: 36px; min-width: 36px; }
+  .app__header .btn--primary { padding: 0 10px !important; min-width: 60px; }
+  .app__header .page-title h1 { font-size: 14px; line-height: 1.2; }
+  .app__header .page-title p { font-size: 10px; line-height: 1.2; }
+  .header-actions { gap: 2px !important; flex-wrap: nowrap; }
   .stat__value { font-size: 22px; }
 }
 
@@ -1315,7 +1329,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
 <script src="js/supabase-config.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/app.bundle.v3.js?v=v3.2.9"></script>
+<script src="js/app.bundle.v3.js?v=v3.3.0"></script>
 </head>
 <body>
   <!-- Boot screen — instantly visible, hides when App.init completes -->
