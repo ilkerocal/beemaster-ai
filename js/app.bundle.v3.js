@@ -4456,9 +4456,13 @@ BM.frames = framesModule;
         }
       });
 
-      // Service worker unregister (offline-first native)
+      // Service worker + cache TEMIZLE
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+      }
+      // Tüm cache'leri temizle (eski bundle kalmasın)
+      if ('caches' in window) {
+        caches.keys().then(names => names.forEach(n => caches.delete(n)));
       }
 
       // Build layout
