@@ -690,21 +690,22 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         costTry: 'cost_try', minStock: 'min_stock'
       };
       const out = {};
+      // Queens: name + markingColor → marked_color birleştir (özel işlem)
+      let queenName = null, queenColor = null;
       for (const k of Object.keys(obj)) {
         const mapped = map[k] || k;
-        // Supabase'de olmayan kolonları atla
         if (mapped === 'apiary_id' && (coll === 'queens' || coll === 'inspections' || coll === 'feedings')) continue;
-        if (mapped === 'name' && coll === 'queens') {
-          // Queens'te name kolonu yok, marked_color'a yedekle
-          out['marked_color'] = (obj['markingColor'] || '') + '|NAME:' + obj[k];
-          continue;
-        }
-        if (mapped === 'type' && coll === 'frames') continue; // frames'te type kolonu yok
-        if (mapped === 'amount' && coll === 'feedings') continue; // feedings'te amount kolonu yok
+        if (mapped === 'type' && coll === 'frames') continue;
+        if (mapped === 'amount' && coll === 'feedings') continue;
         if (mapped === 'unit' && coll === 'feedings') continue;
+        if (coll === 'queens' && mapped === 'name') { queenName = obj[k]; continue; }
+        if (coll === 'queens' && mapped === 'marked_color') { queenColor = obj[k]; continue; }
         if (mapped === 'address') out['location'] = obj[k];
         else if (mapped === 'apiaryName') out['apiary_name'] = obj[k];
         else out[mapped] = obj[k];
+      }
+      if (coll === 'queens' && (queenName || queenColor)) {
+        out['marked_color'] = (queenColor || '') + (queenName ? '|NAME:' + queenName : '');
       }
       const uid = this._userId();
       if (uid && coll !== 'profiles') out.user_id = uid;
