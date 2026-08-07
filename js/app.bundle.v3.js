@@ -693,7 +693,12 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       };
       const out = {};
       for (const k of Object.keys(obj)) {
-        out[map[k] || k] = obj[k];
+        const mapped = map[k] || k;
+        // Supabase'de olmayan kolonları atla
+        if (mapped === 'apiary_id' && coll === 'queens') continue; // queens tablosunda apiary_id yok
+        if (mapped === 'address') out['location'] = obj[k]; // apiaries'te address → location
+        else if (mapped === 'apiaryName') out['apiary_name'] = obj[k];
+        else out[mapped] = obj[k];
       }
       const uid = this._userId();
       if (uid && coll !== 'profiles') out.user_id = uid;
