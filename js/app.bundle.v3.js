@@ -4060,7 +4060,7 @@ BM.frames = framesModule;
           <!-- Task Form -->
           <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;">📝 Görev Ekle (Supabase)</h3>
           <div style="background:var(--bg-card);border:1px solid var(--n-800);border-radius:var(--radius-lg);padding:24px;margin-bottom:24px;">
-            <form id="beeos-task-form" onsubmit="return BM.beeos.submitTask(event)" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+            <form id="beeos-task-form" onsubmit="event.preventDefault(); BM.beeos.submitTask(); return false;" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
               <div style="display:flex;flex-direction:column;gap:4px;">
                 <label style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Görev Adı *</label>
                 <input type="text" id="beeos-task-name" placeholder="Örn: Kovan takip modülü" required style="background:var(--bg-input);border:1px solid var(--n-800);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text-primary);font-size:0.85rem;">
@@ -4142,8 +4142,7 @@ BM.frames = framesModule;
       ];
     },
 
-    async submitTask(e) {
-      e.preventDefault();
+    async submitTask() {
       const statusEl = document.getElementById('beeos-form-status');
       const task = {
         id: 'task_' + Date.now().toString(36),
