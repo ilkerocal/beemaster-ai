@@ -758,7 +758,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       }
     },
 
-    // ---- Bulk fetch from Supabase on login ----
+    // ---- Bulk fetch from Supabase on login (PARALEL optimize) ----
     async syncFromCloud(force) {
       if (force === undefined) force = false;
       if (!this._supabaseAvailable()) return false;
@@ -766,23 +766,14 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       if (!uid) return false;
       const client = BM.Auth.getClient();
       const tables = ['apiaries', 'hives', 'queens', 'inspections', 'frames', 'harvests', 'feedings', 'treatments', 'diseases', 'inventory'];
-      let uploaded = 0;
       let isLocalEmpty = true;
 
-      // ONCE local'deki verileri Supabase'e yaz
+      // HIZLI: local bossa upload'u atla
       for (const t of tables) {
-        const local = this.state[t] || [];
-        if (local.length > 0) isLocalEmpty = false;
-        for (const item of local) {
-          try {
-            const payload = this._mapToDb(t, item);
-            const { error } = await client.from(t).upsert(payload);
-            if (!error) uploaded = uploaded + 1;
-          } catch (e) {}
-        }
+        if ((this.state[t] || []).length > 0) { isLocalEmpty = false; break; }
       }
 
-      // SADECE local bossa cloud'dan cek (silinen kayitlar korunur)
+      // SADECE local bossa cloud'dan PARALEL cek
       if (isLocalEmpty || force) {
         const reverseMap = {
           apiary_id: 'apiaryId', hive_id: 'hiveId', queen_id: 'queenId',
@@ -799,22 +790,37 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
           for (const k in row) obj[reverseMap[k] || k] = row[k];
           return obj;
         };
-        for (const t of tables) {
-          try {
-            const res = await client.from(t).select('*').eq('user_id', uid);
-            const data = res.data;
-            if (data && data.length) {
-              const cloudItems = data.map(fromDb);
-              const localIds = {};
-              (this.state[t] || []).forEach(function(x) { localIds[x.id] = true; });
-              const newItems = cloudItems.filter(function(x) { return !localIds[x.id]; });
-              this.state[t] = (this.state[t] || []).concat(newItems);
-            }
-          } catch (e) {}
+        // TUM TABLOLARI AYNI ANDA CEK (paralel)
+        const results = await Promise.all(tables.map(function(t) {
+          return client.from(t).select('*').eq('user_id', uid).then(function(res) {
+            return { table: t, data: res.data || [] };
+          }).catch(function() { return { table: t, data: [] }; });
+        }));
+        for (const r of results) {
+          if (r.data.length) {
+            const cloudItems = r.data.map(fromDb);
+            const localIds = {};
+            (this.state[r.table] || []).forEach(function(x) { localIds[x.id] = true; });
+            const newItems = cloudItems.filter(function(x) { return !localIds[x.id]; });
+            this.state[r.table] = (this.state[r.table] || []).concat(newItems);
+          }
         }
+      } else {
+        // Local'de veri varsa buluta yukle
+        let uploaded = 0;
+        for (const t of tables) {
+          const local = this.state[t] || [];
+          for (const item of local) {
+            try {
+              const payload = this._mapToDb(t, item);
+              const { error } = await client.from(t).upsert(payload);
+              if (!error) uploaded = uploaded + 1;
+            } catch (e) {}
+          }
+        }
+        if (uploaded > 0) BM.Toast.show(uploaded + ' kayıt buluta yüklendi', 'success');
       }
       this.save();
-      if (uploaded > 0) BM.Toast.show('☁️ ' + uploaded + ' kayıt buluta yüklendi', 'success');
       if (typeof App !== 'undefined' && App.render) App.render(App.currentView || 'dashboard');
       return true;
     },
