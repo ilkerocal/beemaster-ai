@@ -54,6 +54,7 @@
       _user = result.data.user;
       _session = result.data.session;
       localStorage.setItem('beemaster-auth-token', _session?.access_token || '');
+      if (BM.Storage && BM.Storage.syncFromCloud) setTimeout(() => BM.Storage.syncFromCloud(true), 500);
     }
     return result;
   }
@@ -330,6 +331,7 @@
         _user = data.user;
         _session = { access_token: token };
         updateAuthBtn();
+        if (BM.Storage && BM.Storage.syncFromCloud) BM.Storage.syncFromCloud(true);
       }
     } catch (e) {
       console.warn('[Auth] initFromStorage error:', e);
