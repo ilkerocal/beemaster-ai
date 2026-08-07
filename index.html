@@ -491,6 +491,22 @@ ul, ol { list-style: none; }
     transition: left var(--t-slow); z-index: 200; box-shadow: var(--shadow-lg);
   }
   #app-sidebar.sidebar--open { left: 0; }
+  /* Sidebar backdrop — closes sidebar on click, doesn't cover header */
+  .sidebar-backdrop {
+    display: none;
+  }
+  .sidebar-backdrop.active {
+    display: block;
+    background: rgba(0,0,0,0.5);
+    cursor: pointer;
+    position: fixed;
+    top: 56px;
+    left: 260px;
+    right: 0;
+    bottom: 0;
+    z-index: 199;
+  }
+  body.sidebar-open { overflow: hidden; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .action-grid { grid-template-columns: repeat(3, 1fr); }
@@ -1126,6 +1142,22 @@ ul, ol { list-style: none; }
     transition: left var(--t-slow); z-index: 200; box-shadow: var(--shadow-lg);
   }
   #app-sidebar.sidebar--open { left: 0; }
+  /* Sidebar backdrop — closes sidebar on click, doesn't cover header */
+  .sidebar-backdrop {
+    display: none;
+  }
+  .sidebar-backdrop.active {
+    display: block;
+    background: rgba(0,0,0,0.5);
+    cursor: pointer;
+    position: fixed;
+    top: 56px;
+    left: 260px;
+    right: 0;
+    bottom: 0;
+    z-index: 199;
+  }
+  body.sidebar-open { overflow: hidden; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .action-grid { grid-template-columns: repeat(3, 1fr); }
@@ -1279,7 +1311,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
 <script src="js/supabase-config.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/app.bundle.v3.js?v=v4.1.0"></script>
+<script src="js/app.bundle.v3.js?v=v4.1.1"></script>
 </head>
 <body>
   <!-- Boot screen — instantly visible, hides when App.init completes -->
