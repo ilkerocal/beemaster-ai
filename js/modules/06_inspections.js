@@ -33,7 +33,7 @@
       } else if (d.varroaCount >= 3) {
         out.push({ icon: '⚡', severity: 'medium', title: 'Varroa takibi', explanation: `${d.varroaCount} adet varroa`, why: 'İzleme önerilir, eşik 6.' });
       }
-      if (d.queenSeen === 'absent' && prevInsp && prevInsp.queenSeen === true) {
+      if (d.queenSeen === 'absent' && prevInsp && (prevInsp.queenSeen === true || prevInsp.queenSeen === 'seen' || prevInsp.queenSeen === 'cell' || prevInsp.queenSeen === 'new')) {
         out.push({ icon: '👑', severity: 'high', title: 'Ana arı kaybı riski', explanation: 'Önceki muayenede görülüyordu, şimdi yok', why: '2 hafta içinde kontrol etmezsen topluluk söner.' });
       }
       const power = { very_strong: 5, strong: 4, medium: 3, weak: 2, very_weak: 1 };
@@ -260,16 +260,19 @@
         }
       ];
 
-      BM.Wizard.open('🔬 Muayene Sihirbazı', steps, (s) => {
-        s.queenSeen = s.queenSeen === 'seen' || s.queenSen === 'cell' || s.queenSeen === 'new';
-        s.aiAnomalies = this.detectAnomalies(s).length;
+      BM.Wizard.open('🔬 Muayene Sihirbazı', steps, async (s) => {
+        // queenSeen değerini koru — boolean'a çevirme!
+        if (s.queenSeen === 'cell' || s.queenSeen === 'new') s.queenSeen = 'seen';
+        // AI anomalileri tespit et ve JSON olarak kaydet
+        const anomalies = this.detectAnomalies(s);
+        s.aiAnomalies = JSON.stringify(anomalies);
+        s.aiAnomaliesCount = anomalies.length;
         // Fotograflari ve ses kaydini state'den al
         s.photos = this._state.photos || [];
         s.audioData = this._state.audioData || null;
         s.mode = this._state.mode || 'form';
         s.photoTag = this._state.photoTag || '';
-        BM.Storage.add('inspections', s);
-        const anomalies = this.detectAnomalies(s);
+        await BM.Storage.add('inspections', s);
         if (anomalies.filter(a => a.severity === 'high').length > 0) {
           BM.Toast.show(`Muayene kaydedildi. ${anomalies.length} anomali!`, 'warn');
         } else {
@@ -499,7 +502,7 @@
         ['Bal Çerçeve', a.honeyFrames, b.honeyFrames, a.honeyFrames - b.honeyFrames],
         ['Popülasyon', BM.T.pop(a.population), BM.T.pop(b.population), null],
         ['Yumurta', a.eggsPattern || '-', b.eggsPattern || '-', null],
-        ['Ana Arı', a.queenSeen ? 'Görüldü' : 'Görülmedi', b.queenSeen ? 'Görüldü' : 'Görülmedi', null],
+        ['Ana Arı', ['Görüldü', 'Yok', 'Bilinmiyor'].includes(a.queenSeen) ? 'Görüldü' : ['seen','cell','new'].includes(a.queenSeen) ? 'Görüldü' : 'Yok', ['seen','cell','new'].includes(b.queenSeen) ? 'Görüldü' : b.queenSeen === 'absent' ? 'Yok' : 'Bilinmiyor', null],
         ['Notlar', BM.esc(a.notes || '-'), BM.esc(b.notes || '-'), null]
       ];
       const html = `
@@ -543,22 +546,124 @@
       ${!list.length ? `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.inspections}</div><div class="empty__title">Henüz muayene yok</div><button class="btn btn--primary" onclick="BM.inspections.add()">🔬 İlk Muayeneyi Başlat</button></div></div>` :
       `<div class="card"><div class="timeline">${list.map(i => {
         const h = BM.Storage.get('hives', i.hiveId);
-        const aiBadge = i.aiAnomalies ? `<span class="badge badge--warn">🤖 ${i.aiAnomalies}</span>` : '';
+        const aiBadge = (() => {
+          if (!i.aiAnomalies) return '';
+          if (typeof i.aiAnomalies === 'string' && i.aiAnomalies !== '0') {
+            try { const arr = JSON.parse(i.aiAnomalies); if (arr.length) return `<span class="badge badge--warn">🤖 ${arr.length}</span>`; } catch(e) {}
+          } else if (typeof i.aiAnomalies === 'number' && i.aiAnomalies > 0) {
+            return `<span class="badge badge--warn">🤖 ${i.aiAnomalies}</span>`;
+          }
+          return '';
+        })();
         const modeIcon = i.mode === 'voice' ? ' 🎙' : i.mode === 'photo' ? ' 📷' : '';
-        return `<div class="timeline__item">
+        const photoCount = i.photos ? i.photos.length : 0;
+        const hasAudio = i.audio ? true : false;
+        return `<div class="timeline__item" data-id="${i.id}">
           <div class="timeline__icon">📋</div>
-          <div class="timeline__body">
+          <div class="timeline__body" style="flex:1;min-width:0">
             <div class="timeline__title">${BM.esc(h ? h.name : '?')}${modeIcon} <span class="badge ${BM.T.statusCls(i.varroaCount >= 6 ? 'danger' : i.varroaCount >= 3 ? 'warning' : 'good')}">Varroa: ${i.varroaCount}</span>${aiBadge}</div>
-            <div class="timeline__meta">${BM.dateStr(i.date)} · ${BM.T.pop(i.population)} · Yavru: ${i.broodFrames} çerçeve · Bal: ${i.honeyFrames} çerçeve${i.template ? ' · 📋 ' + i.template : ''}</div>
-            ${i.notes ? `<div class="timeline__meta" style="margin-top:4px;color:var(--text-secondary)">"${BM.esc(i.notes)}"</div>` : ''}
+            <div class="timeline__meta">${BM.dateStr(i.date)} · ${BM.T.pop(i.population)} · Yavru: ${i.broodFrames} ç · Bal: ${i.honeyFrames} ç · Polen: ${i.pollenFrames} ç${i.template ? ' · 📋 ' + i.template : ''}</div>
+            ${i.notes ? `<div class="timeline__meta" style="margin-top:4px;color:var(--text-secondary);font-size:12px">"${BM.esc(i.notes)}"</div>` : ''}
+            <div class="timeline__meta" style="margin-top:4px;font-size:11px;color:var(--text-muted)">
+              ${i.queenSeen === 'seen' ? '👑 Görüldü' : i.queenSeen === 'absent' ? '👑 YOK' : '👑 ?'}
+              ${i.eggsPattern === 'regular' ? ' · 🥚 Düzenli' : i.eggsPattern === 'irregular' ? ' · 🥚 Düzensiz' : ' · 🥚 Yok'}
+              ${i.weather ? ' · 🌤 ' + BM.T.weather(i.weather) : ''}
+              ${photoCount > 0 ? ` · 📷 ${photoCount}` : ''}
+              ${hasAudio ? ' · 🎙' : ''}
+            </div>
           </div>
-          <div class="timeline__body" style="display:flex;gap:var(--space-1);align-items:flex-start">
+          <div class="timeline__actions" style="display:flex;gap:var(--space-1);flex-wrap:wrap">
+            <button class="btn btn--sm" onclick="BM.inspections.detail('${i.id}')" title="Detay Görüntüle">👁</button>
             <button class="btn btn--sm" onclick="BM.inspections.compare('${i.hiveId}')" title="Karşılaştır">🔄</button>
             <button class="btn btn--sm" onclick="BM.inspections.edit('${i.id}')">Düzenle</button>
             <button class="btn btn--sm btn--danger" onclick="BM.inspections.del('${i.id}')">Sil</button>
           </div>
         </div>`;
       }).join('')}</div></div>`}`;
+    },
+
+    // Muayene detay görüntüle — ne yapıldı, neler ölçüldü, ne bulundu
+    detail(id) {
+      const i = BM.Storage.get('inspections', id);
+      if (!i) return BM.Toast.show('Muayene bulunamadı', 'error');
+      const h = BM.Storage.get('hives', i.hiveId);
+      const prevInsp = BM.Storage.list('inspections')
+        .filter(x => x.hiveId === i.hiveId && x.id !== id)
+        .sort((a, b) => b.date.localeCompare(a.date))[0];
+      const photoHtml = i.photos && i.photos.length ? i.photos.map(p =>
+        `<img src="${p}" style="max-width:120px;border-radius:8px;margin:4px;box-shadow:0 2px 8px #0005;cursor:pointer" onclick="window.open('${p}','_blank')" title="Büyütmek için tıkla">`
+      ).join('') : '<span style="color:var(--text-muted);font-size:12px">Fotoğraf eklenmedi</span>';
+      const audioHtml = i.audio ? `<audio controls src="${i.audio}" style="width:100%;margin-top:8px"></audio>` : '';
+      const aiRaw = i.aiAnomalies;
+      let anomalies = [];
+      if (aiRaw) {
+        if (typeof aiRaw === 'string') {
+          try { anomalies = JSON.parse(aiRaw); } catch(e) { anomalies = []; }
+        } else if (Array.isArray(aiRaw)) {
+          anomalies = aiRaw;
+        } else if (typeof aiRaw === 'number' && aiRaw > 0) {
+          // Eski veri: sadece sayı var, içerik bilinmiyor
+          anomalies = [{ icon: '🤖', severity: 'medium', title: aiRaw + ' anomali tespit edildi', explanation: 'Önceki muayenede AI analizi yapıldı', why: 'Detaylı bilgi için yeni muayene yapın' }];
+        }
+      }
+      const anomalyHtml = anomalies.length ? anomalies.map(a =>
+        `<div style="background:${a.severity === 'high' ? 'rgba(239,68,68,0.15)' : a.severity === 'medium' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)'};border-left:3px solid ${a.severity === 'high' ? 'var(--danger)' : a.severity === 'medium' ? 'var(--warning)' : 'var(--success)'};padding:var(--space-3);margin:var(--space-2) 0;border-radius:6px">
+          <div style="display:flex;gap:var(--space-2);align-items:flex-start">
+            <span style="font-size:18px">${a.icon}</span>
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:13px">${BM.esc(a.title)}</div>
+              <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${BM.esc(a.explanation)}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;font-style:italic">💡 ${BM.esc(a.why)}</div>
+            </div>
+          </div>
+        </div>`
+      ).join('') : '<div style="color:var(--success);padding:var(--space-3);background:rgba(16,185,129,0.1);border-radius:8px;font-size:13px">✅ AI anomali tespit edilmedi — her şey yolunda</div>';
+      const comparisonHtml = prevInsp ? `
+        <div style="margin-top:var(--space-4);padding-top:var(--space-4);border-top:1px solid var(--n-800)">
+          <h4 style="margin-bottom:var(--space-3);font-size:14px">📊 Önceki Muayene ile Karşılaştırma (${BM.dateStr(prevInsp.date)})</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);font-size:12px">
+            <div style="padding:var(--space-2);background:var(--bg-tertiary);border-radius:6px"><strong>Koloni Gücü:</strong><br>${BM.T.pop(prevInsp.population)} → <span style="color:${prevInsp.population === i.population ? 'var(--text-secondary)' : 'var(--warning)'};font-weight:600">${BM.T.pop(i.population)}</span></div>
+            <div style="padding:var(--space-2);background:var(--bg-tertiary);border-radius:6px"><strong>Varroa:</strong><br>${prevInsp.varroaCount} → <span style="color:${i.varroaCount > prevInsp.varroaCount ? 'var(--danger)' : i.varroaCount < prevInsp.varroaCount ? 'var(--success)' : 'var(--text-secondary)'};font-weight:700">${i.varroaCount}</span> ${i.varroaCount > prevInsp.varroaCount ? '↑' : i.varroaCount < prevInsp.varroaCount ? '↓' : '→'}</div>
+            <div style="padding:var(--space-2);background:var(--bg-tertiary);border-radius:6px"><strong>Yavru Ç.:</strong> ${prevInsp.broodFrames} → ${i.broodFrames}</div>
+            <div style="padding:var(--space-2);background:var(--bg-tertiary);border-radius:6px"><strong>Bal Ç.:</strong> ${prevInsp.honeyFrames} → ${i.honeyFrames}</div>
+            <div style="padding:var(--space-2);background:var(--bg-tertiary);border-radius:6px"><strong>Polen Ç.:</strong> ${prevInsp.pollenFrames} → ${i.pollenFrames}</div>
+            <div style="padding:var(--space-2);background:var(--bg-tertiary);border-radius:6px"><strong>Yumurta:</strong> ${({regular:'Düzenli',irregular:'Düzensiz',absent:'Yok'})[prevInsp.eggsPattern]} → ${({regular:'Düzenli',irregular:'Düzensiz',absent:'Yok'})[i.eggsPattern]}</div>
+          </div>
+        </div>` : '';
+      const modeLabel = i.mode === 'voice' ? '🎙 Ses Kaydı' : i.mode === 'photo' ? '📷 Fotoğraf' : i.mode === 'wizard' ? '🧙 Sihirbaz' : '📝 Form';
+      BM.Modal.open(`${BM.esc(h ? h.name : 'Kovan')} — Muayene Detayı`,
+        `<div style="max-height:70vh;overflow:auto;padding:var(--space-2)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);margin-bottom:var(--space-4)">
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:8px"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px">📅 TARİH</div><div style="font-weight:600">${BM.dateStr(i.date)}</div></div>
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:8px"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px">📝 MOD</div><div style="font-weight:600">${modeLabel}</div></div>
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:8px"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px">🌤 HAVA</div><div style="font-weight:600">${i.weather ? BM.T.weather(i.weather) : '—'}</div></div>
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:8px"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px">🐝 KOLONİ GÜCÜ</div><span class="badge ${BM.T.statusCls(i.population === 'very_weak' || i.population === 'weak' ? 'danger' : i.population === 'medium' ? 'warning' : 'good')}">${BM.T.pop(i.population)}</span></div>
+          </div>
+          <h4 style="font-size:13px;margin-bottom:var(--space-2);color:var(--text-secondary)">📊 YAPILAN ÖLÇÜMLER</h4>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-2);margin-bottom:var(--space-4)">
+            <div style="padding:var(--space-3);background:rgba(249,115,22,0.15);border-radius:8px;text-align:center"><div style="font-size:11px;color:var(--text-secondary)">Yavru Ç.</div><div style="font-size:24px;font-weight:800;color:var(--orange)">${i.broodFrames}</div></div>
+            <div style="padding:var(--space-3);background:rgba(245,158,11,0.15);border-radius:8px;text-align:center"><div style="font-size:11px;color:var(--text-secondary)">Bal Ç.</div><div style="font-size:24px;font-weight:800;color:var(--honey-500)">${i.honeyFrames}</div></div>
+            <div style="padding:var(--space-3);background:rgba(168,85,247,0.12);border-radius:8px;text-align:center"><div style="font-size:11px;color:var(--text-secondary)">Polen Ç.</div><div style="font-size:24px;font-weight:800;color:#a855f7">${i.pollenFrames}</div></div>
+            <div style="padding:var(--space-3);background:${i.varroaCount >= 6 ? 'rgba(239,68,68,0.2)' : i.varroaCount >= 3 ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.15)'};border-radius:8px;text-align:center"><div style="font-size:11px;color:var(--text-secondary)">Varroa</div><div style="font-size:24px;font-weight:800;color:${i.varroaCount >= 6 ? 'var(--danger)' : i.varroaCount >= 3 ? 'var(--warning)' : 'var(--success)'};font-weight:700">${i.varroaCount}</div></div>
+          </div>
+          <h4 style="font-size:13px;margin-bottom:var(--space-2);color:var(--text-secondary)">🔍 GÖZLEMLER</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);margin-bottom:var(--space-4);font-size:13px">
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:8px"><strong>👑 Ana Arı:</strong> ${i.queenSeen === 'seen' ? '✅ Görüldü' : i.queenSeen === 'absent' ? '❌ YOK' : '❓ Bilinmiyor'}</div>
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:8px"><strong>🥚 Yumurta:</strong> ${i.eggsPattern === 'regular' ? '✅ Düzenli' : i.eggsPattern === 'irregular' ? '⚠️ Düzensiz' : '❌ Yok'}</div>
+          </div>
+          ${i.notes ? `
+          <h4 style="font-size:13px;margin-bottom:var(--space-2);color:var(--text-secondary)">📝 NOTLAR</h4>
+          <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:8px;margin-bottom:var(--space-4);white-space:pre-wrap;font-size:13px">${BM.esc(i.notes)}</div>
+          ` : ''}
+          <h4 style="font-size:13px;margin-bottom:var(--space-2);color:var(--text-secondary)">📷 FOTOĞRAFLAR (${i.photos ? i.photos.length : 0})</h4>
+          <div style="margin-bottom:var(--space-4)">${photoHtml}</div>
+          ${audioHtml ? `<h4 style="font-size:13px;margin-bottom:var(--space-2);color:var(--text-secondary)">🎙 SES KAYDI</h4>${audioHtml}` : ''}
+          <h4 style="font-size:13px;margin-bottom:var(--space-2);color:var(--text-secondary)">🤖 AI ANOMALİ TESPİTİ</h4>
+          ${anomalyHtml}
+          ${comparisonHtml}
+        </div>`,
+        () => {}
+      );
     },
     handlePhotos(event) {
       const files = Array.from(event.target.files || []);
@@ -586,3 +691,4 @@
 
   BM.inspections = inspectionsModule;
 })(window);
+

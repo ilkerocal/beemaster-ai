@@ -1,4 +1,13 @@
-const hivesModule = {
+/* ===== js/modules/hives.js ===== */
+// ============================================================
+// Hives Module — Spec 05_Modules/Hives.md + Frames.md
+// HV-01..08: CRUD, detay, çerçeve haritası, taşıma, birleştirme
+// ============================================================
+(function (global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  const hivesModule = {
   add() {
     if (!BM.Storage.list('apiaries').length) {
       BM.Toast.show('Önce arı üssü ekleyin', 'error');
@@ -322,10 +331,11 @@ const hivesModule = {
         }
       }
       const frames = BM.Storage.list('frames').filter(f => f.hiveId === id).sort((a, b) => a.position - b.position);
-      const summary = {brood:0,honey:0,pollen:0,perga:0,foundation:0,empty:0};
+      const summary = {brood:0,honey:0,pollen:0,perga:0,foundation:0};
       frames.forEach(f => { if (summary[f.frameType] !== undefined) summary[f.frameType]++; });
-      const frameIcon = t => ({brood:'🟠',honey:'🟡',pollen:'🟣',perga:'🟤',foundation:'⚪',empty:'⚫'}[t] || '⬜');
-      const frameLabel = t => ({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',perga:'Perga (Polen+Bal)',foundation:'Ham Petek',empty:'Boş'}[t] || t);
+      // "Boş" çerçeve tipi kaldırıldı — boş yerine "Ham Petek" (foundation) kullanılır
+      const frameIcon = t => ({brood:'🟠',honey:'🟡',pollen:'🟣',perga:'🟤',foundation:'⚪'}[t] || '⬜');
+      const frameLabel = t => ({brood:'Yumurtalık',honey:'Bal',pollen:'Polen',perga:'Perga (Polen+Bal)',foundation:'Ham Petek'}[t] || t);
 
       el.innerHTML = `
         <div class="card">
@@ -338,8 +348,8 @@ const hivesModule = {
               <select class="select" style="width:auto" id="bulk-type">
                 <option value="honey">Tümünü Bal yap</option>
                 <option value="brood">Tümünü Yavru yap</option>
-                <option value="empty">Tümünü Boşalt</option>
-                <option value="foundation">Perga olarak işaretle</option>
+                <option value="foundation">Tümünü Ham Petek yap</option>
+                <option value="perga">Tümünü Perga yap</option>
               </select>
               <button type="button" class="btn btn--sm" onclick="BM.hives.bulkMark('${id}', document.getElementById('bulk-type').value)">Uygula</button>
               <button type="button" class="btn btn--sm" onclick="BM.hives.resetSeason('${id}')">Sezon Sıfırla</button>
@@ -356,8 +366,8 @@ const hivesModule = {
             <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:rgba(249,115,22,0.4)"></span>${summary.brood} Yumurtalık</div>
             <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:rgba(245,158,11,0.4)"></span>${summary.honey} Bal</div>
             <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:rgba(168,85,247,0.4)"></span>${summary.pollen} Polen</div>
-            <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:var(--bg-card)"></span>${summary.foundation} Perga</div>
-            <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:transparent;border:1px dashed var(--n-700)"></span>${summary.empty} Boş</div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:linear-gradient(135deg,rgba(168,85,247,0.5),rgba(245,158,11,0.5))"></span>${summary.perga} Perga</div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:3px;background:var(--bg-card);border:1px solid var(--n-700)"></span>${summary.foundation} Ham Petek</div>
             <div style="display:flex;align-items:center;gap:6px;margin-left:auto;color:var(--danger)"><span style="width:14px;height:14px;border-radius:3px;background:var(--danger)"></span>🔴 Değişim gerekli (≥5 döngü)</div>
           </div>
         </div>
@@ -425,7 +435,9 @@ const hivesModule = {
   },
 
   bulkMark(hiveId, type) {
-    if (!confirm(`Tüm çerçeveleri "${type === 'brood' ? 'Yavru' : type === 'honey' ? 'Bal' : type === 'empty' ? 'Boş' : type === 'perga' ? 'Perga' : type === 'foundation' ? 'Ham Petek' : type}" olarak işaretle?`)) return;
+    const labelMap = {brood:'Yavru',honey:'Bal',perga:'Perga',foundation:'Ham Petek'};
+    const label = labelMap[type] || type;
+    if (!confirm(`Tüm çerçeveleri "${label}" olarak işaretle?`)) return;
     BM.Storage.list('frames').filter(f => f.hiveId === hiveId).forEach(f => {
       BM.Storage.update('frames', f.id, { frameType: type });
     });
@@ -485,3 +497,5 @@ const hivesModule = {
 };
 
 BM.hives = hivesModule;
+})(window);
+

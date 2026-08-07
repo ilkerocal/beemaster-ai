@@ -1,4 +1,8 @@
-const inventoryModule = {
+(function(global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  var inventoryModule = {
     add() {
       BM.Modal.open('Yeni Envanter Kalemi',
         `<label class="field"><span class="field-label">Malzeme *</span>
@@ -87,23 +91,5 @@ const inventoryModule = {
     }
   };
 
-  BM.queens = queensModule;
-  BM.harvest = harvestModule;
-  BM.feeding = feedingModule;
-  BM.feeding.updateUnit = function(selectEl) {
-    const info = BM.T.feedType(selectEl.value);
-    const label = document.getElementById('feed-unit-label');
-    const input = selectEl.closest('form')?.querySelector('input[name="amountKg"]');
-    if (label) label.textContent = 'Miktar (' + info.unit + ') *';
-    if (input) input.step = info.density >= 1.1 ? '0.1' : '0.05';
-  };
-  BM.feeding.formatAmount = function(type, amount) {
-    const info = BM.T.feedType(type);
-    if (info.unit === 'L' && info.density !== 1) {
-      return amount + ' ' + info.unit + ' (≈ ' + (amount * info.density).toFixed(2) + ' kg)';
-    }
-    return amount + ' ' + info.unit;
-  };
-  BM.treatments = treatmentsModule;
-  BM.diseases = diseasesModule;
   BM.inventory = inventoryModule;
+})(window);

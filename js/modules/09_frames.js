@@ -1,3 +1,4 @@
+/* ===== js/modules/frames.js ===== */
 // ============ FRAMES ============
 const framesModule = {
   edit(frameId, hiveId) {
@@ -101,3 +102,4 @@ const framesModule = {
 };
 
 BM.frames = framesModule;
+

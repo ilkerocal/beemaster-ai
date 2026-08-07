@@ -14,17 +14,20 @@
         `<label class="field"><span class="field-label">Üs Adı *</span>
           <input class="input" name="name" required placeholder="Örn: Çınar Üssü"></label>
          <label class="field"><span class="field-label">Konum *</span>
-          <input class="input" name="location" required placeholder="Örn: Çınar, Diyarbakır"></label>
+          <div style="display:flex;gap:var(--space-2)">
+            <input class="input" id="ap-loc-input" name="location" required placeholder="Örn: Çınar, Diyarbakır" style="flex:1">
+            <button type="button" id="ap-gps-btn" class="btn btn--primary" onclick="BM.apiaries.gpsCapture()" style="white-space:nowrap;padding:8px 12px" title="GPS ile otomatik konum al">📍 GPS</button>
+          </div></label>
          <div class="field-row">
            <label class="field"><span class="field-label">Enlem</span>
-             <input class="input" name="lat" type="number" step="0.001" placeholder="38.247"></label>
+             <input class="input" id="ap-lat-input" name="lat" type="number" step="0.001" placeholder="38.247"></label>
            <label class="field"><span class="field-label">Boylam</span>
-             <input class="input" name="lng" type="number" step="0.001" placeholder="40.135"></label>
+             <input class="input" id="ap-lng-input" name="lng" type="number" step="0.001" placeholder="40.135"></label>
          </div>
          <label class="field"><span class="field-label">Flora</span>
-           <input class="input" name="flora" placeholder="Geven, Kekik, Pamuk"></label>
+          <input class="input" name="flora" placeholder="Geven, Kekik, Pamuk"></label>
          <label class="field"><span class="field-label">Notlar</span>
-           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+          <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
         (d) => {
           if (d.lat) d.lat = parseFloat(d.lat);
           if (d.lng) d.lng = parseFloat(d.lng);
@@ -43,12 +46,15 @@
         `<label class="field"><span class="field-label">Üs Adı *</span>
            <input class="input" name="name" required value="${BM.esc(a.name)}"></label>
          <label class="field"><span class="field-label">Konum *</span>
-           <input class="input" name="location" required value="${BM.esc(a.location)}"></label>
+          <div style="display:flex;gap:var(--space-2)">
+            <input class="input" id="ap-loc-input" name="location" required value="${BM.esc(a.location)}" style="flex:1">
+            <button type="button" id="ap-gps-btn" class="btn btn--primary" onclick="BM.apiaries.gpsCapture()" style="white-space:nowrap;padding:8px 12px">📍 GPS</button>
+          </div></label>
          <div class="field-row">
            <label class="field"><span class="field-label">Enlem</span>
-             <input class="input" name="lat" type="number" step="0.001" value="${a.lat || ''}"></label>
+             <input class="input" id="ap-lat-input" name="lat" type="number" step="0.001" value="${a.lat || ''}"></label>
            <label class="field"><span class="field-label">Boylam</span>
-             <input class="input" name="lng" type="number" step="0.001" value="${a.lng || ''}"></label>
+             <input class="input" id="ap-lng-input" name="lng" type="number" step="0.001" value="${a.lng || ''}"></label>
          </div>
          <label class="field"><span class="field-label">Flora</span>
            <input class="input" name="flora" value="${BM.esc(a.flora || '')}"></label>
@@ -62,6 +68,53 @@
           App.render('apiaries');
           return true;
         }
+      );
+    },
+
+    // GPS ile otomatik konum yakala
+    gpsCapture() {
+      const btn = document.getElementById('ap-gps-btn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Alınıyor...'; }
+      if (!navigator.geolocation) {
+        BM.Toast.show('Tarayıcı GPS desteklemiyor', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '📍 GPS'; }
+        return;
+      }
+      BM.Toast.show('GPS sinyali aranıyor...', 'info');
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const acc = Math.round(pos.coords.accuracy);
+          const latInput = document.getElementById('ap-lat-input');
+          const lngInput = document.getElementById('ap-lng-input');
+          const locInput = document.getElementById('ap-loc-input');
+          if (latInput) latInput.value = lat.toFixed(6);
+          if (lngInput) lngInput.value = lng.toFixed(6);
+          fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&accept-language=tr')
+            .then(r => r.json())
+            .then(data => {
+              const addr = data.address || {};
+              const parts = [addr.village || addr.town || addr.city_district || addr.county || addr.city, addr.city || addr.state, addr.country].filter(Boolean);
+              const loc = parts.join(', ') || (lat.toFixed(3) + ', ' + lng.toFixed(3));
+              if (locInput) locInput.value = loc;
+              BM.Toast.show('GPS: ' + loc + ' (±' + acc + 'm)', 'success');
+            })
+            .catch(() => {
+              if (locInput) locInput.value = lat.toFixed(4) + ', ' + lng.toFixed(4);
+              BM.Toast.show('GPS alındı (±' + acc + 'm)', 'success');
+            });
+          if (btn) { btn.disabled = false; btn.textContent = '✅ GPS'; }
+        },
+        (err) => {
+          let msg = 'GPS alınamadı';
+          if (err.code === 1) msg = 'GPS izni reddedildi';
+          else if (err.code === 2) msg = 'GPS sinyali yok';
+          else if (err.code === 3) msg = 'GPS zaman aşımı';
+          BM.Toast.show(msg, 'error');
+          if (btn) { btn.disabled = false; btn.textContent = '📍 GPS'; }
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     },
 
@@ -223,8 +276,8 @@
                 ${alerts ? `<span class="badge badge--danger">${alerts} uyarı</span>` : ''}
               </div>
               <div class="row-list__info">
-                              📍 ${BM.esc(a.location)}${a.lat && a.lng ? ` · GPS: ${Number(a.lat).toFixed(3)}, ${Number(a.lng).toFixed(3)}` : ''}${a.flora ? ` · 🌸 ${BM.esc(a.flora)}` : ''}
-                            </div>
+                📍 ${BM.esc(a.location)}${a.lat && a.lng ? ` · GPS: ${Number(a.lat).toFixed(3)}, ${Number(a.lng).toFixed(3)}` : ''}${a.flora ? ` · 🌸 ${BM.esc(a.flora)}` : ''}
+              </div>
               ${a.notes ? `<div class="row-list__info" style="font-style:italic;margin-top:2px">"${BM.esc(a.notes)}"</div>` : ''}
             </div>
             <div style="text-align:right;min-width:110px;flex-shrink:0">
@@ -261,7 +314,7 @@
         el.innerHTML = '<div class="empty"><div class="empty__icon">📍</div><div class="empty__title">Koordinatlı üs yok</div><div class="empty__sub">Üs eklerken Enlem/Boylam girersen haritada görünür</div></div>';
         return;
       }
-      const center = [Number(withCoords[0].lat), Number(withCoords[0].lng)];
+      const center = [withCoords[0].lat, withCoords[0].lng];
       this._mapInstance = L.map(el, { zoomControl: true }).setView(center, 11);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
@@ -270,7 +323,7 @@
       withCoords.forEach(a => {
         const hc = BM.Storage.list('hives').filter(h => h.apiaryId === a.id).length;
         const honey = BM.Storage.list('harvests').filter(h => h.apiaryId === a.id).reduce((s, h) => s + h.weight, 0);
-        const marker = L.marker([Number(a.lat), Number(a.lng)]).addTo(this._mapInstance);
+        const marker = L.marker([a.lat, a.lng]).addTo(this._mapInstance);
         marker.bindPopup(`
           <div style="font-family:system-ui;min-width:200px">
             <div style="font-weight:700;font-size:14px;margin-bottom:4px">📍 ${BM.esc(a.name)}</div>
@@ -284,7 +337,7 @@
         `);
       });
       if (withCoords.length > 1) {
-        const bounds = L.latLngBounds(withCoords.map(a => [Number(a.lat), Number(a.lng)]));
+        const bounds = L.latLngBounds(withCoords.map(a => [a.lat, a.lng]));
         this._mapInstance.fitBounds(bounds, { padding: [40, 40] });
       }
     },
@@ -299,3 +352,4 @@
 
   BM.apiaries = apiariesModule;
 })(window);
+
