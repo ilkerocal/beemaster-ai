@@ -737,7 +737,8 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       };
       return map[coll];
     },
-    async _syncAdd(coll, obj) {
+    async _syncAdd(coll, obj, retries) {
+      if (retries === undefined) retries = 0;
       if (!this._supabaseAvailable()) return;
       const uid = this._userId();
       if (!uid) return;
@@ -747,9 +748,20 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       try {
         const payload = this._mapToDb(coll, obj);
         const { error } = await client.from(table).upsert(payload);
-        if (error) console.warn('[CloudSync] add error (' + coll + '):', error.message);
+        if (error) {
+          console.warn('[CloudSync] add error (' + coll + '):', error.message);
+          // FK hatası ise 2sn bekle, tekrar dene (parent kayıt senkron olsun)
+          if (error.message.includes('foreign key') && retries < 2) {
+            await new Promise(function(r) { setTimeout(r, 2000); });
+            return this._syncAdd(coll, obj, retries + 1);
+          }
+        }
       } catch (e) {
         console.warn('[CloudSync] add failed (' + coll + '):', e.message);
+        if (retries < 2) {
+          await new Promise(function(r) { setTimeout(r, 2000); });
+          return this._syncAdd(coll, obj, retries + 1);
+        }
       }
     },
     async _syncUpdate(coll, obj) {
