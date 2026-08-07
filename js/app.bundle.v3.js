@@ -693,9 +693,12 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       for (const k of Object.keys(obj)) {
         const mapped = map[k] || k;
         // Supabase'de olmayan kolonları atla
-        if (mapped === 'apiary_id' && coll === 'queens') continue; // queens tablosunda apiary_id yok
-        if (mapped === 'name' && coll === 'queens') continue; // queens tablosunda name yok
-        if (mapped === 'address') out['location'] = obj[k]; // apiaries'te address → location
+        if (mapped === 'apiary_id' && (coll === 'queens' || coll === 'inspections')) continue;
+        if (mapped === 'name' && coll === 'queens') continue;
+        if (mapped === 'type' && coll === 'frames') continue; // frames'te type kolonu yok
+        if (mapped === 'amount' && coll === 'feedings') continue; // feedings'te amount kolonu yok
+        if (mapped === 'unit' && coll === 'feedings') continue;
+        if (mapped === 'address') out['location'] = obj[k];
         else if (mapped === 'apiaryName') out['apiary_name'] = obj[k];
         else out[mapped] = obj[k];
       }
