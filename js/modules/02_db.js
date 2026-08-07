@@ -282,13 +282,6 @@
       }
       const uid = this._userId();
       if (uid && coll !== 'profiles') out.user_id = uid;
-      // Whitelist: sadece Supabase'de var olan kolonları gönder
-      if (validCols[coll]) {
-        const allowed = validCols[coll];
-        for (const k of Object.keys(out)) {
-          if (!allowed.includes(k)) delete out[k];
-        }
-      }
       return out;
     },
     _tableFor(coll) {
@@ -376,14 +369,19 @@
       // SADECE local bossa cloud'dan PARALEL cek
       if (isLocalEmpty || force) {
         const reverseMap = {
-          apiary_id: 'apiaryId', hive_id: 'hiveId', queen_id: 'queenId',
+          apiary_id: 'apiaryId', hive_id: 'hiveId', queen_id: 'queenId', user_id: 'userId',
           box_type: 'boxType', frame_count: 'frameCount', nfc_tag: 'nfcTag',
-          installed_at: 'installedAt', birth_date: 'birthDate', marked_color: 'markedColor',
+          installed_at: 'installedAt', created_at: 'createdAt', updated_at: 'updatedAt',
+          birth_date: 'birthDate', marked_color: 'markedColor',
           performance_score: 'performanceScore', varroa_count: 'varroaCount',
           brood_frames: 'broodFrames', honey_frames: 'honeyFrames', pollen_frames: 'pollenFrames',
           queen_seen: 'queenSeen', eggs_pattern: 'eggsPattern',
           position_in_apiary: 'positionInApiary', amount_kg: 'amountKg',
-          audio_data: 'audioData'
+          audio_data: 'audioData', apiary_name: 'apiaryName',
+          cost_try: 'costTry', min_stock: 'minStock',
+          honey_type: 'honeyType', treatment_status: 'treatmentStatus',
+          location_lat: 'locationLat', location_lng: 'locationLng',
+          varroa_before: 'varroaBefore', varroa_after: 'varroaAfter'
         };
         const fromDb = function(row) {
           const obj = {};
