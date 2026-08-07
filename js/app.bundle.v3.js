@@ -694,7 +694,11 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         const mapped = map[k] || k;
         // Supabase'de olmayan kolonları atla
         if (mapped === 'apiary_id' && (coll === 'queens' || coll === 'inspections' || coll === 'feedings')) continue;
-        if (mapped === 'name' && coll === 'queens') continue;
+        if (mapped === 'name' && coll === 'queens') {
+          // Queens'te name kolonu yok, marked_color'a yedekle
+          out['marked_color'] = (obj['markingColor'] || '') + '|NAME:' + obj[k];
+          continue;
+        }
         if (mapped === 'type' && coll === 'frames') continue; // frames'te type kolonu yok
         if (mapped === 'amount' && coll === 'feedings') continue; // feedings'te amount kolonu yok
         if (mapped === 'unit' && coll === 'feedings') continue;
@@ -791,6 +795,12 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         const fromDb = function(row) {
           const obj = {};
           for (const k in row) obj[reverseMap[k] || k] = row[k];
+          // Queens: markedColor'tan name'i geri cikar
+          if (row.marked_color && row.marked_color.includes('|NAME:')) {
+            const parts = row.marked_color.split('|NAME:');
+            obj.markedColor = parts[0];
+            obj.name = parts[1];
+          }
           return obj;
         };
         // TUM TABLOLARI AYNI ANDA CEK (paralel)
