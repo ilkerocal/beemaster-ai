@@ -705,6 +705,16 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       let queenName = null, queenColor = null;
       // Frames: type → notes encode
       let frameType = null;
+      // Supabase'de sadece bu kolonlar var (whitelist)
+      const validCols = {
+        queens: ['id','hive_id','marked_color','birth_date','user_id'],
+        inspections: ['id','hive_id','queen_seen','eggs_pattern','notes','date','user_id','brood_frames','honey_frames','pollen_frames','varroa_count','population','mode','weather'],
+        frames: ['id','hive_id','position','notes','user_id'],
+        feedings: ['id','hive_id','notes','date','user_id'],
+        harvests: ['id','hive_id','weight','notes','date','user_id'],
+        treatments: ['id','hive_id','notes','date','user_id'],
+        diseases: ['id','hive_id','notes','date','user_id'],
+      };
       for (const k of Object.keys(obj)) {
         const mapped = map[k] || k;
         if (mapped === 'apiary_id' && (coll === 'queens' || coll === 'inspections' || coll === 'feedings')) continue;
@@ -725,6 +735,13 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       }
       const uid = this._userId();
       if (uid && coll !== 'profiles') out.user_id = uid;
+      // Whitelist: sadece Supabase'de var olan kolonları gönder
+      if (validCols[coll]) {
+        const allowed = validCols[coll];
+        for (const k of Object.keys(out)) {
+          if (!allowed.includes(k)) delete out[k];
+        }
+      }
       return out;
     },
     _tableFor(coll) {
