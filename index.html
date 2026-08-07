@@ -1273,7 +1273,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
 <script src="js/supabase-config.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/app.bundle.v3.js?v=v3.9.1"></script>
+<script src="js/app.bundle.v3.js?v=v3.9.2"></script>
 </head>
 <body>
   <!-- Boot screen — instantly visible, hides when App.init completes -->
@@ -1306,6 +1306,7 @@ noscript { display: flex; align-items: center; justify-content: center; height: 
         <button class="btn btn--icon btn--ghost" onclick="App.toggleTheme()" id="theme-toggle" title="Tema">🌙</button>
         <button class="btn btn--icon btn--ghost" onclick="BM.notify.check()" title="Bildirimler">🔔</button>
         <button class="btn btn--icon btn--ghost" id="auth-btn" onclick="BM.Auth.showLoginModal()" title="Giriş Yap / Kayıt Ol" style="font-size:18px">🔐</button>
+        <button class="btn btn--icon btn--ghost" onclick="App.syncNow()" title="Bulutu Senkronize Et">🔄</button>
         <button class="btn btn--primary" onclick="App.quickAdd()">+ Ekle</button>
       </div>
     </header>

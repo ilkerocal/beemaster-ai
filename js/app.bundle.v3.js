@@ -313,8 +313,19 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
             treatments: [], diseases: [], inventory: []
           };
           BM.Storage.save();
-          // Cloud'dan HEMEN senkronize et (gecikme yok)
-          if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') BM.Storage.syncFromCloud();
+          // Cloud'dan senkronize et — durum bildirimi ile
+          BM.Toast.show('🔄 Bulut senkronize ediliyor...', 'info');
+          if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') {
+            BM.Storage.syncFromCloud().then(function() {
+              var total = 0;
+              ['apiaries','hives','queens','inspections','frames','harvests','feedings'].forEach(function(c) {
+                total += (BM.Storage.state[c] || []).length;
+              });
+              BM.Toast.show('✅ ' + total + ' kayıt yüklendi', 'success');
+            }).catch(function(e) {
+              BM.Toast.show('⚠️ Senkronizasyon hatası: ' + (e.message || 'bilinmeyen'), 'error');
+            });
+          }
         }
         return true;
       }
@@ -4290,6 +4301,24 @@ BM.frames = framesModule;
         reader.readAsText(file);
       };
       input.click();
+    },
+
+    syncNow() {
+      if (!BM.Auth || !BM.Auth.isAuthenticated || !BM.Auth.isAuthenticated()) {
+        BM.Toast.show('Önce giriş yapın', 'error');
+        return;
+      }
+      BM.Toast.show('🔄 Senkronize ediliyor...', 'info');
+      BM.Storage.syncFromCloud(true).then(function() {
+        var total = 0;
+        ['apiaries','hives','queens','inspections','frames','harvests','feedings'].forEach(function(c) {
+          total += (BM.Storage.state[c] || []).length;
+        });
+        BM.Toast.show('✅ ' + total + ' kayıt senkronize edildi', 'success');
+        if (typeof App !== 'undefined' && App.render) App.render(App.currentView || 'dashboard');
+      }).catch(function(e) {
+        BM.Toast.show('❌ Hata: ' + (e.message || 'bilinmeyen'), 'error');
+      });
     },
 
     resetData() {
