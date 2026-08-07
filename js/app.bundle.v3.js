@@ -1330,7 +1330,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
                 ${alerts ? `<span class="badge badge--danger">${alerts} uyarı</span>` : ''}
               </div>
               <div class="row-list__info">
-                📍 ${BM.esc(a.location)}${a.lat && a.lng ? ` · GPS: ${a.lat.toFixed(3)}, ${a.lng.toFixed(3)}` : ''}${a.flora ? ` · 🌸 ${BM.esc(a.flora)}` : ''}
+                📍 ${BM.esc(a.location)}${a.lat && a.lng ? ` · GPS: ${Number(a.lat).toFixed(3)}, ${Number(a.lng).toFixed(3)}` : ''}${a.flora ? ` · 🌸 ${BM.esc(a.flora)}` : ''}
               </div>
               ${a.notes ? `<div class="row-list__info" style="font-style:italic;margin-top:2px">"${BM.esc(a.notes)}"</div>` : ''}
             </div>
@@ -4338,28 +4338,26 @@ BM.frames = framesModule;
         </div>
       `;
 
-      // Bottom nav (mobile)
+      // Bottom nav (mobile) — iOS-style glass tab bar
       const bn = document.getElementById('app-bottom-nav');
-      bn.innerHTML = `
-        <button type="button" class="bottom-nav__item${App.currentView === 'dashboard' ? ' bottom-nav__item--active' : ''}" data-view="dashboard" onclick="App.nav('dashboard')">
-          <span class="bottom-nav__icon">📊</span>Ana Sayfa
-        </button>
-        <button type="button" class="bottom-nav__item" data-view="apiaries" onclick="App.nav('apiaries')">
-          <span class="bottom-nav__icon">📍</span>Üsler
-        </button>
-        <button type="button" class="bottom-nav__item" data-view="hives" onclick="App.nav('hives')">
-          <span class="bottom-nav__icon">🏠</span>Kovan
-        </button>
-        <button type="button" class="bottom-nav__item" data-view="inspections" onclick="App.nav('inspections')">
-          <span class="bottom-nav__icon">📋</span>Muayene
-        </button>
-        <button type="button" class="bottom-nav__item" data-view="harvest" onclick="App.nav('harvest')">
-          <span class="bottom-nav__icon">🍯</span>Bal
-        </button>
-        <button type="button" class="bottom-nav__item" onclick="App.quickAdd()">
-          <span class="bottom-nav__icon">➕</span>Ekle
-        </button>
-      `;
+      const tabs = [
+        { id: 'dashboard', icon: '📊', label: 'Ana Sayfa' },
+        { id: 'hives', icon: '🏠', label: 'Kovan' },
+        { id: 'inspections', icon: '🔍', label: 'Muayene' },
+        { id: 'harvest', icon: '🍯', label: 'Hasat' },
+        { id: 'quickAdd', icon: '➕', label: 'Ekle' }
+      ];
+      bn.innerHTML = tabs.map(t => {
+        if (t.id === 'quickAdd') {
+          return `<button type="button" class="bottom-nav__item bottom-nav__item--add" onclick="App.quickAdd()">
+            <span class="bottom-nav__icon">${t.icon}</span>${t.label}
+          </button>`;
+        }
+        const active = App.currentView === t.id ? ' bottom-nav__item--active' : '';
+        return `<button type="button" class="bottom-nav__item${active}" data-view="${t.id}" onclick="App.nav('${t.id}')">
+          <span class="bottom-nav__icon">${t.icon}</span>${t.label}
+        </button>`;
+      }).join('');
     },
 
     init() {
