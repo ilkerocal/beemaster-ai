@@ -396,7 +396,7 @@ ul, ol { list-style: none; }
 .frame__cycle { font-size: 9px; color: var(--text-muted); }
 
 /* Modal (Spec 03 §3.1.4) */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 200; display: none; align-items: center; justify-content: center; padding: var(--space-4); overflow-y: auto; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 600; display: none; align-items: center; justify-content: center; padding: var(--space-4); overflow-y: auto; }
 .modal-overlay--active { display: flex; animation: fadeIn var(--t); }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .modal { background: var(--bg-card); border: 1px solid var(--n-800); border-radius: var(--radius-xl); width: 100%; max-width: 520px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); animation: slideUp var(--t); }
