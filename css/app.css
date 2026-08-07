@@ -553,7 +553,7 @@ ul, ol { list-style: none; }
   /* Hamburger menu — sadece mobilde görünür */
   .sidebar-toggle { display: none !important; }
   /* Header her zaman sidebar/backdrop'tan üstte (z-index) */
-  .app__header { z-index: 300 !important; position: relative; }
+  .app__header { z-index: 300 !important; position: fixed !important; top: 0; left: 0; right: 0; }
   /* Dashboard hero cards stack */
   .hero-stats { grid-template-columns: 1fr 1fr; }
 }
