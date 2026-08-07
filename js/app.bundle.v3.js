@@ -313,10 +313,8 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
             treatments: [], diseases: [], inventory: []
           };
           BM.Storage.save();
-          // Cloud'dan senkronize et
-          setTimeout(() => {
-            if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') BM.Storage.syncFromCloud();
-          }, 300);
+          // Cloud'dan HEMEN senkronize et (gecikme yok)
+          if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') BM.Storage.syncFromCloud();
         }
         return true;
       }
