@@ -2222,7 +2222,7 @@ BM.hives = hivesModule;
         }
       ];
 
-      BM.Wizard.open('🔬 Muayene Sihirbazı', steps, (s) => {
+      BM.Wizard.open('🔬 Muayene Sihirbazı', steps, async (s) => {
         // queenSeen değerini koru — boolean'a çevirme!
         if (s.queenSeen === 'cell' || s.queenSeen === 'new') s.queenSeen = 'seen';
         // AI anomalileri tespit et ve JSON olarak kaydet
@@ -2234,7 +2234,7 @@ BM.hives = hivesModule;
         s.audioData = this._state.audioData || null;
         s.mode = this._state.mode || 'form';
         s.photoTag = this._state.photoTag || '';
-        BM.Storage.add('inspections', s);
+        await BM.Storage.add('inspections', s);
         if (anomalies.filter(a => a.severity === 'high').length > 0) {
           BM.Toast.show(`Muayene kaydedildi. ${anomalies.length} anomali!`, 'warn');
         } else {
@@ -2698,10 +2698,10 @@ BM.hives = hivesModule;
            <input class="input" name="performanceScore" type="number" min="0" max="100" value="80"></label>
          <label class="field"><span class="field-label">Notlar</span>
            <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
-        (d) => {
+        async (d) => {
           d.performanceScore = Math.max(0, Math.min(1, parseInt(d.performanceScore || 80) / 100));
           if (d.costTry) d.costTry = parseFloat(d.costTry);
-          const q = BM.Storage.add('queens', { ...d, status: 'active' });
+          const q = await BM.Storage.add('queens', { ...d, status: 'active' });
           const h = BM.Storage.get('hives', d.hiveId);
           if (h) BM.Storage.update('hives', h.id, { queenId: q.id });
           BM.Toast.show('Ana arı eklendi ✓', 'success');
