@@ -4050,7 +4050,7 @@ BM.frames = framesModule;
         document.body.appendChild(bd);
       }
       bd.style.position = 'fixed';
-      bd.style.top = '0';
+      bd.style.top = '56px';   /* header altından başla, butonları kapatma */
       bd.style.left = '260px';
       bd.style.right = '0';
       bd.style.bottom = '0';
