@@ -4010,10 +4010,197 @@ BM.frames = framesModule;
       { id: 'analytics', icon: '📈', label: 'Analitik', view: 'analytics' },
       { id: 'reports', icon: '📄', label: 'Raporlar', view: 'reports' },
       { id: 'settings', icon: '⚙️', label: 'Ayarlar', view: 'settings' }
+    ]},
+    { group: 'BeeOS', items: [
+      { id: 'beeos', icon: '⬡', label: 'BeeOS Ajan', view: 'beeos' }
     ]}
   ];
 
-  const App = {
+  /* ===== BeeOS Module v0.1 ===== */
+(function(global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  BM.beeos = {
+    agents: [
+      { id: 'orchestrator', emoji: '🎯', name: 'Orchestrator', role: 'Koordinatör', desc: 'Görevleri analiz eder, ajanlara dağıtır, sonuçları birleştirir.', color: 'linear-gradient(90deg,#f59e0b,#d97706)' },
+      { id: 'planner', emoji: '📐', name: 'Planner', role: 'Planlayıcı', desc: 'Büyük görevleri alt adımlara böler, bağımlılıkları sıralar.', color: 'linear-gradient(90deg,#8b5cf6,#3b82f6)' },
+      { id: 'architect', emoji: '🏛️', name: 'Architect', role: 'Mimar', desc: 'Teknik kararlar, BDS/BCL uygunluğu, kod inceleme.', color: 'linear-gradient(90deg,#10b981,#3b82f6)' }
+    ],
+
+    render() {
+      const stats = this._stats();
+      return `
+        <div style="padding:24px;max-width:1200px;margin:0 auto;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;">
+            ${stats.map(s => `
+              <div style="background:var(--bg-card);border:1px solid var(--n-800);border-radius:var(--radius-lg);padding:20px 24px;position:relative;overflow:hidden;">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${s.color};border-radius:3px 3px 0 0;"></div>
+                <div style="font-size:1.5rem;margin-bottom:8px;">${s.emoji}</div>
+                <div style="font-size:1.8rem;font-weight:800;margin-bottom:4px;">${s.val}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">${s.label}</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Agents -->
+          <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;">🤖 Çekirdek Ajanlar</h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:32px;">
+            ${this.agents.map(a => `
+              <div style="background:var(--bg-card);border:1px solid var(--n-800);border-radius:var(--radius-lg);padding:20px;position:relative;overflow:hidden;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='var(--honey-500)'" onmouseout="this.style.transform='';this.style.borderColor='var(--n-800)'">
+                <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${a.color};border-radius:3px 3px 0 0;"></div>
+                <div style="font-size:2rem;margin-bottom:8px;">${a.emoji}</div>
+                <div style="font-size:1rem;font-weight:700;margin-bottom:2px;">${a.name}</div>
+                <div style="font-size:0.68rem;color:var(--honey-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">${a.role}</div>
+                <div style="font-size:0.78rem;color:var(--text-secondary);line-height:1.5;">${a.desc}</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Task Form -->
+          <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;">📝 Görev Ekle (Supabase)</h3>
+          <div style="background:var(--bg-card);border:1px solid var(--n-800);border-radius:var(--radius-lg);padding:24px;margin-bottom:24px;">
+            <form id="beeos-task-form" onsubmit="return BM.beeos.submitTask(event)" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <label style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Görev Adı *</label>
+                <input type="text" id="beeos-task-name" placeholder="Örn: Kovan takip modülü" required style="background:var(--bg-input);border:1px solid var(--n-800);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text-primary);font-size:0.85rem;">
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <label style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Ajan</label>
+                <select id="beeos-task-agent" style="background:var(--bg-input);border:1px solid var(--n-800);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text-primary);font-size:0.85rem;">
+                  <option value="orchestrator">🎯 Orchestrator</option>
+                  <option value="planner">📐 Planner</option>
+                  <option value="architect">🏛️ Architect</option>
+                </select>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <label style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Öncelik</label>
+                <select id="beeos-task-priority" style="background:var(--bg-input);border:1px solid var(--n-800);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text-primary);font-size:0.85rem;">
+                  <option value="high">🔴 Yüksek</option>
+                  <option value="medium" selected>🟡 Orta</option>
+                  <option value="low">🟢 Düşük</option>
+                </select>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <label style="font-size:0.7rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Durum</label>
+                <select id="beeos-task-status" style="background:var(--bg-input);border:1px solid var(--n-800);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text-primary);font-size:0.85rem;">
+                  <option value="pending">⏳ Bekliyor</option>
+                  <option value="in_progress">🔄 Devam</option>
+                  <option value="done">✅ Tamamlandı</option>
+                </select>
+              </div>
+              <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center;">
+                <button type="submit" class="btn" style="background:var(--honey-600);color:#fff;border:none;font-weight:600;">💾 Kaydet</button>
+                <span id="beeos-form-status" style="font-size:0.78rem;display:none;"></span>
+              </div>
+            </form>
+          </div>
+
+          <!-- Web Research -->
+          <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;">🔍 Web Araştırma (Firecrawl)</h3>
+          <div style="background:var(--bg-card);border:1px solid var(--n-800);border-radius:var(--radius-lg);padding:24px;margin-bottom:24px;">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <input type="url" id="beeos-scrape-url" placeholder="https://hermes-agent.nousresearch.com/docs" style="flex:1;min-width:250px;background:var(--bg-input);border:1px solid var(--n-800);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text-primary);font-size:0.85rem;">
+              <button class="btn" style="background:var(--honey-600);color:#fff;border:none;font-weight:600;" onclick="BM.beeos.scrapeUrl()">🔍 Araştır</button>
+            </div>
+            <div id="beeos-scrape-result" style="display:none;margin-top:16px;background:var(--bg-input);border-radius:var(--radius-sm);padding:16px;max-height:300px;overflow-y:auto;">
+              <pre style="font-family:monospace;font-size:0.72rem;color:var(--text-secondary);white-space:pre-wrap;word-break:break-all;margin:0;"></pre>
+            </div>
+          </div>
+
+          <!-- BDAOS Links -->
+          <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;">📚 BDAOS — Geliştirme İşletim Sistemi</h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:24px;">
+            ${[
+              { icon:'📜', label:'Anayasa', url:'https://github.com/ilkerocal/BeeMaster-AI-OS/blob/main/00_MASTER_BLUEPRINT/BEEMASTER_CONSTITUTION.md' },
+              { icon:'🎨', label:'Tasarım Sistemi', url:'https://github.com/ilkerocal/BeeMaster-AI-OS/blob/main/01_DESIGN_SYSTEM/BDS.md' },
+              { icon:'🧩', label:'Bileşen Kütüphanesi', url:'https://github.com/ilkerocal/BeeMaster-AI-OS/blob/main/02_COMPONENT_LIBRARY/BCL.md' },
+              { icon:'🧠', label:'HDOS', url:'https://github.com/ilkerocal/BeeMaster-AI-OS/blob/main/15_HERMES/HDOS.md' },
+              { icon:'⬡', label:'BeeOS Ajanlar', url:'https://github.com/ilkerocal/BeeMaster-AI-OS/tree/main/50_BEEOS' },
+              { icon:'📊', label:'Dashboard', url:'https://ilkerocal.github.io/BeeMaster-AI-OS/' }
+            ].map(l => `
+              <a href="${l.url}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg-input);border:1px solid var(--n-800);border-radius:var(--radius-sm);font-size:0.8rem;font-weight:600;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--honey-500)'" onmouseout="this.style.borderColor='var(--n-800)'">
+                ${l.icon} ${l.label} <span style="margin-left:auto;color:var(--text-muted);">↗</span>
+              </a>
+            `).join('')}
+          </div>
+
+          <p style="font-size:0.72rem;color:var(--text-muted);text-align:center;padding-top:16px;border-top:1px solid var(--n-800);">
+            🐝 BeeOS v0.1 · AGENTS.md uyumlu · Hermes otomatik okur
+          </p>
+        </div>
+      `;
+    },
+
+    _stats() {
+      const tasks = JSON.parse(localStorage.getItem('beeos_tasks') || '[]');
+      return [
+        { emoji:'🤖', val:3, label:'Aktif Ajan', color:'linear-gradient(90deg,#f59e0b,#fbbf24)' },
+        { emoji:'📋', val:tasks.length, label:'Görev', color:'linear-gradient(90deg,#8b5cf6,#3b82f6)' },
+        { emoji:'✅', val:tasks.filter(t=>t.status==='done').length, label:'Tamamlanan', color:'linear-gradient(90deg,#10b981,#059669)' },
+        { emoji:'📄', val:10, label:'Dosya', color:'linear-gradient(90deg,#3b82f6,#6366f1)' }
+      ];
+    },
+
+    async submitTask(e) {
+      e.preventDefault();
+      const statusEl = document.getElementById('beeos-form-status');
+      const task = {
+        id: 'task_' + Date.now().toString(36),
+        name: document.getElementById('beeos-task-name').value.trim(),
+        agent: document.getElementById('beeos-task-agent').value,
+        priority: document.getElementById('beeos-task-priority').value,
+        status: document.getElementById('beeos-task-status').value,
+        created_at: new Date().toISOString()
+      };
+
+      // Local save
+      const tasks = JSON.parse(localStorage.getItem('beeos_tasks') || '[]');
+      tasks.unshift(task);
+      localStorage.setItem('beeos_tasks', JSON.stringify(tasks));
+
+      // Supabase sync
+      try {
+        const SUPABASE_URL = 'https://assfwtjbvuuxclioqsih.supabase.co';
+        const KEY = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
+        await fetch(SUPABASE_URL + '/rest/v1/beeos_tasks', {
+          method: 'POST',
+          headers: { 'apikey': KEY, 'Authorization': 'Bearer ' + KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          body: JSON.stringify(task)
+        });
+        statusEl.style.cssText = 'display:block;color:var(--success);';
+        statusEl.textContent = '✅ Supabase\'e kaydedildi!';
+      } catch(err) {
+        statusEl.style.cssText = 'display:block;color:var(--warning);';
+        statusEl.textContent = '⚠️ Yerel kaydedildi (Supabase: ' + err.message + ')';
+      }
+
+      document.getElementById('beeos-task-name').value = '';
+      setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+      return false;
+    },
+
+    async scrapeUrl() {
+      const url = document.getElementById('beeos-scrape-url').value.trim();
+      if (!url) return;
+      const resultEl = document.getElementById('beeos-scrape-result');
+      const pre = resultEl.querySelector('pre');
+      resultEl.style.display = 'block';
+      pre.textContent = '⏳ Araştırılıyor...';
+
+      try {
+        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+        const res = await fetch(proxyUrl);
+        const text = await res.text();
+        pre.textContent = text.substring(0, 3000) + (text.length > 3000 ? '\n\n... (kısaltıldı)' : '');
+      } catch(e) {
+        pre.textContent = '❌ Hata: ' + e.message + '\n\nİpucu: Hermes içinde web_extract aracını kullanın.';
+      }
+    }
+  };
+})(window);
+
+const App = {
     currentView: 'dashboard',
     viewParam: null,
 
@@ -4062,7 +4249,8 @@ BM.frames = framesModule;
         inventory: ['Envanter', BM.Storage.list('inventory').length + ' malzeme'],
         analytics: ['Analitik', 'Tüm verilerden içgörüler'],
         reports: ['Raporlar', '6 hazır şablon'],
-        settings: ['Ayarlar', 'Uygulama ve veri']
+        settings: ['Ayarlar', 'Uygulama ve veri'],
+        beeos: ['⬡ BeeOS', 'Ajan Orkestrasyon Sistemi v0.1']
       };
       const t = titles[view] || [view, ''];
       document.getElementById('page-title').textContent = t[0];
