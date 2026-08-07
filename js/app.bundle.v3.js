@@ -315,7 +315,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
           BM.Storage.save();
           // Cloud'dan senkronize et
           setTimeout(() => {
-            if (BM.CloudSync) BM.CloudSync.syncFromCloud();
+            if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') BM.Storage.syncFromCloud();
           }, 300);
         }
         return true;
@@ -683,7 +683,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       const map = {
         apiaryId: 'apiary_id', hiveId: 'hive_id', queenId: 'queen_id',
         boxType: 'box_type', frameCount: 'frame_count', nfcTag: 'nfc_tag',
-        installedAt: 'installed_at', birthDate: 'birth_date', markedColor: 'marked_color',
+        installedAt: 'installed_at', birthDate: 'birth_date', markedColor: 'marked_color', markingColor: 'marked_color',
         performanceScore: 'performance_score', varroaCount: 'varroa_count',
         broodFrames: 'brood_frames', honeyFrames: 'honey_frames', pollenFrames: 'pollen_frames',
         queenSeen: 'queen_seen', eggsPattern: 'eggs_pattern',
