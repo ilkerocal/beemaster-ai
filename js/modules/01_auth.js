@@ -6,23 +6,26 @@
   'use strict';
   const BM = global.BM = global.BM || {};
 
-  // Config from Vercel env vars (injected at runtime) or hardcoded fallback
-  const SUPABASE_URL = (typeof window !== 'undefined' && window.__SUPABASE_URL__) || null;
-  const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.__SUPABASE_ANON_KEY__) || null;
+  function getSupabaseUrl() {
+    return (typeof window !== 'undefined' && window.__SUPABASE_URL__) || 'https://assfwtjbvuuxclioqsih.supabase.co';
+  }
+  function getSupabaseKey() {
+    return (typeof window !== 'undefined' && window.__SUPABASE_ANON_KEY__) || 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
+  }
 
   let _client = null;
   let _user = null;
   let _session = null;
 
   function isConfigured() {
-    return !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+    return !!(getSupabaseUrl() && getSupabaseKey() && (typeof window !== 'undefined' && window.supabase));
   }
 
   function getClient() {
     if (!isConfigured()) return null;
     if (!_client) {
       try {
-        _client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        _client = window.supabase.createClient(getSupabaseUrl(), getSupabaseKey());
       } catch (e) {
         console.warn('Supabase init failed:', e);
         return null;

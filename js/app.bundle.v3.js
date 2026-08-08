@@ -113,23 +113,26 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   'use strict';
   const BM = global.BM = global.BM || {};
 
-  // Config from Vercel env vars (injected at runtime) or hardcoded fallback
-  const SUPABASE_URL = (typeof window !== 'undefined' && window.__SUPABASE_URL__) || null;
-  const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.__SUPABASE_ANON_KEY__) || null;
+  function getSupabaseUrl() {
+    return (typeof window !== 'undefined' && window.__SUPABASE_URL__) || 'https://assfwtjbvuuxclioqsih.supabase.co';
+  }
+  function getSupabaseKey() {
+    return (typeof window !== 'undefined' && window.__SUPABASE_ANON_KEY__) || 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
+  }
 
   let _client = null;
   let _user = null;
   let _session = null;
 
   function isConfigured() {
-    return !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+    return !!(getSupabaseUrl() && getSupabaseKey() && (typeof window !== 'undefined' && window.supabase));
   }
 
   function getClient() {
     if (!isConfigured()) return null;
     if (!_client) {
       try {
-        _client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        _client = window.supabase.createClient(getSupabaseUrl(), getSupabaseKey());
       } catch (e) {
         console.warn('Supabase init failed:', e);
         return null;
@@ -797,21 +800,43 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
           out['notes'] = frBaseNotes + '|META:' + JSON.stringify(frMeta);
         }
       }
-      const uid = this._userId();
-      if (uid && coll !== 'profiles') out.user_id = uid;
-
-      // === Ekstra alanları notes'a META olarak encode et ===
-      // Queens: strain, status, source, performanceScore, costTry, supplier gibi alanları koru
+      // Hives: temperament, purpose, supersCount, source
+      if (coll === 'hives') {
+        var hfMeta = {};
+        var hiveExtras = ['temperament','purpose','supersCount','supers_count','source'];
+        for (var hfe = 0; hfe < hiveExtras.length; hfe++) {
+          var hfk = hiveExtras[hfe];
+          if (obj[hfk] !== undefined && obj[hfk] !== null && obj[hfk] !== '') hfMeta[hfk] = obj[hfk];
+        }
+        if (Object.keys(hfMeta).length > 0) {
+          var hfBaseNotes = out['notes'] || '';
+          out['notes'] = hfBaseNotes + '|META:' + JSON.stringify(hfMeta);
+        }
+      }
+      // Queens: strain, status, source, performanceScore, costTry, supplier, queenState, isClipped, isMarked
       if (coll === 'queens') {
         var metaFields = {};
-        var queenExtras = ['strain','status','source','performance_score','cost_try','supplier'];
+        var queenExtras = ['strain','status','source','performance_score','cost_try','supplier','queenState','queen_state','isClipped','is_clipped','isMarked','is_marked'];
         for (var qe = 0; qe < queenExtras.length; qe++) {
           var qk = queenExtras[qe];
-          if (out[qk] !== undefined && out[qk] !== null && out[qk] !== '') metaFields[qk] = out[qk];
+          if (obj[qk] !== undefined && obj[qk] !== null && obj[qk] !== '') metaFields[qk] = obj[qk];
         }
         if (Object.keys(metaFields).length > 0) {
           var baseNotes = out['notes'] || '';
           out['notes'] = baseNotes + '|META:' + JSON.stringify(metaFields);
+        }
+      }
+      // Tasks: title, type, priority, dueDate, status, apiaryId, hiveId
+      if (coll === 'tasks') {
+        var tskMeta = {};
+        var taskExtras = ['title','type','priority','dueDate','due_date','status','apiaryId','apiary_id','hiveId','hive_id'];
+        for (var tske = 0; tske < taskExtras.length; tske++) {
+          var tskk = taskExtras[tske];
+          if (obj[tskk] !== undefined && obj[tskk] !== null && obj[tskk] !== '') tskMeta[tskk] = obj[tskk];
+        }
+        if (Object.keys(tskMeta).length > 0) {
+          var tskBaseNotes = out['notes'] || '';
+          out['notes'] = tskBaseNotes + '|META:' + JSON.stringify(tskMeta);
         }
       }
       // Treatments: product, dosage, duration, varroaBefore, varroaAfter, status
@@ -898,7 +923,8 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         apiaries: 'apiaries', hives: 'hives', queens: 'queens',
         inspections: 'inspections', frames: 'frames',
         harvests: 'harvests', feedings: 'feedings',
-        treatments: 'treatments', diseases: 'diseases', inventory: 'inventory'
+        treatments: 'treatments', diseases: 'diseases', inventory: 'inventory',
+        tasks: 'tasks'
       };
       return map[coll];
     },
@@ -969,7 +995,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       var uid = this._userId();
       if (!uid) return false;
       var client = BM.Auth.getClient();
-      var tables = ['apiaries', 'hives', 'queens', 'inspections', 'frames', 'harvests', 'feedings', 'treatments', 'diseases', 'inventory'];
+      var tables = ['apiaries', 'hives', 'queens', 'inspections', 'frames', 'harvests', 'feedings', 'treatments', 'diseases', 'inventory', 'tasks'];
       var reverseMap = {
         apiary_id: 'apiaryId', hive_id: 'hiveId', queen_id: 'queenId', user_id: 'userId',
         box_type: 'boxType', frame_count: 'frameCount', nfc_tag: 'nfcTag',
@@ -983,7 +1009,9 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         cost_try: 'costTry', min_stock: 'minStock',
         honey_type: 'honeyType', treatment_status: 'treatmentStatus',
         location_lat: 'locationLat', location_lng: 'locationLng',
-        varroa_before: 'varroaBefore', varroa_after: 'varroaAfter'
+        varroa_before: 'varroaBefore', varroa_after: 'varroaAfter',
+        supers_count: 'supersCount', queen_state: 'queenState',
+        is_clipped: 'isClipped', is_marked: 'isMarked', due_date: 'dueDate'
       };
 
       function fromDb(row) {
