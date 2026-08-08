@@ -771,6 +771,8 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       let frameTypeFromObj = null;
       // Supabase'de sadece bu kolonlar var (whitelist)
       const validCols = {
+        apiaries: ['id','name','location','notes','archived','user_id'],
+        hives: ['id','apiary_id','name','status','strain','box_type','frame_count','nfc_tag','installed_at','notes','user_id'],
         queens: ['id','hive_id','marked_color','birth_date','notes','user_id'],
         inspections: ['id','hive_id','queen_seen','eggs_pattern','notes','date','user_id','brood_frames','honey_frames','pollen_frames','varroa_count','population','mode','weather'],
         frames: ['id','hive_id','position','notes','user_id'],
@@ -778,6 +780,8 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         harvests: ['id','hive_id','weight','notes','date','user_id'],
         treatments: ['id','hive_id','notes','date','user_id'],
         diseases: ['id','hive_id','notes','date','user_id'],
+        inventory: ['id','name','category','quantity','unit','min_stock','cost_try','supplier','notes','user_id'],
+        tasks: ['id','title','notes','due_date','status','type','priority','apiary_id','hive_id','user_id']
       };
       for (const k of Object.keys(obj)) {
         const mapped = map[k] || k;
@@ -1065,15 +1069,38 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
           }).catch(function() { return { table: t, data: null }; }); // null = fetch failed, keep local
         }));
 
-        // === SUPABASE = SOURCE OF TRUTH ===
-        // Cloud'dan gelen veri localStorage'ı tamamen REPLACE eder.
-        // Bu sayede Supabase'den silinen kayıtlar localStorage'a geri dönmez.
+        // === SMART HYBRID MERGE (Yerel Veriyi Asla Silme, Eksik Yerel Veriyi Buluta Yükle) ===
+        var self = this;
         for (var ri = 0; ri < results.length; ri++) {
           var r = results[ri];
-          // Eğer fetch başarısız olduysa (null), local veriyi koru
-          if (r.data === null) continue;
-          // Başarılı fetch: cloud veriyi doğrudan kullan (merge değil, replace)
-          this.state[r.table] = r.data;
+          if (r.data === null) continue; // Fetch hatası, yerel veriyi koru
+
+          var coll = r.table;
+          var cloudItems = r.data || [];
+          var localItems = self.state[coll] || [];
+          
+          var mergedList = [];
+          var mergedMap = {};
+
+          // 1. Buluttan gelen tüm verileri ekle
+          for (var cidx = 0; cidx < cloudItems.length; cidx++) {
+            var citem = cloudItems[cidx];
+            mergedMap[citem.id] = citem;
+            mergedList.push(citem);
+          }
+
+          // 2. Yerelde olup bulutta henüz olmayan verileri KORU ve Buluta PUSH et!
+          for (var lidx = 0; lidx < localItems.length; lidx++) {
+            var litem = localItems[lidx];
+            if (!mergedMap[litem.id]) {
+              mergedMap[litem.id] = litem;
+              mergedList.push(litem);
+              // Arka planda buluta gönder
+              self._syncAdd(coll, litem);
+            }
+          }
+
+          self.state[coll] = mergedList;
         }
         this.save();
         if (typeof BM !== 'undefined' && BM.Bus) {
