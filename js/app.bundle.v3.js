@@ -1,3 +1,5 @@
+
+/* ===== 00_core.js ===== */
 // ============================================================
 // SUPABASE CONFIG (injected inline to bypass CDN cache)
 // ============================================================
@@ -100,6 +102,9 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   Object.assign(BM, { $, $$, uid, esc, fmt, today, dateStr, dateAgo, Icons, T, Bus });
 })(window);
 
+
+
+/* ===== 01_auth.js ===== */
 /* ===== js/modules/auth.js ===== */
 // ============================================================
 // Supabase Auth + Cloud Sync (Optional - falls back to localStorage)
@@ -464,6 +469,9 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
 
 
 
+
+
+/* ===== 02_db.js ===== */
 /* ===== js/db.js ===== */
 // ============================================================
 // Storage — localStorage adapter (IndexedDB pattern, Spec 11)
@@ -1063,6 +1071,9 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   BM.SCHEMA = SCHEMA;
 })(window);
 
+
+
+/* ===== 03_ui.js ===== */
 /* ===== js/ui.js ===== */
 // ============================================================
 // UI Components — Modal, Toast, Tabs (Spec 03 §3.1)
@@ -1281,6 +1292,9 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   Object.assign(BM, { Modal, Toast, Tabs, Wizard });
 })(window);
 
+
+
+/* ===== 04_apiaries.js ===== */
 /* ===== js/modules/apiaries.js ===== */
 // ============================================================
 // Apiaries Module — Spec 05_Modules/Apiaries.md
@@ -1636,6 +1650,9 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   BM.apiaries = apiariesModule;
 })(window);
 
+
+
+/* ===== 05_hives.js ===== */
 /* ===== js/modules/hives.js ===== */
 // ============================================================
 // Hives Module — Spec 05_Modules/Hives.md + Frames.md
@@ -2202,6 +2219,9 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
 BM.hives = hivesModule;
 })(window);
 
+
+
+/* ===== 06_inspections.js ===== */
 /* ===== js/modules/inspections.js ===== */
 // ============================================================
 // Inspections Module — Spec 05_Modules/Hive_Inspections.md
@@ -2896,6 +2916,9 @@ BM.hives = hivesModule;
   BM.inspections = inspectionsModule;
 })(window);
 
+
+
+/* ===== 07_diseases.js ===== */
 (function(global) {
   'use strict';
   const BM = global.BM = global.BM || {};
@@ -2998,6 +3021,9 @@ BM.hives = hivesModule;
 
   BM.diseases = diseasesModule;
 })(window);
+
+
+/* ===== 07_feeding.js ===== */
 (function(global) {
   'use strict';
   const BM = global.BM = global.BM || {};
@@ -3092,6 +3118,9 @@ BM.hives = hivesModule;
 
   BM.feeding = feedingModule;
 })(window);
+
+
+/* ===== 07_harvest.js ===== */
 (function(global) {
   'use strict';
   const BM = global.BM = global.BM || {};
@@ -3205,6 +3234,9 @@ BM.hives = hivesModule;
 
   BM.harvest = harvestModule;
 })(window);
+
+
+/* ===== 07_inventory.js ===== */
 (function(global) {
   'use strict';
   const BM = global.BM = global.BM || {};
@@ -3300,6 +3332,9 @@ BM.hives = hivesModule;
 
   BM.inventory = inventoryModule;
 })(window);
+
+
+/* ===== 07_queens.js ===== */
 (function(global) {
   'use strict';
   const BM = global.BM = global.BM || {};
@@ -3460,6 +3495,9 @@ BM.hives = hivesModule;
 
   BM.queens = queensModule;
 })(window);
+
+
+/* ===== 07_tasks.js ===== */
 /* ===== js/modules/07_tasks.js ===== */
 // ============================================================
 // Tasks & Calendar Module — Operasyon & Takvim Takibi
@@ -3676,6 +3714,9 @@ BM.hives = hivesModule;
 
   BM.tasks = tasksModule;
 })(window);
+
+
+/* ===== 07_treatments.js ===== */
 (function(global) {
   'use strict';
   const BM = global.BM = global.BM || {};
@@ -3773,6 +3814,9 @@ BM.hives = hivesModule;
 
   BM.treatments = treatmentsModule;
 })(window);
+
+
+/* ===== 08_analytics.js ===== */
 (function(global) {
   'use strict';
   const BM = global.BM = global.BM || {};
@@ -3875,6 +3919,9 @@ BM.hives = hivesModule;
 
   BM.analytics = analyticsModule;
 })(window);
+
+
+/* ===== 08_dashboard.js ===== */
 /* ===== js/modules/dashboard.js ===== */
 // ============================================================
 // Dashboard, Analytics, Reports, Settings, Onboarding, Notify, App
@@ -4000,6 +4047,8 @@ BM.hives = hivesModule;
 
   BM.dashboard = dashboardModule;
 })(window);
+
+/* ===== 08_notify.js ===== */
 (function(global) {
   'use strict';
   const BM = global.BM = global.BM || {};
@@ -4057,6 +4106,9 @@ BM.hives = hivesModule;
 
   BM.notify = notifyModule;
 })(window);
+
+
+/* ===== 08_onboarding.js ===== */
 (function(global) {
   'use strict';
   const BM = global.BM = global.BM || {};
@@ -4158,6 +4210,9 @@ BM.hives = hivesModule;
 
   BM.onboarding = onboardingModule;
 })(window);
+
+
+/* ===== 08_pwa.js ===== */
 (function(global) {
   'use strict';
   const BM = global.BM = global.BM || {};
@@ -4194,6 +4249,9 @@ BM.hives = hivesModule;
 
   BM.pwa = pwaModule;
 })(window);
+
+
+/* ===== 08_reports.js ===== */
 (function(global) {
   'use strict';
   const BM = global.BM = global.BM || {};
@@ -4345,6 +4403,9 @@ BM.hives = hivesModule;
 
   BM.reports = reportsModule;
 })(window);
+
+
+/* ===== 08_settings.js ===== */
 (function(global) {
   'use strict';
   const BM = global.BM = global.BM || {};
@@ -4389,6 +4450,9 @@ BM.hives = hivesModule;
 
   BM.settings = settingsModule;
 })(window);
+
+
+/* ===== 09_frames.js ===== */
 /* ===== js/modules/frames.js ===== */
 // ============ FRAMES ============
 const framesModule = {
@@ -4495,6 +4559,9 @@ const framesModule = {
 
 BM.frames = framesModule;
 
+
+
+/* ===== 10_app.js ===== */
 /* ===== js/app.js ===== */
 // ============================================================
 // App Controller — Router, navigation, init
@@ -5451,3 +5518,4 @@ const App = {
   BM.App = App;
   global.App = App;
 })(window);
+
