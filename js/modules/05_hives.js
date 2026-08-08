@@ -52,8 +52,38 @@
            </select></label>
        </div>
        <div class="field-row">
+         <label class="field"><span class="field-label">Mizaç / Agresiflik</span>
+           <select class="select" name="temperament">
+             <option value="calm">🟢 Sakin</option>
+             <option value="nervous">🟡 Huzursuz / Sinirli</option>
+             <option value="aggressive">🔴 Agresif</option>
+             <option value="very_aggressive">☣️ Çok Saldırgan</option>
+           </select></label>
+         <label class="field"><span class="field-label">Kovan Amacı</span>
+           <select class="select" name="purpose">
+             <option value="honey_production">🍯 Bal Üretimi</option>
+             <option value="bee_breeding">🐝 Arı Yetiştiriciliği</option>
+             <option value="queen_rearing">👑 Ana Arı Yetiştiriciliği</option>
+             <option value="pollination">🌻 Polinasyon (Tozlaşma)</option>
+             <option value="observation">👁️ Gözlem / Eğitim</option>
+             <option value="breeding">🧬 Genetik & Islah</option>
+           </select></label>
+       </div>
+       <div class="field-row">
          <label class="field"><span class="field-label">Çerçeve Sayısı</span>
            <input class="input" name="frameCount" type="number" min="1" max="20" value="10"></label>
+         <label class="field"><span class="field-label">Kat (İlave) Sayısı</span>
+           <input class="input" name="supersCount" type="number" min="0" max="10" value="0"></label>
+       </div>
+       <div class="field-row">
+         <label class="field"><span class="field-label">Kovan Kaynağı</span>
+           <select class="select" name="source">
+             <option value="created_nucleus">Suni Bölme</option>
+             <option value="swarm">Oğul</option>
+             <option value="purchased">Satın Alındı</option>
+             <option value="captured">Yakalandı</option>
+             <option value="merged">Birleştirildi</option>
+           </select></label>
          <label class="field"><span class="field-label">Pozisyon</span>
            <input class="input" name="positionInApiary" type="number" min="1" value="${BM.Storage.list('hives').length + 1}"></label>
        </div>
@@ -116,8 +146,26 @@
            </select></label>
        </div>
        <div class="field-row">
+         <label class="field"><span class="field-label">Mizaç / Agresiflik</span>
+           <select class="select" name="temperament">
+             ${['calm','nervous','aggressive','very_aggressive'].map(t => `<option value="${t}"${(h.temperament || 'calm') === t ? ' selected' : ''}>${BM.T.temperament(t)}</option>`).join('')}
+           </select></label>
+         <label class="field"><span class="field-label">Kovan Amacı</span>
+           <select class="select" name="purpose">
+             ${['honey_production','bee_breeding','queen_rearing','pollination','observation','breeding'].map(p => `<option value="${p}"${(h.purpose || 'honey_production') === p ? ' selected' : ''}>${BM.T.purpose(p)}</option>`).join('')}
+           </select></label>
+       </div>
+       <div class="field-row">
          <label class="field"><span class="field-label">Çerçeve</span>
            <input class="input" name="frameCount" type="number" min="1" max="20" value="${h.frameCount}"></label>
+         <label class="field"><span class="field-label">Kat (İlave)</span>
+           <input class="input" name="supersCount" type="number" min="0" max="10" value="${h.supersCount || 0}"></label>
+       </div>
+       <div class="field-row">
+         <label class="field"><span class="field-label">Kovan Kaynağı</span>
+           <select class="select" name="source">
+             ${['created_nucleus','swarm','purchased','captured','merged'].map(src => `<option value="${src}"${(h.source || 'created_nucleus') === src ? ' selected' : ''}>${BM.T.hiveSource(src)}</option>`).join('')}
+           </select></label>
          <label class="field"><span class="field-label">Durum</span>
            <select class="select" name="status">
              ${['active','weak','dead','sold','merged'].map(s => `<option value="${s}"${h.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}

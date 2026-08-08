@@ -19,27 +19,40 @@
                ${['white','yellow','red','green','blue'].map(c => `<option value="${c}">${BM.T.color(c)}</option>`).join('')}
              </select></label>
          </div>
-         <div class="field-row">
-           <label class="field"><span class="field-label">Doğum *</span>
-             <input class="input" name="birthDate" type="date" required value="${BM.today()}"></label>
-           <label class="field"><span class="field-label">Kaynak</span>
-             <select class="select" name="source">
-               ${['bred','purchased','swarm','supersedure','emergency'].map(s => `<option value="${s}">${BM.T.source(s)}</option>`).join('')}
-             </select></label>
-         </div>
-         <div class="field-row">
-           <label class="field"><span class="field-label">Tedarikçi</span>
-             <input class="input" name="supplier"></label>
-           <label class="field"><span class="field-label">Maliyet (₺)</span>
-             <input class="input" name="costTry" type="number" min="0" placeholder="0"></label>
-         </div>
-         <label class="field"><span class="field-label">Performans Skoru (0-100)</span>
-           <input class="input" name="performanceScore" type="number" min="0" max="100" value="80"></label>
-         <label class="field"><span class="field-label">Notlar</span>
-           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+          <div class="field-row">
+            <label class="field"><span class="field-label">Doğum *</span>
+              <input class="input" name="birthDate" type="date" required value="${BM.today()}"></label>
+            <label class="field"><span class="field-label">Ana Arı Durumu</span>
+              <select class="select" name="queenState">
+                ${['laying','virgin','cell','mating','old'].map(st => `<option value="${st}">${BM.T.queenState(st)}</option>`).join('')}
+              </select></label>
+          </div>
+          <div class="field-row">
+            <label class="field"><span class="field-label">Kaynak</span>
+              <select class="select" name="source">
+                ${['bred','purchased','swarm','supersedure','emergency'].map(s => `<option value="${s}">${BM.T.source(s)}</option>`).join('')}
+              </select></label>
+            <label class="field"><span class="field-label">Fiziksel Özellikler</span>
+              <div style="display:flex;gap:12px;margin-top:6px">
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" name="isMarked" value="true" checked> 🎨 İşaretli</label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" name="isClipped" value="true"> ✂️ Kanat Kesik</label>
+              </div></label>
+          </div>
+          <div class="field-row">
+            <label class="field"><span class="field-label">Tedarikçi</span>
+              <input class="input" name="supplier"></label>
+            <label class="field"><span class="field-label">Maliyet (₺)</span>
+              <input class="input" name="costTry" type="number" min="0" placeholder="0"></label>
+          </div>
+          <label class="field"><span class="field-label">Performans Skoru (0-100)</span>
+            <input class="input" name="performanceScore" type="number" min="0" max="100" value="80"></label>
+          <label class="field"><span class="field-label">Notlar</span>
+            <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
         async (d) => {
           d.performanceScore = Math.max(0, Math.min(1, parseInt(d.performanceScore || 80) / 100));
           if (d.costTry) d.costTry = parseFloat(d.costTry);
+          d.isMarked = !!d.isMarked;
+          d.isClipped = !!d.isClipped;
           const q = await BM.Storage.add('queens', { ...d, status: 'active' });
           const h = BM.Storage.get('hives', d.hiveId);
           if (h) BM.Storage.update('hives', h.id, { queenId: q.id });

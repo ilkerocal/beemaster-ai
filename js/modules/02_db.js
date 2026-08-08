@@ -11,12 +11,13 @@
   const LEGACY_KEYS = ['beemaster-v1', 'beemaster-v2', 'beemaster-v3'];
 
   // Schema (Spec 08 — Database Architecture)
-  const SCHEMA = ['apiaries','hives','queens','frames','inspections','harvests','feedings','treatments','diseases','inventory'];
+  const SCHEMA = ['apiaries','hives','queens','frames','inspections','harvests','feedings','treatments','diseases','inventory','tasks'];
 
   // Seed data — full Turkish context, realistic values
   const seedData = () => {
     const now = new Date().toISOString();
     const ago = d => new Date(Date.now() - d * 864e5).toISOString().slice(0, 10);
+    const inDays = d => new Date(Date.now() + d * 864e5).toISOString().slice(0, 10);
 
     const apiaries = [
       { id: 'ap_1', name: 'Eğil Merkez', location: 'Eğil, Diyarbakır', lat: 38.247, lng: 40.135, flora: 'Geven, Kekik, Adaçayı, Pamuk', notes: 'Yayla konumu', archived: false, createdAt: now, updatedAt: now },
@@ -24,13 +25,13 @@
     ];
 
     const hiveSeed = [
-      { n: 'Kovan-01', ap: 'ap_1', strain: 'carniolan', box: 'langstroth', fc: 10, pop: 'very_strong', var: 1, qBreed: 'Karniyol F1', qAge: 2 },
-      { n: 'Kovan-02', ap: 'ap_1', strain: 'caucasian', box: 'langstroth', fc: 10, pop: 'strong', var: 3, qBreed: 'Kafkas Saf', qAge: 3 },
-      { n: 'Kovan-03', ap: 'ap_1', strain: 'anatolian', box: 'langstroth', fc: 10, pop: 'strong', var: 2, qBreed: 'Anadolu Yerli', qAge: 1 },
-      { n: 'Kovan-04', ap: 'ap_1', strain: 'carniolan', box: 'langstroth', fc: 8, pop: 'strong', var: 2, qBreed: 'Karniyol', qAge: 2 },
-      { n: 'Kovan-05', ap: 'ap_2', strain: 'caucasian', box: 'dadant', fc: 7, pop: 'weak', var: 8, qBreed: 'Kafkas', qAge: 4 },
-      { n: 'Kovan-06', ap: 'ap_2', strain: 'anatolian', box: 'langstroth', fc: 10, pop: 'strong', var: 2, qBreed: 'Anadolu', qAge: 2 },
-      { n: 'Kovan-07', ap: 'ap_2', strain: 'hybrid', box: 'layens', fc: 8, pop: 'medium', var: 4, qBreed: 'Hibrit', qAge: 2 }
+      { n: 'Kovan-01', ap: 'ap_1', strain: 'carniolan', box: 'langstroth', fc: 10, pop: 'very_strong', var: 1, qBreed: 'Karniyol F1', qAge: 2, temp: 'calm', purp: 'honey_production', sups: 2, src: 'created_nucleus' },
+      { n: 'Kovan-02', ap: 'ap_1', strain: 'caucasian', box: 'langstroth', fc: 10, pop: 'strong', var: 3, qBreed: 'Kafkas Saf', qAge: 3, temp: 'calm', purp: 'honey_production', sups: 1, src: 'purchased' },
+      { n: 'Kovan-03', ap: 'ap_1', strain: 'anatolian', box: 'langstroth', fc: 10, pop: 'strong', var: 2, qBreed: 'Anadolu Yerli', qAge: 1, temp: 'nervous', purp: 'bee_breeding', sups: 0, src: 'swarm' },
+      { n: 'Kovan-04', ap: 'ap_1', strain: 'carniolan', box: 'langstroth', fc: 8, pop: 'strong', var: 2, qBreed: 'Karniyol', qAge: 2, temp: 'calm', purp: 'queen_rearing', sups: 0, src: 'created_nucleus' },
+      { n: 'Kovan-05', ap: 'ap_2', strain: 'caucasian', box: 'dadant', fc: 7, pop: 'weak', var: 8, qBreed: 'Kafkas', qAge: 4, temp: 'aggressive', purp: 'honey_production', sups: 0, src: 'created_nucleus' },
+      { n: 'Kovan-06', ap: 'ap_2', strain: 'anatolian', box: 'langstroth', fc: 10, pop: 'strong', var: 2, qBreed: 'Anadolu', qAge: 2, temp: 'calm', purp: 'pollination', sups: 1, src: 'captured' },
+      { n: 'Kovan-07', ap: 'ap_2', strain: 'hybrid', box: 'layens', fc: 8, pop: 'medium', var: 4, qBreed: 'Hibrit', qAge: 2, temp: 'nervous', purp: 'observation', sups: 0, src: 'merged' }
     ];
 
     const hives = [];
@@ -44,12 +45,15 @@
         id: qid, hiveId: hid, strain: s.strain,
         birthDate: new Date(Date.now() - s.qAge * 365 * 864e5).toISOString().slice(0, 10),
         source: 'bred', markedColor: ['white', 'yellow', 'red', 'green', 'blue'][(new Date().getFullYear() - s.qAge) % 5],
-        status: 'active', performanceScore: Math.max(0.3, 1 - s.var * 0.08 - (s.pop === 'weak' ? 0.3 : 0)),
+        status: 'active', queenState: 'laying', isClipped: false, isMarked: true,
+        performanceScore: Math.max(0.3, 1 - s.var * 0.08 - (s.pop === 'weak' ? 0.3 : 0)),
         notes: '', createdAt: now, updatedAt: now
       });
       hives.push({
         id: hid, apiaryId: s.ap, name: s.n, status: s.pop === 'weak' ? 'weak' : 'active',
         strain: s.strain, boxType: s.box, frameCount: s.fc, positionInApiary: i + 1,
+        temperament: s.temp || 'calm', purpose: s.purp || 'honey_production',
+        supersCount: s.sups || 0, source: s.src || 'created_nucleus',
         queenId: qid, nfcTag: 'BM-' + Date.now().toString(36).toUpperCase() + '-' + (i + 1),
         installedAt: ago((i + 1) * 30), notes: '', createdAt: now, updatedAt: now
       });
@@ -58,12 +62,19 @@
         frames.push({
           id: 'fr_' + hid + '_' + p, hiveId: hid, position: p,
           frameType: ftypes[(p - 1) % ftypes.length] || 'empty',
-          foundationType: 'wax', status: 'in_use', cyclesCompleted: Math.floor(Math.random() * 4),
-          waxAgeMonths: Math.floor(Math.random() * 24) + 1, notes: '',
+          foundationType: 'wax', status: 'in_use',
+          cyclesCompleted: 0, waxAgeMonths: 0,
           createdAt: now, updatedAt: now
         });
       }
     });
+
+    const tasks = [
+      { id: 'tsk_1', title: 'İlkbahar Teşvik Şurubu Verilecek', type: 'feeding', priority: 'high', dueDate: inDays(1), status: 'pending', apiaryId: 'ap_1', hiveId: 'hv_1', notes: '1:1 Şeker şurubu 2 Litre verilecek', createdAt: now, updatedAt: now },
+      { id: 'tsk_2', title: 'Varroa Sayımı & İlaç Kontrolü', type: 'treatment', priority: 'urgent', dueDate: inDays(3), status: 'pending', apiaryId: 'ap_1', hiveId: 'hv_5', notes: 'Zayıf kovan varroa şüphesi kontrol edilecek', createdAt: now, updatedAt: now },
+      { id: 'tsk_3', title: 'Kovan-01 Kat Atma (İlave Çerçeve)', type: 'supers', priority: 'normal', dueDate: inDays(5), status: 'pending', apiaryId: 'ap_1', hiveId: 'hv_1', notes: '10 Çerçeve doldu, kat atılacak', createdAt: now, updatedAt: now },
+      { id: 'tsk_4', title: 'Ana Arı Yumurtlama Kontrolü', type: 'queen', priority: 'normal', dueDate: ago(2), status: 'completed', apiaryId: 'ap_2', hiveId: 'hv_6', notes: 'Günlük yumurta görüldü', createdAt: now, updatedAt: now }
+    ];
 
     const inspSeed = [
       { hi: 0, days: 3, var: 1, pop: 'very_strong', brood: 7, honey: 2, note: 'Sezon başı kontrol, her şey yolunda' },
@@ -124,7 +135,7 @@
       createdAt: now
     }));
 
-    return { apiaries, hives, queens, frames, inspections, harvests, feedings, treatments, diseases, inventory };
+    return { apiaries, hives, queens, frames, inspections, harvests, feedings, treatments, diseases, inventory, tasks };
   };
 
   // Storage API
@@ -164,8 +175,25 @@
       if (!oldState.treatments) oldState.treatments = [];
       if (!oldState.diseases) oldState.diseases = [];
       if (!oldState.inventory) oldState.inventory = [];
-      oldState.hives.forEach(h => { if (!h.strain) h.strain = 'anatolian'; if (!h.boxType) h.boxType = 'langstroth'; if (!h.status) h.status = 'active'; if (!h.frameCount) h.frameCount = 10; });
-      oldState.queens.forEach(q => { if (!q.strain) q.strain = 'anatolian'; if (!q.status) q.status = 'active'; if (q.performanceScore === undefined) q.performanceScore = 0.5; });
+      if (!oldState.tasks) oldState.tasks = [];
+      oldState.hives.forEach(h => {
+        if (!h.strain) h.strain = 'anatolian';
+        if (!h.boxType) h.boxType = 'langstroth';
+        if (!h.status) h.status = 'active';
+        if (!h.frameCount) h.frameCount = 10;
+        if (!h.temperament) h.temperament = 'calm';
+        if (!h.purpose) h.purpose = 'honey_production';
+        if (h.supersCount === undefined) h.supersCount = 0;
+        if (!h.source) h.source = 'created_nucleus';
+      });
+      oldState.queens.forEach(q => {
+        if (!q.strain) q.strain = 'anatolian';
+        if (!q.status) q.status = 'active';
+        if (!q.queenState) q.queenState = 'laying';
+        if (q.isClipped === undefined) q.isClipped = false;
+        if (q.isMarked === undefined) q.isMarked = true;
+        if (q.performanceScore === undefined) q.performanceScore = 0.5;
+      });
       oldState.feedings.forEach(f => { if (!f.amountKg && f.amount) f.amountKg = f.amount; if (!f.type) f.type = 'sugar_syrup'; });
       oldState.frames.forEach(f => { if (f.cyclesCompleted === undefined) f.cyclesCompleted = 0; if (f.waxAgeMonths === undefined) f.waxAgeMonths = 0; if (!f.status) f.status = 'in_use'; if (!f.foundationType) f.foundationType = 'wax'; if (!f.frameType) f.frameType = 'foundation'; });
       SCHEMA.forEach(k => { if (!Array.isArray(oldState[k])) oldState[k] = []; });

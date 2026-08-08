@@ -13,6 +13,7 @@
       { id: 'hives', icon: '🏠', label: 'Kovanlar', view: 'hives' }
     ]},
     { group: 'Operasyon', items: [
+      { id: 'tasks', icon: '📅', label: 'Görevler & Takvim', view: 'tasks' },
       { id: 'inspections', icon: '📋', label: 'Muayeneler', view: 'inspections' },
       { id: 'harvest', icon: '🍯', label: 'Bal Hasadı', view: 'harvest' },
       { id: 'feeding', icon: '🌾', label: 'Besleme', view: 'feeding' },
@@ -503,6 +504,10 @@ const App = {
         apiaries: ['Arı Üsleri', BM.Storage.list('apiaries').length + ' üs'],
         hives: ['Kovanlar', BM.Storage.list('hives').length + ' kovan'],
         inspections: ['Muayeneler', BM.Storage.list('inspections').length + ' kayıt'],
+        tasks: ['Görevler & Takvim', function() {
+          const pending = BM.Storage.list('tasks').filter(t => t.status === 'pending').length;
+          return pending + ' yapılacak görev';
+        }],
         harvest: ['Bal Hasadı', BM.fmt(BM.Storage.list('harvests').reduce((s, h) => s + h.weight, 0)) + ' kg'],
         feeding: ['Besleme', BM.Storage.list('feedings').length + ' kayıt'],
         treatments: ['Tedaviler', BM.Storage.list('treatments').length + ' kayıt'],

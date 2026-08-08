@@ -62,8 +62,14 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
     strain: s => ({anatolian:'Anadolu',caucasian:'Kafkas',carniolan:'Karniyol',buckfast:'Buckfast',carpathian:'Karpat',italian:'İtalyan',cyprian:'Kıbrıs',syrian:'Suriye',egyptian:'Mısır',hybrid:'Hibrit',survivor:'Survivor',unknown:'Bilinmiyor'}[s] || s),
     box: s => ({langstroth:'Langstroth',dadant:'Dadant',layens:'Layens',flow:'Flow',top_bar:'Top-Bar',wooden:'Ahşap Kovan',plastic:'Plastik Kovan',styrofoam:'Strafor Kovan',log:'Kütük Kovan',traditional:'Geleneksel Kütük',observation:'Gözlem Kovanı',queen_rearing:'Ana Arı Yetiştirme Kovanı'}[s] || s),
     pop: s => ({very_strong:'Çok Güçlü',strong:'Güçlü',medium:'Orta',weak:'Zayıf',very_weak:'Çok Zayıf'}[s] || s),
+    temperament: s => ({calm:'Sakin 🟢',nervous:'Huzursuz / Sinirli 🟡',aggressive:'Agresif 🔴',very_aggressive:'Çok Saldırgan ☣️'}[s] || s),
+    purpose: s => ({honey_production:'🍯 Bal Üretimi',bee_breeding:'🐝 Arı Yetiştiriciliği',queen_rearing:'👑 Ana Arı Yetiştiriciliği',pollination:'🌻 Polinasyon (Tozlaşma)',observation:'👁️ Gözlem / Eğitim',breeding:'🧬 Genetik & Islah'}[s] || s),
+    hiveSource: s => ({created_nucleus:'Suni Bölme',swarm:'Oğul',purchased:'Satın Alındı',captured:'Yakalandı',merged:'Birleştirildi'}[s] || s),
+    taskType: s => ({feeding:'🌾 Besleme',inspection:'📋 Muayene',treatment:'💊 Varroa/Tedavi',harvest:'🍯 Hasat',queen:'👑 Ana Arı Kontrolü',split:'🐝 Kovan Bölme',supers:'🪵 Kat Atma/Çıkarma',cleaning:'🧹 Temizlik/Bakım',other:'📌 Diğer'}[s] || s),
+    taskPriority: s => ({low:'Düşük',normal:'Normal',high:'Yüksek',urgent:'🔥 Acil'}[s] || s),
+    queenState: s => ({laying:'Yumurtluyor (Aktif)',virgin:'Bakire',cell:'Yüksükte',mating:'Çiftleşmede',old:'Yaşlı/Zayıf',replaced:'Değiştirildi'}[s] || s),
     color: s => ({white:'Beyaz',yellow:'Sarı',red:'Kırmızı',green:'Yeşil',blue:'Mavi'}[s] || s),
-    source: s => ({bred:'Yetiştirildi',purchased:'Satın alındı',swarm:'Oğul',supersedure:'Süpersedür',emergency:'Acil'}[s] || s),
+    source: s => ({bred:'Kendi Yetiştirdiğim',purchased:'Satın Alındı',swarm:'Oğul Memesi',supersedure:'Doğal Yenileme',emergency:'Acil Hücre'}[s] || s),
     feedType: s => ({
       sugar_syrup: {tr:'Şeker Şurubu (2:1)', unit:'L', density:1.3},
       sugar_syrup_1to1: {tr:'Şeker Şurubu (1:1)', unit:'L', density:1.2},
@@ -176,151 +182,139 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       return;
     }
     if (_user) {
-      // ============ PROFIL GORUNTULEME (YENI TASARIM) ============
+      // Show profile + logout if already logged in - temiz tasarim
       const email = BM.esc(_user.email || '');
-      const displayName = email.split('@')[0] || email;
-      const createdAt = _user.created_at ? new Date(_user.created_at).toLocaleDateString('tr-TR', { year:'numeric', month:'long', day:'numeric' }) : '';
+      const userId = (_user.id || '').substring(0, 8);
+      const createdAt = _user.created_at ? new Date(_user.created_at).toLocaleDateString('tr-TR') : '';
       const stats = BM.Storage.state || {};
-      const hiveCount = stats.hives?.length || 0;
-      const inspCount = stats.inspections?.length || 0;
-      const harvestCount = stats.harvests?.length || 0;
-      const totalKg = (stats.harvests || []).reduce((s, h) => s + (h.weight || 0), 0);
-      const verified = _user.email_confirmed_at ? true : false;
+      const totalRecords = (stats.hives?.length || 0) + (stats.inspections?.length || 0) + (stats.feedings?.length || 0);
 
-      BM.Modal.open('',
-        '<div style="text-align:center;padding:var(--space-6) var(--space-4) var(--space-4)">' +
-          '<!-- Avatar Circle -->' +
-          '<div style="width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#d97706);display:inline-flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:#fff;box-shadow:0 8px 32px rgba(245,158,11,0.3);margin-bottom:var(--space-4);border:3px solid rgba(255,255,255,0.2)">' +
-            email.charAt(0).toUpperCase() +
-          '</div>' +
-          '<h3 style="font-size:20px;font-weight:700;margin-bottom:2px">' + displayName + '</h3>' +
-          '<p style="font-size:13px;color:var(--text-secondary);word-break:break-all;margin-bottom:2px">' + email + '</p>' +
-          (createdAt ? '<p style="font-size:11px;color:var(--text-muted);margin-bottom:var(--space-4)">🐝 ' + createdAt + ' tarihinden beri arıcı</p>' : '<div style="margin-bottom:var(--space-4)"></div>') +
-          '<!-- Dogrulama Durumu -->' +
-          '<div style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius-full);font-size:12px;font-weight:500;margin-bottom:var(--space-4);background:' + (verified ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)') + ';color:' + (verified ? '#16a34a' : '#d97706') + ';border:1px solid ' + (verified ? 'rgba(34,197,94,0.25)' : 'rgba(245,158,11,0.25)') + '">' +
-            (verified ? '✅ E-posta Dogrulandi' : '⏳ E-posta Dogrulanmadi') +
-          '</div>' +
-          '<!-- Stats Row -->' +
-          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3);margin-bottom:var(--space-4)">' +
-            '<div style="padding:var(--space-3);background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(251,191,36,0.04));border:1px solid rgba(245,158,11,0.15);border-radius:var(--radius-lg)">' +
-              '<div style="font-size:24px;font-weight:800;color:#f59e0b">' + hiveCount + '</div>' +
-              '<div style="font-size:11px;color:var(--text-secondary)">🏠 Kovan</div>' +
-            '</div>' +
-            '<div style="padding:var(--space-3);background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(88,166,255,0.04));border:1px solid rgba(59,130,246,0.15);border-radius:var(--radius-lg)">' +
-              '<div style="font-size:24px;font-weight:800;color:#58a6ff">' + inspCount + '</div>' +
-              '<div style="font-size:11px;color:var(--text-secondary)">📋 Muayene</div>' +
-            '</div>' +
-            '<div style="padding:var(--space-3);background:linear-gradient(135deg,rgba(34,197,94,0.08),rgba(63,185,80,0.04));border:1px solid rgba(34,197,94,0.15);border-radius:var(--radius-lg)">' +
-              '<div style="font-size:24px;font-weight:800;color:#3fb950">' + BM.fmt(totalKg) + '</div>' +
-              '<div style="font-size:11px;color:var(--text-secondary)">🍯 kg Bal</div>' +
-            '</div>' +
-          '</div>' +
-          '<!-- Cloud Status -->' +
-          '<div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-4);background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.18);border-radius:var(--radius-lg);margin-bottom:var(--space-4);text-align:left">' +
-            '<div style="width:10px;height:10px;border-radius:50%;background:#3fb950;box-shadow:0 0 8px rgba(63,185,80,0.6);flex-shrink:0"></div>' +
-            '<div style="flex:1">' +
-              '<div style="font-size:13px;font-weight:600;color:#16a34a">Bulut Baglantisi Aktif</div>' +
-              '<div style="font-size:11px;color:var(--text-secondary)">Verileriniz Supabase ile senkronize</div>' +
-            '</div>' +
-          '</div>' +
-          '<!-- Actions -->' +
-          '<div style="display:flex;gap:var(--space-2)">' +
-            '<button type="button" class="btn" onclick="BM.Modal.close();BM.Storage.syncFromCloud()" style="flex:1">' +
-              '🔄 Verileri Yenile' +
-            '</button>' +
-            '<button type="button" class="btn" onclick="BM.Auth.doLogout()" style="flex:1;background:rgba(248,81,73,0.1);border-color:rgba(248,81,73,0.3);color:#f85149">' +
-              '🚪 Cikis Yap' +
-            '</button>' +
-          '</div>' +
-        '</div>',
-        () => false,
-        { hideFooter: true }
+      BM.Modal.open('👤 Hesabım',
+        `<div style="padding:var(--space-1) 0">
+          <!-- Avatar + Email Header -->
+          <div style="display:flex;align-items:center;gap:var(--space-4);padding:var(--space-4);background:linear-gradient(135deg, #f59e0b 0%, #f59e0b 100%);border-radius:var(--radius-lg);margin-bottom:var(--space-4);color:#fff">
+            <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;flex-shrink:0">
+              ${email.charAt(0).toUpperCase()}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:11px;opacity:0.85;text-transform:uppercase;letter-spacing:0.04em">Giriş Yapıldı ✓</div>
+              <div style="font-size:16px;font-weight:700;margin-top:4px;word-break:break-all">${email}</div>
+              ${createdAt ? `<div style="font-size:11px;opacity:0.8;margin-top:4px">Üyelik: ${createdAt}</div>` : ''}
+            </div>
+          </div>
+
+          <!-- Cloud Status -->
+          <div style="padding:var(--space-3);background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-md);margin-bottom:var(--space-3)">
+            <div style="display:flex;align-items:center;gap:var(--space-2)">
+              <span style="font-size:20px">☁️</span>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:700;color:#16a34a">Supabase Bağlı</div>
+                <div style="font-size:11px;color:var(--text-secondary)">Tüm değişiklikler buluta kaydediliyor</div>
+              </div>
+              <span class="badge badge--ok" style="background:#16a34a;color:#fff">AKTİF</span>
+            </div>
+          </div>
+
+          <!-- Stats -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2);margin-bottom:var(--space-4)">
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);text-align:center">
+              <div style="font-size:20px;font-weight:700;color:#f59e0b">${stats.hives?.length || 0}</div>
+              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Kovan</div>
+            </div>
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);text-align:center">
+              <div style="font-size:20px;font-weight:700;color:#f59e0b">${stats.inspections?.length || 0}</div>
+              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Muayene</div>
+            </div>
+            <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);text-align:center">
+              <div style="font-size:20px;font-weight:700;color:#f59e0b">${stats.feedings?.length || 0}</div>
+              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Besleme</div>
+            </div>
+          </div>
+
+          <!-- Account Info -->
+          <div style="padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-md);margin-bottom:var(--space-3)">
+            <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:var(--space-2)">Hesap Bilgileri</div>
+            <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;font-size:13px">
+              <span style="color:var(--text-secondary)">Kullanıcı ID</span>
+              <span style="font-family:monospace;font-size:12px">${userId}...</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;font-size:13px">
+              <span style="color:var(--text-secondary)">E-posta doğrulandı</span>
+              <span>${_user.email_confirmed_at ? '✅' : '⏳ Bekliyor'}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;font-size:13px">
+              <span style="color:var(--text-secondary)">Toplam kayıt</span>
+              <span><strong>${totalRecords}</strong></span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+            <button type="button" class="btn" onclick="BM.Modal.close();setTimeout(()=>BM.Storage.syncFromCloud(),300)">
+              🔄 Buluttan Yenile
+            </button>
+            <button type="button" class="btn btn--danger" onclick="BM.Auth.doLogout()">
+              🚪 Çıkış Yap
+            </button>
+          </div>
+        </div>`,
+        () => false
       );
       return;
     }
 
-    // ============ GIRIS / KAYIT FORMU (YENI TASARIM) ============
     _authMode = 'login';
 
-    function renderAuthForm() {
-      var isLogin = _authMode === 'login';
-      return '<div style="text-align:center;padding:var(--space-4) var(--space-2) 0">' +
-        '<!-- Bee Logo -->' +
-        '<div style="font-size:52px;margin-bottom:var(--space-2);line-height:1">🐝</div>' +
-        '<h2 style="font-size:22px;font-weight:800;margin-bottom:4px;background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;background-clip:text;color:transparent">BeeMaster AI</h2>' +
-        '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:var(--space-4)">' + (isLogin ? 'Hesabınıza giriş yapın' : 'Yeni hesap oluşturun') + '</p>' +
-        '<!-- Tab Switcher -->' +
-        '<div style="display:flex;gap:4px;margin-bottom:var(--space-4);background:var(--bg-tertiary);padding:4px;border-radius:var(--radius-full)">' +
-          '<button type="button" id="auth-tab-login" class="btn ' + (isLogin ? 'btn--primary' : 'btn--ghost') + '" style="flex:1;border-radius:var(--radius-full);border:none;height:38px;font-weight:600" onclick="BM.Auth.switchTab(\'login\')">🔑 Giriş</button>' +
-          '<button type="button" id="auth-tab-register" class="btn ' + (!isLogin ? 'btn--primary' : 'btn--ghost') + '" style="flex:1;border-radius:var(--radius-full);border:none;height:38px;font-weight:600" onclick="BM.Auth.switchTab(\'register\')">✨ Kayıt</button>' +
-        '</div>' +
-        '<!-- Email -->' +
-        '<label class="field" style="text-align:left;margin-bottom:var(--space-3)"><span class="field-label">E-posta</span>' +
-          '<div style="position:relative"><input class="input" type="email" id="auth-email" placeholder="ornek@gmail.com" autocomplete="email" style="padding-left:40px">' +
-          '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none">📧</span></div></label>' +
-        '<!-- Password with toggle -->' +
-        '<label class="field" style="text-align:left;margin-bottom:var(--space-3)"><span class="field-label">Şifre</span>' +
-          '<div style="position:relative"><input class="input" type="password" id="auth-password" placeholder="••••••" autocomplete="' + (isLogin ? 'current-password' : 'new-password') + '" style="padding-left:40px;padding-right:44px">' +
-          '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none">🔒</span>' +
-          '<button type="button" id="auth-pw-toggle" onclick="var p=document.getElementById(\'auth-password\');var t=this;var isP=p.type===\'text\';p.type=isP?\'password\':\'text\';t.textContent=isP?\'👁️\':\'🙈\'" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:6px 10px;background:none;border:none;cursor:pointer;font-size:18px;line-height:1;color:var(--text-secondary)" title="Şifreyi göster/gizle">👁️</button></div></label>' +
-        '<!-- Error -->' +
-        '<div id="auth-error" style="min-height:22px;font-size:12px;margin-bottom:var(--space-2);text-align:left;padding-left:4px"></div>' +
-        '<!-- Submit -->' +
-        '<button type="submit" id="auth-submit-btn" class="btn btn--primary" style="width:100%;height:46px;font-weight:700;font-size:15px;border-radius:var(--radius-full);margin-bottom:var(--space-3);transition:all 0.2s">' +
-          (isLogin ? '🔐 Giriş Yap' : '🚀 Hesap Oluştur') +
-        '</button>' +
-        '<!-- Guest info -->' +
-        '<p style="font-size:11px;color:var(--text-muted);padding:0 var(--space-2)">💡 Giriş yapmadan <strong style="color:var(--text-secondary)">misafir</strong> olarak da kullanabilirsiniz. Verileriniz cihazınızda saklanır.</p>' +
-      '</div>';
-    }
+    const renderBody = () => `
+      <div style="padding:var(--space-2) 0">
+        <div style="display:flex;gap:var(--space-1);margin-bottom:var(--space-4);background:var(--bg-tertiary);padding:4px;border-radius:var(--radius-md)">
+          <button type="button" id="auth-tab-login" class="btn ${_authMode === 'login' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('login')">🔑 Giriş Yap</button>
+          <button type="button" id="auth-tab-register" class="btn ${_authMode === 'register' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('register')">📝 Kayıt Ol</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-3)">
+          ${_authMode === 'login' ? 'Hesabınızla giriş yapın — tüm verileriniz buluttan yüklenecek.' : 'Yeni hesap oluşturun — verileriniz Supabase bulutuna kaydedilecek.'}
+        </p>
+        <label class="field"><span class="field-label">E-posta</span>
+          <input class="input" type="email" id="auth-email" placeholder="ornek@gmail.com" autocomplete="email"></label>
+        <label class="field"><span class="field-label">Şifre (en az 6 karakter)</span>
+          <input class="input" type="password" id="auth-password" placeholder="••••••" autocomplete="${_authMode === 'login' ? 'current' : 'new'}-password"></label>
+        <div id="auth-error" style="color:var(--danger);font-size:12px;margin-top:var(--space-2);min-height:18px"></div>
+        <div style="margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--n-800);font-size:11px;color:var(--text-muted)">
+          💡 Giriş yapmadan da uygulamayı kullanabilirsiniz. Verileriniz cihazınızda (localStorage) saklanır. Giriş yaparsanız bulutla senkronize olur.
+        </div>
+      </div>`;
 
-    BM.Modal.open('', renderAuthForm(), async () => {
-      var email = document.getElementById('auth-email');
-      var password = document.getElementById('auth-password');
-      var errEl = document.getElementById('auth-error');
-      var submitBtn = document.getElementById('auth-submit-btn');
-      var emailVal = email ? email.value.trim() : '';
-      var passwordVal = password ? password.value : '';
-      if (!emailVal || !passwordVal) {
-        if (errEl) { errEl.textContent = '⚠️ Lütfen e-posta ve şifrenizi girin'; errEl.style.color = '#f85149'; }
+    BM.Modal.open('🐝 BeeMaster AI', renderBody(), async () => {
+      const email = document.getElementById('auth-email')?.value.trim();
+      const password = document.getElementById('auth-password')?.value;
+      const errEl = document.getElementById('auth-error');
+      if (!email || !password) {
+        if (errEl) errEl.textContent = 'E-posta ve şifre gerekli';
         return false;
       }
-      if (passwordVal.length < 6) {
-        if (errEl) { errEl.textContent = '⚠️ Şifre en az 6 karakter olmalı'; errEl.style.color = '#f85149'; }
+      if (password.length < 6) {
+        if (errEl) errEl.textContent = 'Şifre en az 6 karakter olmalı';
         return false;
       }
-      // Loading state
-      if (errEl) { errEl.textContent = ''; }
-      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '⏳ ' + (_authMode === 'login' ? 'Giriş yapılıyor...' : 'Hesap oluşturuluyor...'); submitBtn.style.opacity = '0.7'; }
-      var result;
+      let result;
       if (_authMode === 'register') {
-        result = await signUp(emailVal, passwordVal);
-        if (result.error && result.error.message && result.error.message.toLowerCase().indexOf('already') >= 0) {
-          result = await signIn(emailVal, passwordVal);
+        result = await signUp(email, password);
+        if (result.error?.message?.toLowerCase().includes('already')) {
+          // Kullanıcı zaten var, sign in dene
+          result = await signIn(email, password);
         }
       } else {
-        result = await signIn(emailVal, passwordVal);
+        result = await signIn(email, password);
       }
-      // Reset loading
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = _authMode === 'login' ? '🔐 Giriş Yap' : '🚀 Hesap Oluştur'; submitBtn.style.opacity = '1'; }
       if (result.error) {
-        var msg = result.error.message || 'Giriş başarısız';
-        // Fix-oriented error messages
-        if (msg.toLowerCase().indexOf('invalid') >= 0 || msg.toLowerCase().indexOf('credentials') >= 0) {
-          msg = 'E-posta veya şifre hatalı. Lütfen tekrar deneyin veya şifrenizi sıfırlayın.';
-        } else if (msg.toLowerCase().indexOf('already') >= 0) {
-          msg = 'Bu e-posta zaten kayıtlı. Giriş yapmayı deneyin.';
-        } else if (msg.toLowerCase().indexOf('not found') >= 0 || msg.toLowerCase().indexOf('not exist') >= 0) {
-          msg = 'Bu e-posta ile kayıtlı hesap bulunamadı. Kayıt olmayı deneyin.';
-        }
-        if (errEl) { errEl.textContent = '⚠️ ' + msg; errEl.style.color = '#f85149'; }
+        if (errEl) errEl.textContent = (result.error.message || 'Giriş başarısız') + (result.error.code ? ' (' + result.error.code + ')' : '');
         return false;
       }
-      if (result.data && result.data.user) {
-        BM.Toast.show('🎉 Hoş geldiniz! Bulut senkronizasyonu aktif', 'success');
+      if (result.data?.user) {
+        BM.Toast.show('Hoş geldiniz! 🌐 Bulut senkronizasyonu aktif', 'success');
         updateAuthBtn();
+        // NOT: Local veriyi SILME! syncFromCloud merge yapar — local + cloud birlestirilir
         if (BM.Storage) {
-          // NOT: Local veriyi SILME! syncFromCloud merge yapar — local + cloud birlestirilir
           BM.Toast.show('🔄 Bulut senkronize ediliyor...', 'info');
           if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') {
             BM.Storage.syncFromCloud().then(function() {
@@ -337,15 +331,33 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         return true;
       }
       return false;
-    }, { hideFooter: true });
+    });
   }
 
   function switchTab(mode) {
     _authMode = mode;
-    document.getElementById('modal-body').innerHTML = renderAuthForm();
-    // Re-attach submit handler
-    var form = document.getElementById('modal-form');
-    if (form) form.onsubmit = function(e) { e.preventDefault(); return false; };
+    document.getElementById('modal-body').innerHTML = renderBody();
+  }
+
+  function renderBody() {
+    return `
+      <div style="padding:var(--space-2) 0">
+        <div style="display:flex;gap:var(--space-1);margin-bottom:var(--space-4);background:var(--bg-tertiary);padding:4px;border-radius:var(--radius-md)">
+          <button type="button" id="auth-tab-login" class="btn ${_authMode === 'login' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('login')">🔑 Giriş Yap</button>
+          <button type="button" id="auth-tab-register" class="btn ${_authMode === 'register' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('register')">📝 Kayıt Ol</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-3)">
+          ${_authMode === 'login' ? 'Hesabınızla giriş yapın.' : 'Yeni hesap oluşturun.'}
+        </p>
+        <label class="field"><span class="field-label">E-posta</span>
+          <input class="input" type="email" id="auth-email" placeholder="ornek@gmail.com" autocomplete="email"></label>
+        <label class="field"><span class="field-label">Şifre (en az 6 karakter)</span>
+          <input class="input" type="password" id="auth-password" placeholder="••••••" autocomplete="${_authMode === 'login' ? 'current' : 'new'}-password"></label>
+        <div id="auth-error" style="color:var(--danger);font-size:12px;margin-top:var(--space-2);min-height:18px"></div>
+        <div style="margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--n-800);font-size:11px;color:var(--text-muted)">
+          💡 Giriş yapmadan da kullanabilirsiniz. Giriş = bulut senkronizasyonu.
+        </div>
+      </div>`;
   }
 
   function updateAuthBtn() {
@@ -465,12 +477,13 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
   const LEGACY_KEYS = ['beemaster-v1', 'beemaster-v2', 'beemaster-v3'];
 
   // Schema (Spec 08 — Database Architecture)
-  const SCHEMA = ['apiaries','hives','queens','frames','inspections','harvests','feedings','treatments','diseases','inventory'];
+  const SCHEMA = ['apiaries','hives','queens','frames','inspections','harvests','feedings','treatments','diseases','inventory','tasks'];
 
   // Seed data — full Turkish context, realistic values
   const seedData = () => {
     const now = new Date().toISOString();
     const ago = d => new Date(Date.now() - d * 864e5).toISOString().slice(0, 10);
+    const inDays = d => new Date(Date.now() + d * 864e5).toISOString().slice(0, 10);
 
     const apiaries = [
       { id: 'ap_1', name: 'Eğil Merkez', location: 'Eğil, Diyarbakır', lat: 38.247, lng: 40.135, flora: 'Geven, Kekik, Adaçayı, Pamuk', notes: 'Yayla konumu', archived: false, createdAt: now, updatedAt: now },
@@ -478,13 +491,13 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
     ];
 
     const hiveSeed = [
-      { n: 'Kovan-01', ap: 'ap_1', strain: 'carniolan', box: 'langstroth', fc: 10, pop: 'very_strong', var: 1, qBreed: 'Karniyol F1', qAge: 2 },
-      { n: 'Kovan-02', ap: 'ap_1', strain: 'caucasian', box: 'langstroth', fc: 10, pop: 'strong', var: 3, qBreed: 'Kafkas Saf', qAge: 3 },
-      { n: 'Kovan-03', ap: 'ap_1', strain: 'anatolian', box: 'langstroth', fc: 10, pop: 'strong', var: 2, qBreed: 'Anadolu Yerli', qAge: 1 },
-      { n: 'Kovan-04', ap: 'ap_1', strain: 'carniolan', box: 'langstroth', fc: 8, pop: 'strong', var: 2, qBreed: 'Karniyol', qAge: 2 },
-      { n: 'Kovan-05', ap: 'ap_2', strain: 'caucasian', box: 'dadant', fc: 7, pop: 'weak', var: 8, qBreed: 'Kafkas', qAge: 4 },
-      { n: 'Kovan-06', ap: 'ap_2', strain: 'anatolian', box: 'langstroth', fc: 10, pop: 'strong', var: 2, qBreed: 'Anadolu', qAge: 2 },
-      { n: 'Kovan-07', ap: 'ap_2', strain: 'hybrid', box: 'layens', fc: 8, pop: 'medium', var: 4, qBreed: 'Hibrit', qAge: 2 }
+      { n: 'Kovan-01', ap: 'ap_1', strain: 'carniolan', box: 'langstroth', fc: 10, pop: 'very_strong', var: 1, qBreed: 'Karniyol F1', qAge: 2, temp: 'calm', purp: 'honey_production', sups: 2, src: 'created_nucleus' },
+      { n: 'Kovan-02', ap: 'ap_1', strain: 'caucasian', box: 'langstroth', fc: 10, pop: 'strong', var: 3, qBreed: 'Kafkas Saf', qAge: 3, temp: 'calm', purp: 'honey_production', sups: 1, src: 'purchased' },
+      { n: 'Kovan-03', ap: 'ap_1', strain: 'anatolian', box: 'langstroth', fc: 10, pop: 'strong', var: 2, qBreed: 'Anadolu Yerli', qAge: 1, temp: 'nervous', purp: 'bee_breeding', sups: 0, src: 'swarm' },
+      { n: 'Kovan-04', ap: 'ap_1', strain: 'carniolan', box: 'langstroth', fc: 8, pop: 'strong', var: 2, qBreed: 'Karniyol', qAge: 2, temp: 'calm', purp: 'queen_rearing', sups: 0, src: 'created_nucleus' },
+      { n: 'Kovan-05', ap: 'ap_2', strain: 'caucasian', box: 'dadant', fc: 7, pop: 'weak', var: 8, qBreed: 'Kafkas', qAge: 4, temp: 'aggressive', purp: 'honey_production', sups: 0, src: 'created_nucleus' },
+      { n: 'Kovan-06', ap: 'ap_2', strain: 'anatolian', box: 'langstroth', fc: 10, pop: 'strong', var: 2, qBreed: 'Anadolu', qAge: 2, temp: 'calm', purp: 'pollination', sups: 1, src: 'captured' },
+      { n: 'Kovan-07', ap: 'ap_2', strain: 'hybrid', box: 'layens', fc: 8, pop: 'medium', var: 4, qBreed: 'Hibrit', qAge: 2, temp: 'nervous', purp: 'observation', sups: 0, src: 'merged' }
     ];
 
     const hives = [];
@@ -498,12 +511,15 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         id: qid, hiveId: hid, strain: s.strain,
         birthDate: new Date(Date.now() - s.qAge * 365 * 864e5).toISOString().slice(0, 10),
         source: 'bred', markedColor: ['white', 'yellow', 'red', 'green', 'blue'][(new Date().getFullYear() - s.qAge) % 5],
-        status: 'active', performanceScore: Math.max(0.3, 1 - s.var * 0.08 - (s.pop === 'weak' ? 0.3 : 0)),
+        status: 'active', queenState: 'laying', isClipped: false, isMarked: true,
+        performanceScore: Math.max(0.3, 1 - s.var * 0.08 - (s.pop === 'weak' ? 0.3 : 0)),
         notes: '', createdAt: now, updatedAt: now
       });
       hives.push({
         id: hid, apiaryId: s.ap, name: s.n, status: s.pop === 'weak' ? 'weak' : 'active',
         strain: s.strain, boxType: s.box, frameCount: s.fc, positionInApiary: i + 1,
+        temperament: s.temp || 'calm', purpose: s.purp || 'honey_production',
+        supersCount: s.sups || 0, source: s.src || 'created_nucleus',
         queenId: qid, nfcTag: 'BM-' + Date.now().toString(36).toUpperCase() + '-' + (i + 1),
         installedAt: ago((i + 1) * 30), notes: '', createdAt: now, updatedAt: now
       });
@@ -512,12 +528,19 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         frames.push({
           id: 'fr_' + hid + '_' + p, hiveId: hid, position: p,
           frameType: ftypes[(p - 1) % ftypes.length] || 'empty',
-          foundationType: 'wax', status: 'in_use', cyclesCompleted: Math.floor(Math.random() * 4),
-          waxAgeMonths: Math.floor(Math.random() * 24) + 1, notes: '',
+          foundationType: 'wax', status: 'in_use',
+          cyclesCompleted: 0, waxAgeMonths: 0,
           createdAt: now, updatedAt: now
         });
       }
     });
+
+    const tasks = [
+      { id: 'tsk_1', title: 'İlkbahar Teşvik Şurubu Verilecek', type: 'feeding', priority: 'high', dueDate: inDays(1), status: 'pending', apiaryId: 'ap_1', hiveId: 'hv_1', notes: '1:1 Şeker şurubu 2 Litre verilecek', createdAt: now, updatedAt: now },
+      { id: 'tsk_2', title: 'Varroa Sayımı & İlaç Kontrolü', type: 'treatment', priority: 'urgent', dueDate: inDays(3), status: 'pending', apiaryId: 'ap_1', hiveId: 'hv_5', notes: 'Zayıf kovan varroa şüphesi kontrol edilecek', createdAt: now, updatedAt: now },
+      { id: 'tsk_3', title: 'Kovan-01 Kat Atma (İlave Çerçeve)', type: 'supers', priority: 'normal', dueDate: inDays(5), status: 'pending', apiaryId: 'ap_1', hiveId: 'hv_1', notes: '10 Çerçeve doldu, kat atılacak', createdAt: now, updatedAt: now },
+      { id: 'tsk_4', title: 'Ana Arı Yumurtlama Kontrolü', type: 'queen', priority: 'normal', dueDate: ago(2), status: 'completed', apiaryId: 'ap_2', hiveId: 'hv_6', notes: 'Günlük yumurta görüldü', createdAt: now, updatedAt: now }
+    ];
 
     const inspSeed = [
       { hi: 0, days: 3, var: 1, pop: 'very_strong', brood: 7, honey: 2, note: 'Sezon başı kontrol, her şey yolunda' },
@@ -578,7 +601,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       createdAt: now
     }));
 
-    return { apiaries, hives, queens, frames, inspections, harvests, feedings, treatments, diseases, inventory };
+    return { apiaries, hives, queens, frames, inspections, harvests, feedings, treatments, diseases, inventory, tasks };
   };
 
   // Storage API
@@ -618,8 +641,25 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       if (!oldState.treatments) oldState.treatments = [];
       if (!oldState.diseases) oldState.diseases = [];
       if (!oldState.inventory) oldState.inventory = [];
-      oldState.hives.forEach(h => { if (!h.strain) h.strain = 'anatolian'; if (!h.boxType) h.boxType = 'langstroth'; if (!h.status) h.status = 'active'; if (!h.frameCount) h.frameCount = 10; });
-      oldState.queens.forEach(q => { if (!q.strain) q.strain = 'anatolian'; if (!q.status) q.status = 'active'; if (q.performanceScore === undefined) q.performanceScore = 0.5; });
+      if (!oldState.tasks) oldState.tasks = [];
+      oldState.hives.forEach(h => {
+        if (!h.strain) h.strain = 'anatolian';
+        if (!h.boxType) h.boxType = 'langstroth';
+        if (!h.status) h.status = 'active';
+        if (!h.frameCount) h.frameCount = 10;
+        if (!h.temperament) h.temperament = 'calm';
+        if (!h.purpose) h.purpose = 'honey_production';
+        if (h.supersCount === undefined) h.supersCount = 0;
+        if (!h.source) h.source = 'created_nucleus';
+      });
+      oldState.queens.forEach(q => {
+        if (!q.strain) q.strain = 'anatolian';
+        if (!q.status) q.status = 'active';
+        if (!q.queenState) q.queenState = 'laying';
+        if (q.isClipped === undefined) q.isClipped = false;
+        if (q.isMarked === undefined) q.isMarked = true;
+        if (q.performanceScore === undefined) q.performanceScore = 0.5;
+      });
       oldState.feedings.forEach(f => { if (!f.amountKg && f.amount) f.amountKg = f.amount; if (!f.type) f.type = 'sugar_syrup'; });
       oldState.frames.forEach(f => { if (f.cyclesCompleted === undefined) f.cyclesCompleted = 0; if (f.waxAgeMonths === undefined) f.waxAgeMonths = 0; if (!f.status) f.status = 'in_use'; if (!f.foundationType) f.foundationType = 'wax'; if (!f.frameType) f.frameType = 'foundation'; });
       SCHEMA.forEach(k => { if (!Array.isArray(oldState[k])) oldState[k] = []; });
@@ -1650,8 +1690,38 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
            </select></label>
        </div>
        <div class="field-row">
+         <label class="field"><span class="field-label">Mizaç / Agresiflik</span>
+           <select class="select" name="temperament">
+             <option value="calm">🟢 Sakin</option>
+             <option value="nervous">🟡 Huzursuz / Sinirli</option>
+             <option value="aggressive">🔴 Agresif</option>
+             <option value="very_aggressive">☣️ Çok Saldırgan</option>
+           </select></label>
+         <label class="field"><span class="field-label">Kovan Amacı</span>
+           <select class="select" name="purpose">
+             <option value="honey_production">🍯 Bal Üretimi</option>
+             <option value="bee_breeding">🐝 Arı Yetiştiriciliği</option>
+             <option value="queen_rearing">👑 Ana Arı Yetiştiriciliği</option>
+             <option value="pollination">🌻 Polinasyon (Tozlaşma)</option>
+             <option value="observation">👁️ Gözlem / Eğitim</option>
+             <option value="breeding">🧬 Genetik & Islah</option>
+           </select></label>
+       </div>
+       <div class="field-row">
          <label class="field"><span class="field-label">Çerçeve Sayısı</span>
            <input class="input" name="frameCount" type="number" min="1" max="20" value="10"></label>
+         <label class="field"><span class="field-label">Kat (İlave) Sayısı</span>
+           <input class="input" name="supersCount" type="number" min="0" max="10" value="0"></label>
+       </div>
+       <div class="field-row">
+         <label class="field"><span class="field-label">Kovan Kaynağı</span>
+           <select class="select" name="source">
+             <option value="created_nucleus">Suni Bölme</option>
+             <option value="swarm">Oğul</option>
+             <option value="purchased">Satın Alındı</option>
+             <option value="captured">Yakalandı</option>
+             <option value="merged">Birleştirildi</option>
+           </select></label>
          <label class="field"><span class="field-label">Pozisyon</span>
            <input class="input" name="positionInApiary" type="number" min="1" value="${BM.Storage.list('hives').length + 1}"></label>
        </div>
@@ -1714,8 +1784,26 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
            </select></label>
        </div>
        <div class="field-row">
+         <label class="field"><span class="field-label">Mizaç / Agresiflik</span>
+           <select class="select" name="temperament">
+             ${['calm','nervous','aggressive','very_aggressive'].map(t => `<option value="${t}"${(h.temperament || 'calm') === t ? ' selected' : ''}>${BM.T.temperament(t)}</option>`).join('')}
+           </select></label>
+         <label class="field"><span class="field-label">Kovan Amacı</span>
+           <select class="select" name="purpose">
+             ${['honey_production','bee_breeding','queen_rearing','pollination','observation','breeding'].map(p => `<option value="${p}"${(h.purpose || 'honey_production') === p ? ' selected' : ''}>${BM.T.purpose(p)}</option>`).join('')}
+           </select></label>
+       </div>
+       <div class="field-row">
          <label class="field"><span class="field-label">Çerçeve</span>
            <input class="input" name="frameCount" type="number" min="1" max="20" value="${h.frameCount}"></label>
+         <label class="field"><span class="field-label">Kat (İlave)</span>
+           <input class="input" name="supersCount" type="number" min="0" max="10" value="${h.supersCount || 0}"></label>
+       </div>
+       <div class="field-row">
+         <label class="field"><span class="field-label">Kovan Kaynağı</span>
+           <select class="select" name="source">
+             ${['created_nucleus','swarm','purchased','captured','merged'].map(src => `<option value="${src}"${(h.source || 'created_nucleus') === src ? ' selected' : ''}>${BM.T.hiveSource(src)}</option>`).join('')}
+           </select></label>
          <label class="field"><span class="field-label">Durum</span>
            <select class="select" name="status">
              ${['active','weak','dead','sold','merged'].map(s => `<option value="${s}"${h.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}
@@ -3233,27 +3321,40 @@ BM.hives = hivesModule;
                ${['white','yellow','red','green','blue'].map(c => `<option value="${c}">${BM.T.color(c)}</option>`).join('')}
              </select></label>
          </div>
-         <div class="field-row">
-           <label class="field"><span class="field-label">Doğum *</span>
-             <input class="input" name="birthDate" type="date" required value="${BM.today()}"></label>
-           <label class="field"><span class="field-label">Kaynak</span>
-             <select class="select" name="source">
-               ${['bred','purchased','swarm','supersedure','emergency'].map(s => `<option value="${s}">${BM.T.source(s)}</option>`).join('')}
-             </select></label>
-         </div>
-         <div class="field-row">
-           <label class="field"><span class="field-label">Tedarikçi</span>
-             <input class="input" name="supplier"></label>
-           <label class="field"><span class="field-label">Maliyet (₺)</span>
-             <input class="input" name="costTry" type="number" min="0" placeholder="0"></label>
-         </div>
-         <label class="field"><span class="field-label">Performans Skoru (0-100)</span>
-           <input class="input" name="performanceScore" type="number" min="0" max="100" value="80"></label>
-         <label class="field"><span class="field-label">Notlar</span>
-           <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+          <div class="field-row">
+            <label class="field"><span class="field-label">Doğum *</span>
+              <input class="input" name="birthDate" type="date" required value="${BM.today()}"></label>
+            <label class="field"><span class="field-label">Ana Arı Durumu</span>
+              <select class="select" name="queenState">
+                ${['laying','virgin','cell','mating','old'].map(st => `<option value="${st}">${BM.T.queenState(st)}</option>`).join('')}
+              </select></label>
+          </div>
+          <div class="field-row">
+            <label class="field"><span class="field-label">Kaynak</span>
+              <select class="select" name="source">
+                ${['bred','purchased','swarm','supersedure','emergency'].map(s => `<option value="${s}">${BM.T.source(s)}</option>`).join('')}
+              </select></label>
+            <label class="field"><span class="field-label">Fiziksel Özellikler</span>
+              <div style="display:flex;gap:12px;margin-top:6px">
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" name="isMarked" value="true" checked> 🎨 İşaretli</label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" name="isClipped" value="true"> ✂️ Kanat Kesik</label>
+              </div></label>
+          </div>
+          <div class="field-row">
+            <label class="field"><span class="field-label">Tedarikçi</span>
+              <input class="input" name="supplier"></label>
+            <label class="field"><span class="field-label">Maliyet (₺)</span>
+              <input class="input" name="costTry" type="number" min="0" placeholder="0"></label>
+          </div>
+          <label class="field"><span class="field-label">Performans Skoru (0-100)</span>
+            <input class="input" name="performanceScore" type="number" min="0" max="100" value="80"></label>
+          <label class="field"><span class="field-label">Notlar</span>
+            <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
         async (d) => {
           d.performanceScore = Math.max(0, Math.min(1, parseInt(d.performanceScore || 80) / 100));
           if (d.costTry) d.costTry = parseFloat(d.costTry);
+          d.isMarked = !!d.isMarked;
+          d.isClipped = !!d.isClipped;
           const q = await BM.Storage.add('queens', { ...d, status: 'active' });
           const h = BM.Storage.get('hives', d.hiveId);
           if (h) BM.Storage.update('hives', h.id, { queenId: q.id });
@@ -3358,6 +3459,222 @@ BM.hives = hivesModule;
   // ============ HARVEST ============
 
   BM.queens = queensModule;
+})(window);
+/* ===== js/modules/07_tasks.js ===== */
+// ============================================================
+// Tasks & Calendar Module — Operasyon & Takvim Takibi
+// ============================================================
+(function (global) {
+  'use strict';
+  const BM = global.BM = global.BM || {};
+
+  const tasksModule = {
+    add(presetHiveId) {
+      const hives = BM.Storage.list('hives');
+      const apiaries = BM.Storage.list('apiaries');
+
+      const hOpts = hives.map(h => `<option value="${h.id}"${presetHiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      const apOpts = apiaries.map(a => `<option value="${a.id}">${BM.esc(a.name)}</option>`).join('');
+
+      BM.Modal.open('Yeni Görev / Hatırlatıcı',
+        `<label class="field"><span class="field-label">Görev Başlığı *</span>
+           <input class="input" name="title" required placeholder="Örn: Kat atılacak veya 2L şurup verilecek"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Görev Türü *</span>
+             <select class="select" name="type" required>
+               <option value="feeding">🌾 Besleme</option>
+               <option value="inspection">📋 Muayene</option>
+               <option value="treatment">💊 Varroa / Tedavi</option>
+               <option value="harvest">🍯 Hasat</option>
+               <option value="queen">👑 Ana Arı Kontrolü</option>
+               <option value="split">🐝 Kovan Bölme</option>
+               <option value="supers">🪵 Kat Atma/Çıkarma</option>
+               <option value="cleaning">🧹 Temizlik / Bakım</option>
+               <option value="other">📌 Diğer</option>
+             </select></label>
+           <label class="field"><span class="field-label">Öncelik</span>
+             <select class="select" name="priority">
+               <option value="low">Düşük</option>
+               <option value="normal" selected>Normal</option>
+               <option value="high">Yüksek</option>
+               <option value="urgent">🔥 Acil</option>
+             </select></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Hedef Tarih *</span>
+             <input class="input" name="dueDate" type="date" required value="${BM.today()}"></label>
+           <label class="field"><span class="field-label">İlişkili Kovan</span>
+             <select class="select" name="hiveId"><option value="">Tüm Kovanlar / Seçilmedi</option>${hOpts}</select></label>
+         </div>
+         <label class="field"><span class="field-label">İlişkili Arı Üssü</span>
+           <select class="select" name="apiaryId"><option value="">Tüm Üsler / Seçilmedi</option>${apOpts}</select></label>
+         <label class="field"><span class="field-label">Notlar / Açıklama</span>
+           <textarea class="textarea" name="notes" rows="2" placeholder="Görev detayları..."></textarea></label>`,
+        async (d) => {
+          await BM.Storage.add('tasks', {
+            ...d,
+            status: 'pending',
+            dueDate: d.dueDate || BM.today()
+          });
+          BM.Toast.show('Görev eklendi ✓', 'success');
+          App.render('tasks');
+          return true;
+        }
+      );
+    },
+
+    edit(id) {
+      const task = BM.Storage.get('tasks', id);
+      if (!task) return;
+
+      const hives = BM.Storage.list('hives');
+      const apiaries = BM.Storage.list('apiaries');
+
+      const hOpts = hives.map(h => `<option value="${h.id}"${task.hiveId === h.id ? ' selected' : ''}>${BM.esc(h.name)}</option>`).join('');
+      const apOpts = apiaries.map(a => `<option value="${a.id}"${task.apiaryId === a.id ? ' selected' : ''}>${BM.esc(a.name)}</option>`).join('');
+
+      BM.Modal.open('Görev Düzenle',
+        `<label class="field"><span class="field-label">Görev Başlığı *</span>
+           <input class="input" name="title" required value="${BM.esc(task.title)}"></label>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Görev Türü *</span>
+             <select class="select" name="type">
+               ${['feeding','inspection','treatment','harvest','queen','split','supers','cleaning','other'].map(t => `<option value="${t}"${task.type === t ? ' selected' : ''}>${BM.T.taskType(t)}</option>`).join('')}
+             </select></label>
+           <label class="field"><span class="field-label">Öncelik</span>
+             <select class="select" name="priority">
+               ${['low','normal','high','urgent'].map(p => `<option value="${p}"${task.priority === p ? ' selected' : ''}>${BM.T.taskPriority(p)}</option>`).join('')}
+             </select></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Hedef Tarih *</span>
+             <input class="input" name="dueDate" type="date" required value="${task.dueDate}"></label>
+           <label class="field"><span class="field-label">Durum</span>
+             <select class="select" name="status">
+               <option value="pending"${task.status === 'pending' ? ' selected' : ''}>Yapılacak</option>
+               <option value="completed"${task.status === 'completed' ? ' selected' : ''}>Tamamlandı</option>
+             </select></label>
+         </div>
+         <div class="field-row">
+           <label class="field"><span class="field-label">Kovan</span>
+             <select class="select" name="hiveId"><option value="">Tüm Kovanlar / Seçilmedi</option>${hOpts}</select></label>
+           <label class="field"><span class="field-label">Arı Üssü</span>
+             <select class="select" name="apiaryId"><option value="">Tüm Üsler / Seçilmedi</option>${apOpts}</select></label>
+         </div>
+         <label class="field"><span class="field-label">Notlar</span>
+           <textarea class="textarea" name="notes" rows="2">${BM.esc(task.notes || '')}</textarea></label>`,
+        async (d) => {
+          await BM.Storage.update('tasks', id, d);
+          BM.Toast.show('Görev güncellendi ✓', 'success');
+          App.render('tasks');
+          return true;
+        }
+      );
+    },
+
+    toggleStatus(id) {
+      const task = BM.Storage.get('tasks', id);
+      if (!task) return;
+      const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+      BM.Storage.update('tasks', id, { status: newStatus });
+      BM.Toast.show(newStatus === 'completed' ? 'Görev tamamlandı ✓' : 'Görev yapılacaklara taşındı', 'info');
+      App.render('tasks');
+    },
+
+    del(id) {
+      BM.Modal.confirm('Bu görevi silmek istiyor musunuz?', () => {
+        BM.Storage.remove('tasks', id);
+        BM.Toast.show('Görev silindi', 'info');
+        App.render('tasks');
+      });
+    },
+
+    render() {
+      const list = BM.Storage.list('tasks').sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+      const todayStr = BM.today();
+
+      const pending = list.filter(t => t.status === 'pending');
+      const overdue = list.filter(t => t.status === 'pending' && t.dueDate < todayStr);
+      const completed = list.filter(t => t.status === 'completed');
+
+      return `
+        <div class="actions-bar">
+          <div>
+            <h2 style="font-size:18px;font-weight:700">📅 Görevler & Operasyon Takvimi</h2>
+            <div style="color:var(--text-secondary);font-size:12px;margin-top:2px">
+              ${pending.length} yapılacak (${overdue.length} gecikmiş), ${completed.length} tamamlandı
+            </div>
+          </div>
+          <button class="btn btn--primary" onclick="BM.tasks.add()">+ Yeni Görev</button>
+        </div>
+
+        ${!list.length ? `
+          <div class="card">
+            <div class="empty">
+              <div class="empty__icon">📅</div>
+              <div class="empty__title">Henüz planlanmış görev yok</div>
+              <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Şurup beslemesi, kat atma, ilaçlama gibi işlerinizi takvime ekleyin.</p>
+              <button class="btn btn--primary" onclick="BM.tasks.add()">+ İlk Görevi Ekle</button>
+            </div>
+          </div>
+        ` : `
+          <div class="grid-3" style="margin-bottom:var(--space-4)">
+            <div class="stat"><div class="stat__icon stat__icon--warning">📋</div><div class="stat__label">Yapılacak</div><div class="stat__value">${pending.length}</div></div>
+            <div class="stat"><div class="stat__icon stat__icon--danger">⏰</div><div class="stat__label">Gecikmiş</div><div class="stat__value">${overdue.length}</div></div>
+            <div class="stat"><div class="stat__icon stat__icon--success">✓</div><div class="stat__label">Tamamlanan</div><div class="stat__value">${completed.length}</div></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">Görev Listesi & Takvim</div>
+            </div>
+            <div class="row-list">
+              ${list.map(t => {
+                const hive = t.hiveId ? BM.Storage.get('hives', t.hiveId) : null;
+                const apiary = t.apiaryId ? BM.Storage.get('apiaries', t.apiaryId) : null;
+                const isOverdue = t.status === 'pending' && t.dueDate < todayStr;
+                const isToday = t.dueDate === todayStr;
+
+                return `
+                  <div class="row-list__item" style="opacity:${t.status === 'completed' ? '0.6' : '1'};padding:12px;display:flex;align-items:center;gap:12px">
+                    <input type="checkbox" style="width:20px;height:20px;cursor:pointer" ${t.status === 'completed' ? 'checked' : ''} onchange="BM.tasks.toggleStatus('${t.id}')">
+                    
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:14px;font-weight:600;${t.status === 'completed' ? 'text-decoration:line-through;color:var(--text-muted)' : ''}">
+                        ${BM.esc(t.title)}
+                      </div>
+                      <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                        <span>${BM.T.taskType(t.type)}</span>
+                        ${hive ? `<span>· 🏠 ${BM.esc(hive.name)}</span>` : ''}
+                        ${apiary ? `<span>· 📍 ${BM.esc(apiary.name)}</span>` : ''}
+                        ${t.notes ? `<span>· 📝 ${BM.esc(t.notes)}</span>` : ''}
+                      </div>
+                    </div>
+
+                    <div style="text-align:right">
+                      <div style="font-size:12px;font-weight:700;color:${t.status === 'completed' ? 'var(--text-muted)' : isOverdue ? 'var(--danger)' : isToday ? 'var(--warning)' : 'var(--text-primary)'}">
+                        ${isOverdue ? '⏰ Gecikti (' + BM.dateStr(t.dueDate) + ')' : isToday ? '⭐ BUGÜN' : BM.dateStr(t.dueDate)}
+                      </div>
+                      <div style="margin-top:4px">
+                        <span class="badge ${t.priority === 'urgent' ? 'badge--danger' : t.priority === 'high' ? 'badge--warn' : 'badge--ok'}">${BM.T.taskPriority(t.priority)}</span>
+                      </div>
+                    </div>
+
+                    <div style="display:flex;gap:4px">
+                      <button class="btn btn--sm" onclick="BM.tasks.edit('${t.id}')">✏️</button>
+                      <button class="btn btn--sm btn--danger" onclick="BM.tasks.del('${t.id}')">🗑</button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `}
+      `;
+    }
+  };
+
+  BM.tasks = tasksModule;
 })(window);
 (function(global) {
   'use strict';
@@ -3682,7 +3999,8 @@ BM.hives = hivesModule;
   };
 
   BM.dashboard = dashboardModule;
-})(window);(function(global) {
+})(window);
+(function(global) {
   'use strict';
   const BM = global.BM = global.BM || {};
 
@@ -4192,6 +4510,7 @@ BM.frames = framesModule;
       { id: 'hives', icon: '🏠', label: 'Kovanlar', view: 'hives' }
     ]},
     { group: 'Operasyon', items: [
+      { id: 'tasks', icon: '📅', label: 'Görevler & Takvim', view: 'tasks' },
       { id: 'inspections', icon: '📋', label: 'Muayeneler', view: 'inspections' },
       { id: 'harvest', icon: '🍯', label: 'Bal Hasadı', view: 'harvest' },
       { id: 'feeding', icon: '🌾', label: 'Besleme', view: 'feeding' },
@@ -4682,6 +5001,10 @@ const App = {
         apiaries: ['Arı Üsleri', BM.Storage.list('apiaries').length + ' üs'],
         hives: ['Kovanlar', BM.Storage.list('hives').length + ' kovan'],
         inspections: ['Muayeneler', BM.Storage.list('inspections').length + ' kayıt'],
+        tasks: ['Görevler & Takvim', function() {
+          const pending = BM.Storage.list('tasks').filter(t => t.status === 'pending').length;
+          return pending + ' yapılacak görev';
+        }],
         harvest: ['Bal Hasadı', BM.fmt(BM.Storage.list('harvests').reduce((s, h) => s + h.weight, 0)) + ' kg'],
         feeding: ['Besleme', BM.Storage.list('feedings').length + ' kayıt'],
         treatments: ['Tedaviler', BM.Storage.list('treatments').length + ' kayıt'],
@@ -5128,4 +5451,3 @@ const App = {
   BM.App = App;
   global.App = App;
 })(window);
-
