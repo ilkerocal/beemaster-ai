@@ -1958,8 +1958,17 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         <div>
           <a class="link" style="color:var(--honey-500);font-weight:600;cursor:pointer" onclick="App.nav('hives')">← Kovanlar</a>
           <h1 style="font-size:24px;font-weight:700;margin-top:6px">${BM.esc(h.name)}</h1>
-          <div style="color:var(--text-secondary);font-size:13px">
-            ${BM.esc(apiary ? apiary.name : 'Atanmamış')} · ${BM.T.strain(h.strain)} · ${BM.T.box(h.boxType)} · NFC: ${BM.esc(h.nfcTag || '-')}
+          <div style="color:var(--text-secondary);font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px">
+            <span>${BM.esc(apiary ? apiary.name : 'Atanmamış')}</span> · 
+            <span>${BM.T.strain(h.strain)}</span> · 
+            <span>${BM.T.box(h.boxType)}</span> · 
+            <span>NFC: ${BM.esc(h.nfcTag || '-')}</span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+            <span class="badge badge--ok" style="font-size:12px;padding:4px 8px">${BM.T.temperament(h.temperament || 'calm')}</span>
+            <span class="badge badge--info" style="font-size:12px;padding:4px 8px">${BM.T.purpose(h.purpose || 'honey_production')}</span>
+            <span class="badge badge--warn" style="font-size:12px;padding:4px 8px">🪵 ${h.supersCount || 0} Kat (İlave)</span>
+            <span class="badge" style="font-size:12px;padding:4px 8px;background:var(--bg-tertiary)">📍 ${BM.T.hiveSource(h.source || 'created_nucleus')}</span>
           </div>
         </div>
         <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
@@ -2202,10 +2211,10 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
           </div>
         </div>
         <div class="hive-card__metrics">
-          <div class="hive-card__metric"><div class="hive-card__metric-label">Irk</div><div class="hive-card__metric-value">${BM.T.strain(h.strain)}</div></div>
-          <div class="hive-card__metric"><div class="hive-card__metric-label">Çerçeve</div><div class="hive-card__metric-value">${frameCount}</div></div>
-          <div class="hive-card__metric"><div class="hive-card__metric-label">Kutu</div><div class="hive-card__metric-value">${BM.T.box(h.boxType)}</div></div>
-          <div class="hive-card__metric"><div class="hive-card__metric-label">Varroa</div><div class="hive-card__metric-value" style="color:${varroa >= 6 ? 'var(--danger)' : varroa >= 3 ? 'var(--warning)' : 'var(--success)'}">${varroa}</div></div>
+          <div class="hive-card__metric"><div class="hive-card__metric-label">Mizaç</div><div class="hive-card__metric-value" style="font-size:11px">${BM.T.temperament(h.temperament || 'calm')}</div></div>
+          <div class="hive-card__metric"><div class="hive-card__metric-label">Amac</div><div class="hive-card__metric-value" style="font-size:11px">${BM.T.purpose(h.purpose || 'honey_production')}</div></div>
+          <div class="hive-card__metric"><div class="hive-card__metric-label">Irk / Kutu</div><div class="hive-card__metric-value">${BM.T.strain(h.strain)} · ${BM.T.box(h.boxType)}</div></div>
+          <div class="hive-card__metric"><div class="hive-card__metric-label">Çerçeve / Kat</div><div class="hive-card__metric-value">${frameCount} / ${h.supersCount || 0} kat</div></div>
         </div>
         <div class="hive-card__actions">
           <button class="btn btn--sm" onclick="event.stopPropagation();BM.inspections.add('${h.id}')">📋 Muayene</button>
