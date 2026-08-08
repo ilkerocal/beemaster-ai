@@ -1,4 +1,0 @@
-// FIX 1: Toast - sag alta al
-// FIX 2: Frame type - position alanina encode et
-
-// Fix toast CSS

@@ -590,6 +590,10 @@ ul, ol { list-style: none; }
   .card-sub { font-size: 11px; }
 }
 @media (max-width: 640px) {
+  /* iOS Input Focus Zoom Fix — Font-size must be at least 16px on mobile inputs */
+  input, select, textarea, .input, .select, .textarea {
+    font-size: 16px !important;
+  }
   .field-row, .field-row--3 { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .app__header { padding: 0 var(--space-4); }
@@ -604,12 +608,14 @@ ul, ol { list-style: none; }
   .card { padding: var(--space-3); }
   .card-title { font-size: 14px; }
   /* Buttons smaller on mobile */
-  .btn { font-size: 13px; padding: 8px 12px; }
-  /* Modal fullscreen-ish on mobile */
-  .modal { max-width: 95vw; max-height: 92vh; }
-  .modal__body { padding: var(--space-3); max-height: 70vh; overflow-y: auto; }
+  .btn { font-size: 13px; padding: 8px 12px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  /* Modal bottom sheet on mobile */
+  .modal-overlay { padding: 0; align-items: flex-end; -webkit-overflow-scrolling: touch; }
+  .modal { max-width: 100vw; width: 100vw; max-height: 90dvh; border-radius: 20px 20px 0 0; transform: translateZ(0); will-change: transform, opacity; }
+  .modal__body { padding: var(--space-3); max-height: 72dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .modal__head { padding: var(--space-3); }
   .modal__foot { padding: var(--space-3); }
+  .modal__close { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
 }
 
 /* Boot screen (inline in HTML, but here for reference) */
