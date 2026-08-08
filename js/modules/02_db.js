@@ -524,26 +524,18 @@
         var results = await Promise.all(tables.map(function(t) {
           return client.from(t).select('*').eq('user_id', uid).then(function(r) {
             return { table: t, data: (r.data || []).map(fromDb) };
-          }).catch(function() { return { table: t, data: [] }; });
+          }).catch(function() { return { table: t, data: null }; }); // null = fetch failed, keep local
         }));
 
-        // localStorage'daki mevcut veriyi koru (merge)
+        // === SUPABASE = SOURCE OF TRUTH ===
+        // Cloud'dan gelen veri localStorage'ı tamamen REPLACE eder.
+        // Bu sayede Supabase'den silinen kayıtlar localStorage'a geri dönmez.
         for (var ri = 0; ri < results.length; ri++) {
           var r = results[ri];
-          var localData = this.state[r.table] || [];
-          var localMap = {};
-          localData.forEach(function(x) { localMap[x.id] = x; });
-
-          // Cloud'dan gelenleri ekle/güncelle
-          r.data.forEach(function(cloud) {
-            if (localMap[cloud.id]) {
-              // Cloud daha güncelse güncelle
-              Object.assign(localMap[cloud.id], cloud);
-            } else {
-              localData.push(cloud);
-            }
-          });
-          this.state[r.table] = localData;
+          // Eğer fetch başarısız olduysa (null), local veriyi koru
+          if (r.data === null) continue;
+          // Başarılı fetch: cloud veriyi doğrudan kullan (merge değil, replace)
+          this.state[r.table] = r.data;
         }
         this.save();
         if (typeof BM !== 'undefined' && BM.Bus) {

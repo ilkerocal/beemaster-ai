@@ -317,10 +317,12 @@
       const client = BM.Auth.getClient();
       if (!client) return false;
       const tables = ['apiaries','hives','queens','inspections','frames','harvests','feedings','treatments','diseases','inventory'];
-      // First, download from cloud and merge into local (so we don't lose newer cloud data)
+      // TÜM tabloları çek ve localStorage'ı REPLACE et (merge değil)
+      // Bu sayede Supabase'den silinen kayıtlar localStorage'a geri dönmez.
       for (const t of tables) {
         try {
           const res = await client.from(t).select('*').eq('user_id', uid);
+          if (res.error) continue; // fetch failed, keep local
           const cloudItems = res.data || [];
           // Map cloud items to our camelCase format
           const map = {
@@ -337,65 +339,26 @@
           for (const [k, v] of Object.entries(map)) {
             reverseMap[v] = k;
           }
-          const cloudMap = new Map();
-          for (const cloudItem of cloudItems) {
+          // === SUPABASE = SOURCE OF TRUTH ===
+          // Cloud veriyi camelCase'e çevir ve localStorage'ı tamamen replace et
+          const cloudList = cloudItems.map(cloudItem => {
             const obj = {};
             for (const [dbKey, value] of Object.entries(cloudItem)) {
               const camelKey = reverseMap[dbKey] || dbKey;
               obj[camelKey] = value;
             }
-            cloudMap.set(obj.id, obj);
-          }
-          // Merge with local
-          const localList = this.state[t] || [];
-          for (const localItem of localList) {
-            const cloudItem = cloudMap.get(localItem.id);
-            if (cloudItem) {
-              // If cloud exists, compare timestamps and keep the newer
-              const localTime = new Date(localItem.updatedAt).getTime();
-              const cloudTime = new Date(cloudItem.updatedAt).getTime();
-              if (cloudTime > localTime) {
-                // Cloud is newer, update local
-                Object.assign(localItem, cloudItem);
-              }
-            } else {
-              // No cloud item for this local id, keep local (it will be uploaded later)
-            }
-          }
-          // Add any cloud items that are not present locally
-          for (const cloudItem of cloudItems) {
-            const obj = {};
-            for (const [dbKey, value] of Object.entries(cloudItem)) {
-              const camelKey = reverseMap[dbKey] || dbKey;
-              obj[camelKey] = value;
-            }
-            if (!localList.some(item => item.id === obj.id)) {
-              localList.push(obj);
-            }
-          }
-          // Update the state with the merged list
-          this.state[t] = localList;
+            return obj;
+          });
+          this.state[t] = cloudList;
         } catch (e) {
-          console.warn('[CloudSync] download/merge error (' + t + '):', e.message);
+          console.warn('[CloudSync] download error (' + t + '):', e.message);
         }
       }
-      // Save merged state to localStorage
+      // Save replaced state to localStorage
       this.save();
-      // Now upload the merged local state to cloud
-      let uploaded = 0;
-      for (const t of tables) {
-        const local = this.state[t] || [];
-        for (const item of local) {
-          try {
-            const payload = this._mapToDb(t, item);
-            const { error } = await client.from(t).upsert(payload);
-            if (!error) uploaded++;
-          } catch (e) {
-            console.warn('[CloudSync] upload error (' + t + '):', e.message);
-          }
-        }
-      }
-      if (uploaded > 0) BM.Toast.show('☁️ ' + uploaded + ' kayıt buluta yüklendi', 'success');
+      let total = 0;
+      for (const t of tables) total += (this.state[t] || []).length;
+      if (total > 0) BM.Toast.show('☁️ ' + total + ' kayıt buluttan yüklendi', 'success');
       if (typeof App !== 'undefined' && App.render) App.render(App.currentView || 'dashboard');
       return true;
 },
