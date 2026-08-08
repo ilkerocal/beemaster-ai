@@ -274,98 +274,105 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
     _authMode = 'login';
 
     const renderBody = () => `
-      <div style="padding:var(--space-2) 0">
-        <div style="display:flex;gap:var(--space-1);margin-bottom:var(--space-4);background:var(--bg-tertiary);padding:4px;border-radius:var(--radius-md)">
-          <button type="button" id="auth-tab-login" class="btn ${_authMode === 'login' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('login')">🔑 Giriş Yap</button>
-          <button type="button" id="auth-tab-register" class="btn ${_authMode === 'register' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('register')">📝 Kayıt Ol</button>
+      <div style="padding:var(--space-1) 0">
+        <!-- Header Banner -->
+        <div style="display:flex;align-items:center;gap:12px;padding:14px;background:linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.15));border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius-lg);margin-bottom:16px">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;flex-shrink:0">🐝</div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--text-primary)">BeeMaster AI Bulut Hesabı</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Verilerinizi tüm cihazlarınızda anında senkronize edin</div>
+          </div>
         </div>
-        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-3)">
-          ${_authMode === 'login' ? 'Hesabınızla giriş yapın — tüm verileriniz buluttan yüklenecek.' : 'Yeni hesap oluşturun — verileriniz Supabase bulutuna kaydedilecek.'}
-        </p>
-        <label class="field"><span class="field-label">E-posta</span>
-          <input class="input" type="email" id="auth-email" placeholder="ornek@gmail.com" autocomplete="email"></label>
-        <label class="field"><span class="field-label">Şifre (en az 6 karakter)</span>
-          <input class="input" type="password" id="auth-password" placeholder="••••••" autocomplete="${_authMode === 'login' ? 'current' : 'new'}-password"></label>
-        <div id="auth-error" style="color:var(--danger);font-size:12px;margin-top:var(--space-2);min-height:18px"></div>
-        <div style="margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--n-800);font-size:11px;color:var(--text-muted)">
-          💡 Giriş yapmadan da uygulamayı kullanabilirsiniz. Verileriniz cihazınızda (localStorage) saklanır. Giriş yaparsanız bulutla senkronize olur.
+
+        <!-- Mode Tabs -->
+        <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg-tertiary);padding:4px;border-radius:var(--radius-md)">
+          <button type="button" id="auth-tab-login" class="btn ${_authMode === 'login' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:9px;font-size:13px;font-weight:600" onclick="BM.Auth.switchTab('login')">🔑 Giriş Yap</button>
+          <button type="button" id="auth-tab-register" class="btn ${_authMode === 'register' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:9px;font-size:13px;font-weight:600" onclick="BM.Auth.switchTab('register')">📝 Kayıt Ol</button>
+        </div>
+
+        <!-- Quick Demo Credentials Fill -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span style="font-size:12px;color:var(--text-secondary)">${_authMode === 'login' ? 'E-posta ve şifrenizle giriş yapın:' : 'Yeni kullanıcı bilgilerinizi girin:'}</span>
+          <button type="button" style="font-size:11px;color:var(--honey-500);cursor:pointer;background:none;border:none;font-weight:600;padding:2px 6px;border-radius:4px" onclick="document.getElementById('auth-email').value='kormanveli0@gmail.com';document.getElementById('auth-password').value='123456';">⚡ Otomatik Doldur</button>
+        </div>
+
+        <!-- Inputs -->
+        <label class="field"><span class="field-label">✉️ E-posta Adresi</span>
+          <input class="input" type="email" id="auth-email" placeholder="kormanveli0@gmail.com" autocomplete="email" required></label>
+        
+        <label class="field"><span class="field-label">🔒 Şifre</span>
+          <input class="input" type="password" id="auth-password" placeholder="••••••" autocomplete="${_authMode === 'login' ? 'current' : 'new'}-password" required></label>
+
+        <div id="auth-error" style="color:var(--danger);font-size:12px;margin-top:6px;min-height:18px;font-weight:500"></div>
+
+        <!-- Primary Action Button -->
+        <button type="button" id="auth-submit-btn" class="btn btn--primary" style="width:100%;padding:12px;font-size:15px;font-weight:700;margin-top:12px;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:var(--radius-md);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px" onclick="BM.Auth.submitForm()">
+          ${_authMode === 'login' ? '🔑 Giriş Yap' : '📝 Hesabımı Oluştur'}
+        </button>
+
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--n-800);display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-muted)">
+          <span>☁️ Supabase Güvenli Bulut</span>
+          <button type="button" class="btn btn--ghost" style="font-size:11px;padding:2px 8px;color:var(--text-secondary)" onclick="BM.Modal.close()">Kapat</button>
         </div>
       </div>`;
 
-    BM.Modal.open('🐝 BeeMaster AI', renderBody(), async () => {
-      const email = document.getElementById('auth-email')?.value.trim();
-      const password = document.getElementById('auth-password')?.value;
-      const errEl = document.getElementById('auth-error');
-      if (!email || !password) {
-        if (errEl) errEl.textContent = 'E-posta ve şifre gerekli';
-        return false;
-      }
-      if (password.length < 6) {
-        if (errEl) errEl.textContent = 'Şifre en az 6 karakter olmalı';
-        return false;
-      }
-      let result;
-      if (_authMode === 'register') {
-        result = await signUp(email, password);
-        if (result.error?.message?.toLowerCase().includes('already')) {
-          // Kullanıcı zaten var, sign in dene
-          result = await signIn(email, password);
-        }
-      } else {
-        result = await signIn(email, password);
-      }
-      if (result.error) {
-        if (errEl) errEl.textContent = (result.error.message || 'Giriş başarısız') + (result.error.code ? ' (' + result.error.code + ')' : '');
-        return false;
-      }
-      if (result.data?.user) {
-        BM.Toast.show('Hoş geldiniz! 🌐 Bulut senkronizasyonu aktif', 'success');
-        updateAuthBtn();
-        // NOT: Local veriyi SILME! syncFromCloud merge yapar — local + cloud birlestirilir
-        if (BM.Storage) {
-          BM.Toast.show('🔄 Bulut senkronize ediliyor...', 'info');
-          if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') {
-            BM.Storage.syncFromCloud().then(function() {
-              var total = 0;
-              ['apiaries','hives','queens','inspections','frames','harvests','feedings'].forEach(function(c) {
-                total += (BM.Storage.state[c] || []).length;
-              });
-              BM.Toast.show('✅ ' + total + ' kayıt yüklendi', 'success');
-            }).catch(function(e) {
-              BM.Toast.show('⚠️ Senkronizasyon hatası: ' + (e.message || 'bilinmeyen'), 'error');
-            });
-          }
-        }
-        return true;
-      }
-      return false;
-    });
+    BM.Modal.open('🐝 BeeMaster AI', renderBody(), null, { hideFooter: true });
   }
 
   function switchTab(mode) {
     _authMode = mode;
-    document.getElementById('modal-body').innerHTML = renderBody();
+    const bodyEl = document.getElementById('modal-body');
+    if (bodyEl) bodyEl.innerHTML = renderBody();
   }
 
-  function renderBody() {
-    return `
-      <div style="padding:var(--space-2) 0">
-        <div style="display:flex;gap:var(--space-1);margin-bottom:var(--space-4);background:var(--bg-tertiary);padding:4px;border-radius:var(--radius-md)">
-          <button type="button" id="auth-tab-login" class="btn ${_authMode === 'login' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('login')">🔑 Giriş Yap</button>
-          <button type="button" id="auth-tab-register" class="btn ${_authMode === 'register' ? 'btn--primary' : 'btn--ghost'}" style="flex:1;padding:8px" onclick="BM.Auth.switchTab('register')">📝 Kayıt Ol</button>
-        </div>
-        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-3)">
-          ${_authMode === 'login' ? 'Hesabınızla giriş yapın.' : 'Yeni hesap oluşturun.'}
-        </p>
-        <label class="field"><span class="field-label">E-posta</span>
-          <input class="input" type="email" id="auth-email" placeholder="ornek@gmail.com" autocomplete="email"></label>
-        <label class="field"><span class="field-label">Şifre (en az 6 karakter)</span>
-          <input class="input" type="password" id="auth-password" placeholder="••••••" autocomplete="${_authMode === 'login' ? 'current' : 'new'}-password"></label>
-        <div id="auth-error" style="color:var(--danger);font-size:12px;margin-top:var(--space-2);min-height:18px"></div>
-        <div style="margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--n-800);font-size:11px;color:var(--text-muted)">
-          💡 Giriş yapmadan da kullanabilirsiniz. Giriş = bulut senkronizasyonu.
-        </div>
-      </div>`;
+  async function submitForm() {
+    const email = document.getElementById('auth-email')?.value.trim();
+    const password = document.getElementById('auth-password')?.value;
+    const errEl = document.getElementById('auth-error');
+    const submitBtn = document.getElementById('auth-submit-btn');
+
+    if (!email || !password) {
+      if (errEl) errEl.textContent = 'Lütfen e-posta ve şifrenizi girin.';
+      return;
+    }
+    if (password.length < 6) {
+      if (errEl) errEl.textContent = 'Şifre en az 6 karakter olmalıdır.';
+      return;
+    }
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '⏳ İşleniyor...';
+    }
+
+    let result;
+    if (_authMode === 'register') {
+      result = await signUp(email, password);
+      if (result.error?.message?.toLowerCase().includes('already')) {
+        result = await signIn(email, password);
+      }
+    } else {
+      result = await signIn(email, password);
+    }
+
+    if (result.error) {
+      if (errEl) errEl.textContent = (result.error.message || 'Giriş başarısız oldu') + (result.error.code ? ' (' + result.error.code + ')' : '');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = _authMode === 'login' ? '🔑 Giriş Yap' : '📝 Hesabımı Oluştur';
+      }
+      return;
+    }
+
+    if (result.data?.user) {
+      BM.Modal.close();
+      BM.Toast.show('Hoş geldiniz! 🌐 Bulut senkronizasyonu aktif', 'success');
+      updateAuthBtn();
+      if (BM.Storage && typeof BM.Storage.syncFromCloud === 'function') {
+        BM.Toast.show('🔄 Bulut verileri yükleniyor...', 'info');
+        await BM.Storage.syncFromCloud();
+      }
+    }
   }
 
   function updateAuthBtn() {
@@ -463,6 +470,7 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
     isAuthenticated,
     showLoginModal,
     switchTab,
+    submitForm,
     updateAuthBtn,
     updateSidebarUser,
     doLogout,
