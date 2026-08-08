@@ -87,12 +87,14 @@
          <label class="field"><span class="field-label">Pozisyon</span>
            <input class="input" name="positionInApiary" type="number" min="1" value="${BM.Storage.list('hives').length + 1}"></label>
        </div>
-       <label class="field"><span class="field-label">NFC/QR Etiket</span>
-         <input class="input" name="nfcTag" placeholder="Otomatik oluşturulur"></label>
-       <label class="field"><span class="field-label">Kurulum Tarihi</span>
-         <input class="input" name="installedAt" type="date" value="${BM.today()}"></label>
-       <label class="field"><span class="field-label">Notlar</span>
-         <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+       <div class="field-row">
+          <label class="field"><span class="field-label">NFC/QR Etiket</span>
+            <input class="input" name="nfcTag" placeholder="Otomatik"></label>
+          <label class="field"><span class="field-label">Kurulum Tarihi</span>
+            <input class="input" name="installedAt" type="date" value="${BM.today()}"></label>
+        </div>
+        <label class="field" style="margin-bottom:0"><span class="field-label">Notlar</span>
+          <textarea class="textarea" name="notes" rows="2" style="min-height:54px;max-height:80px;resize:none" placeholder="Kovan hakkında notlar..."></textarea></label>`,
       async (d) => {
         const h = await BM.Storage.add('hives', {
           ...d,
@@ -171,10 +173,10 @@
              ${['active','weak','dead','sold','merged'].map(s => `<option value="${s}"${h.status === s ? ' selected' : ''}>${BM.T.status(s)}</option>`).join('')}
            </select></label>
        </div>
-       <label class="field"><span class="field-label">NFC/QR Etiket</span>
-         <input class="input" name="nfcTag" value="${BM.esc(h.nfcTag || '')}"></label>
-       <label class="field"><span class="field-label">Notlar</span>
-         <textarea class="textarea" name="notes" rows="2">${BM.esc(h.notes || '')}</textarea></label>`,
+        <label class="field"><span class="field-label">NFC/QR Etiket</span>
+          <input class="input" name="nfcTag" value="${BM.esc(h.nfcTag || '')}"></label>
+        <label class="field" style="margin-bottom:0"><span class="field-label">Notlar</span>
+          <textarea class="textarea" name="notes" rows="2" style="min-height:54px;max-height:80px;resize:none">${BM.esc(h.notes || '')}</textarea></label>`,
       async (d) => {
         const newCount = parseInt(d.frameCount) || 10;
         d.frameCount = newCount;
