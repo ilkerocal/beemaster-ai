@@ -917,6 +917,12 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         }
       }
 
+      // === user_id alanını garanti et ===
+      var uid = this._userId();
+      if (uid && !out['user_id']) {
+        out['user_id'] = uid;
+      }
+
       // === validCols whitelist ile filtrele — Supabase'de olmayan kolonları gönderme ===
       var whitelist = validCols[coll];
       if (whitelist) {
@@ -945,6 +951,19 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       if (!this._supabaseAvailable()) return;
       const uid = this._userId();
       if (!uid) return;
+
+      // Parent bağımlılıkları kontrol et (Foreign Key hatalarını önle)
+      if (coll === 'hives' && (obj.apiaryId || obj.apiary_id)) {
+        var parentApId = obj.apiaryId || obj.apiary_id;
+        var parentAp = (this.state.apiaries || []).find(function(a) { return a.id === parentApId; });
+        if (parentAp) await this._syncAdd('apiaries', parentAp, 0);
+      }
+      if ((coll === 'queens' || coll === 'inspections' || coll === 'frames' || coll === 'feedings' || coll === 'harvests' || coll === 'treatments' || coll === 'diseases' || coll === 'tasks') && (obj.hiveId || obj.hive_id)) {
+        var parentHiveId = obj.hiveId || obj.hive_id;
+        var parentHv = (this.state.hives || []).find(function(h) { return h.id === parentHiveId; });
+        if (parentHv) await this._syncAdd('hives', parentHv, 0);
+      }
+
       const client = BM.Auth.getClient();
       const table = this._tableFor(coll);
       if (!table) return;
@@ -953,16 +972,16 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         const { error } = await client.from(table).upsert(payload);
         if (error) {
           console.warn('[CloudSync] add error (' + coll + '):', error.message);
-          // FK hatası ise 2sn bekle, tekrar dene (parent kayıt senkron olsun)
+          // FK hatası ise 1.5sn bekle, tekrar dene (parent kayıt senkron olsun)
           if (error.message.includes('foreign key') && retries < 2) {
-            await new Promise(function(r) { setTimeout(r, 2000); });
+            await new Promise(function(r) { setTimeout(r, 1500); });
             return this._syncAdd(coll, obj, retries + 1);
           }
         }
       } catch (e) {
         console.warn('[CloudSync] add failed (' + coll + '):', e.message);
         if (retries < 2) {
-          await new Promise(function(r) { setTimeout(r, 2000); });
+          await new Promise(function(r) { setTimeout(r, 1500); });
           return this._syncAdd(coll, obj, retries + 1);
         }
       }
