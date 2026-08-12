@@ -5059,14 +5059,34 @@ BM.frames = framesModule;
         }
       });
 
-      // Genel tavsiye kartları
+      // Genel tavsiye kartları - Gerçek tarih dinamik analizi
+      const now = new Date();
+      const month = now.getMonth() + 1; // 1-12
+      const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+      const curMonthStr = monthNames[now.getMonth()];
+      const day = now.getDate();
+
+      let plannerTitle = `${curMonthStr} Ayı Planlaması`;
+      let plannerDesc = 'Mevsimsel koşullara göre kovan takibi yapın.';
+
+      if (month === 7 || month === 8) {
+        plannerTitle = `🍯 ${curMonthStr} Bal Akımı & Hasat Dönemi (${day} ${curMonthStr})`;
+        plannerDesc = `Şu an ${curMonthStr} ayındayız! Yağışlı sezonda nektar akımı aktif olarak devam etmektedir. Bal süzümüne kadar şerbetleme YAPMAYIN, petek ballık dolumunu takip edin.`;
+      } else if (month >= 3 && month <= 5) {
+        plannerTitle = `🌸 İlkbahar Teşvik Beslemesi (${curMonthStr})`;
+        plannerDesc = 'Nektar akımı öncesi yavru alanını büyütmek için zayıf kovanlara 1:1 Şeker Şurubu desteği verin.';
+      } else if (month >= 9 && month <= 11) {
+        plannerTitle = `🍂 Sonbahar Kış Stok Beslemesi (${curMonthStr})`;
+        plannerDesc = 'Kış öncesi kovan stoklarını tamamlamak için 2:1 Koyu Şurup veya Arı Keki desteği sağlayın.';
+      }
+
       generated.push({
         icon: '🌾',
-        title: 'Mevsimsel Teşvik Beslemesi',
+        title: plannerTitle,
         agent: '📐 Planner Agent',
-        desc: 'Nektar akımı öncesi yavru alanını büyütmek için zayıf kovanlara 1:1 Şeker Şurubu desteği verin.',
-        btnLabel: '+ Besleme Kaydı Ekle',
-        action: () => BM.feeding.add()
+        desc: plannerDesc,
+        btnLabel: month === 7 || month === 8 ? '+ Hasat Kaydı Ekle' : '+ Besleme Kaydı Ekle',
+        action: () => month === 7 || month === 8 ? BM.harvest.add() : BM.feeding.add()
       });
 
       generated.push({
