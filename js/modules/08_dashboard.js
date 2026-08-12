@@ -50,10 +50,9 @@
 
         <div>
           <div class="card weather-card" style="margin-bottom:var(--space-4)">
-            <div class="card-head"><div><div class="card-title">🌤️ Hava & Flora</div><div class="card-sub">Eğil, Diyarbakır</div></div></div>
-            <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4)">
-              <div style="font-size:48px">☀️</div>
-              <div><div style="font-size:32px;font-weight:800;letter-spacing:-0.02em">28°C</div><div style="font-size:12px;color:var(--text-secondary)">Güneşli · Nem 35% · Rüzgar 12 km</div></div>
+            <div class="card-head"><div><div class="card-title">🌤️ Hava & Flora</div><div class="card-sub" id="weather-location">Eğil, Diyarbakır</div></div></div>
+            <div id="dashboard-weather-widget" style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4)">
+              <div style="font-size:14px;color:var(--text-secondary)">Hava durumu yükleniyor...</div>
             </div>
             <div style="font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;margin-bottom:var(--space-2)">Aktif Flora</div>
             <div style="display:flex;flex-wrap:wrap;gap:var(--space-1)">${(s.apiaries[0] ? (s.apiaries[0].flora || 'Geven, Kekik, Adaçayı') : 'Geven, Kekik, Adaçayı').split(',').map(f => `<span style="background:var(--bg-tertiary);padding:4px 10px;border-radius:99px;font-size:11px">${BM.esc(f.trim())}</span>`).join('')}</div>
@@ -118,6 +117,73 @@
         if (days > 30) out.push({ type: 'info', icon: '🍯', title: 'Hasat zamanı', sub: 'Son hasattan ' + days + ' gün geçti', why: 'Kontrol edin.' });
       }
       return out.slice(0, 6);
+    },
+
+    afterRender() {
+      this.fetchWeather();
+    },
+
+    async fetchWeather() {
+      const weatherWidget = document.getElementById('dashboard-weather-widget');
+      if (!weatherWidget) return;
+      
+      const s = BM.Storage.state;
+      let lat = 38.3842; // default (Eğil, Diyarbakır)
+      let lon = 39.9535;
+      let locationName = 'Eğil, Diyarbakır';
+      
+      const withCoords = s.apiaries.find(a => a.lat && a.lng);
+      if (withCoords) {
+         lat = withCoords.lat;
+         lon = withCoords.lng;
+         locationName = withCoords.name || locationName;
+      }
+
+      const locEl = document.getElementById('weather-location');
+      if (locEl) locEl.textContent = locationName;
+      
+      try {
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`);
+        if (!res.ok) throw new Error('API Error');
+        const data = await res.json();
+        
+        const temp = Math.round(data.current.temperature_2m);
+        const hum = data.current.relative_humidity_2m;
+        const wind = data.current.wind_speed_10m;
+        const code = data.current.weather_code;
+        
+        const conditions = {
+          0: {text: 'Güneşli', icon: '☀️'},
+          1: {text: 'Parçalı Bulutlu', icon: '🌤️'},
+          2: {text: 'Bulutlu', icon: '⛅'},
+          3: {text: 'Kapalı', icon: '☁️'},
+          45: {text: 'Sisli', icon: '🌫️'},
+          48: {text: 'Sisli', icon: '🌫️'},
+          51: {text: 'Hafif Çiseleyen', icon: '🌧️'},
+          53: {text: 'Çiseleyen', icon: '🌧️'},
+          55: {text: 'Yoğun Çiseleyen', icon: '🌧️'},
+          61: {text: 'Hafif Yağmurlu', icon: '🌧️'},
+          63: {text: 'Yağmurlu', icon: '🌧️'},
+          65: {text: 'Sağanak Yağışlı', icon: '🌧️'},
+          71: {text: 'Hafif Kar', icon: '🌨️'},
+          73: {text: 'Kar', icon: '🌨️'},
+          75: {text: 'Yoğun Kar', icon: '❄️'},
+          95: {text: 'Fırtına', icon: '⛈️'}
+        };
+        
+        const weather = conditions[code] || {text: 'Açık', icon: '☀️'};
+        
+        weatherWidget.innerHTML = `
+          <div style="font-size:48px">${weather.icon}</div>
+          <div>
+            <div style="font-size:32px;font-weight:800;letter-spacing:-0.02em">${temp}°C</div>
+            <div style="font-size:12px;color:var(--text-secondary)">${weather.text} · Nem ${hum}% · Rüzgar ${wind} km/s</div>
+          </div>
+        `;
+      } catch (err) {
+        console.error('Weather fetch error:', err);
+        weatherWidget.innerHTML = `<div style="font-size:14px;color:var(--text-secondary)">Hava durumu alınamadı.</div>`;
+      }
     }
   };
 

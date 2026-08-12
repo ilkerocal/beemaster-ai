@@ -536,7 +536,12 @@ const App = {
       const m = BM[view];
       if (m && typeof m.render === 'function') {
         const el = document.getElementById('view-' + view);
-        if (el) el.innerHTML = m.render(this.viewParam);
+        if (el) {
+          el.innerHTML = m.render(this.viewParam);
+          if (typeof m.afterRender === 'function') {
+            m.afterRender();
+          }
+        }
       }
     },
 
