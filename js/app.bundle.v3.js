@@ -5150,13 +5150,6 @@ BM.frames = framesModule;
           ans = agentNameHeader + `🌾 <b>Mevsimsel Besleme Reçetesi:</b><br>Arılığınız (${activeApiary ? activeApiary.name : 'Diyarbakır Eğil'}) için:<br>• Nektar akımı varsa beslemeyi durdurun.<br>• Akım bitiminde kuluçkayı teşvik için 1:1 Şurup, kış stoku için 2:1 Koyu Şurup/Kek verin.`;
         } else if (lower.includes('ana arı') || lower.includes('ırk')) {
           ans = agentNameHeader + `🧬 <b>Ana Arı & Genetik İslah:</b><br>Sistemdeki <b>${queens.length} adet Ana Arı</b> analiz edildi.<br>• Bölgeniz (${activeApiary ? activeApiary.location : 'Diyarbakır'}) için yüksek bal verimli <b>Karniyol F1</b> ve soğuğa/hastalıklara dirençli <b>Kafkas Saf</b> ırkları önerilir.`;
-        } else {
-          ans = agentNameHeader + `"<b>${BM.esc(q)}</b>" sorunuz için kovan verileriniz (${hives.length} kovan) ve NotebookLM bilgi bankanız analiz edildi.<br>• Arılık Durumu: ${hives.length} kovan aktif, genel sağlık skoru yüksek.<br>• Detaylı otonom aksiyonlar için <b>⚡ OTONOM SÜRÜ ANALİZİ</b> çalıştırabilirsiniz.${noteContextMsg}`;
-        }
-        resEl.innerHTML = ans;
-      }, 500);
-    },
-          ans = `🤖 <b>BeeOS Yapay Zeka Danışmanı:</b><br>"${BM.esc(q)}" sorunuz için ${hives.length} adet kovanınızın verileri tarandı.<br>• Arılık Durumu: ${hives.length} kovan aktif, genel sağlık skoru yüksek.<br>• Detaylı aksiyon almak için yukarıdaki <b>⚡ OTONOM SÜRÜ ANALİZİ</b> butonuna tıklayabilirsiniz.`;
         }
         resEl.innerHTML = ans;
       }, 500);
