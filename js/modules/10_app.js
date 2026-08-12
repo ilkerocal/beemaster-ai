@@ -431,34 +431,63 @@
         }
       });
 
-      // Genel tavsiye kartları - Gerçek tarih dinamik analizi
+      // 100% Otomatik 12 Aylık Mevsimsel Karar Motoru (NotebookLM & Takvim Entegreli)
       const now = new Date();
-      const month = now.getMonth() + 1; // 1-12
+      const month = now.getMonth() + 1; // 1-12 (Tarih cihaz saatinden %100 otomatik alınır)
+      const day = now.getDate();
       const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
       const curMonthStr = monthNames[now.getMonth()];
-      const day = now.getDate();
 
-      let plannerTitle = `${curMonthStr} Ayı Planlaması`;
-      let plannerDesc = 'Mevsimsel koşullara göre kovan takibi yapın.';
+      let plannerTitle = `📐 Planner: ${day} ${curMonthStr} Otonom Planı`;
+      let plannerDesc = '';
+      let btnLabel = '+ İşlem Ekle';
+      let btnAction = () => BM.feeding.add();
 
-      if (month === 7 || month === 8) {
-        plannerTitle = `🍯 ${curMonthStr} Bal Akımı & Hasat Dönemi (${day} ${curMonthStr})`;
-        plannerDesc = `Şu an ${curMonthStr} ayındayız! Yağışlı sezonda nektar akımı aktif olarak devam etmektedir. Bal süzümüne kadar şerbetleme YAPMAYIN, petek ballık dolumunu takip edin.`;
-      } else if (month >= 3 && month <= 5) {
-        plannerTitle = `🌸 İlkbahar Teşvik Beslemesi (${curMonthStr})`;
-        plannerDesc = 'Nektar akımı öncesi yavru alanını büyütmek için zayıf kovanlara 1:1 Şeker Şurubu desteği verin.';
-      } else if (month >= 9 && month <= 11) {
-        plannerTitle = `🍂 Sonbahar Kış Stok Beslemesi (${curMonthStr})`;
-        plannerDesc = 'Kış öncesi kovan stoklarını tamamlamak için 2:1 Koyu Şurup veya Arı Keki desteği sağlayın.';
+      if (month === 1 || month === 2) {
+        // Ocak - Şubat (Kış Kuşatması)
+        plannerTitle = `❄️ ${curMonthStr} Kış Salkımı & Dinlenme Dönemi (${day} ${curMonthStr})`;
+        plannerDesc = `Kovan içi müdahale yapmayın! Uçuş deliği tıkanıklığını ve kovanın rüzgardan korunduğunu kontrol edin. Acil açlıkta sadece kuru şeker/fondan verin.`;
+        btnLabel = '+ Muayene Kaydı';
+        btnAction = () => BM.inspections.add();
+      } else if (month === 3 || month === 4) {
+        // Mart - Nisan (Erken Bahar / Badem & Kayısı Çiçeklenmesi)
+        plannerTitle = `🌸 ${curMonthStr} Erken Bahar Gelişim Beslemesi (${day} ${curMonthStr})`;
+        plannerDesc = `Badem ve kayısı çiçeklenmesi aktif. Kuluçka alanını büyütmek için zayıf kovanlara 1:1 Şeker Şurubu ve teşvik keki verin. Oğul kontrolü yapın.`;
+        btnLabel = '+ Besleme Kaydı';
+        btnAction = () => BM.feeding.add();
+      } else if (month === 5 || month === 6) {
+        // Mayıs - Haziran (Ana Bal Akımı Zirvesi / Geven & Kekik)
+        plannerTitle = `🍯 ${curMonthStr} Ana Bal Akımı & Kat Atma Zirvesi (${day} ${curMonthStr})`;
+        plannerDesc = `Geven, Kekik ve Adaçayı akımı başladı! Şerbetlemeyi tamamen durdurun. Güçlü kovanlara 2. veya 3. bal katını (süper) ilave edin.`;
+        btnLabel = '+ Kovan Kataloğu';
+        btnAction = () => App.nav('hives');
+      } else if (month === 7 || month === 8) {
+        // Temmuz - Ağustos (Geç Nektar Akımı / Hasat Dönemi - NotebookLM)
+        plannerTitle = `☀️ ${curMonthStr} Bal Akımı & Hasat Dönemi (${day} ${curMonthStr})`;
+        plannerDesc = `Yağışlı geçen sezonda Geven ve Devedikeni nektar salgılamaya devam eder. Şerbetleme YAPMAYIN, olgunlaşan bal çerçevelerini sağım için takip edin.`;
+        btnLabel = '+ Bal Hasadı Kaydet';
+        btnAction = () => BM.harvest.add();
+      } else if (month === 9 || month === 10) {
+        // Eylül - Ekim (Sonbahar & Varroa Tedavisi)
+        plannerTitle = `🍂 ${curMonthStr} Sonbahar Bakımı & Varroa Tedavisi (${day} ${curMonthStr})`;
+        plannerDesc = `Bal sağımı sonrası kış arısı popülasyonunu artırmak için 1:1 Şurup verin. Varroa çöküşünü önlemek için Oksalik Asit / Organik Varroasit uygulayın.`;
+        btnLabel = '+ Tedavi Kaydı Ekle';
+        btnAction = () => BM.treatments.add();
+      } else {
+        // Kasım - Aralık (Kış Hazırlığı)
+        plannerTitle = `🌨️ ${curMonthStr} Kışlatma & İzolasyon Hazırlığı (${day} ${curMonthStr})`;
+        plannerDesc = `Kovan kış stoklarını kontrol edin (2:1 Koyu şurup/kek). Kovanları güneydoğuya çevirin, rüzgarlık ve izolasyonu tamamlayın.`;
+        btnLabel = '+ Besleme Kaydı';
+        btnAction = () => BM.feeding.add();
       }
 
       generated.push({
-        icon: '🌾',
+        icon: '📐',
         title: plannerTitle,
-        agent: '📐 Planner Agent',
+        agent: '📐 Planner Agent (Otomatik Takvim)',
         desc: plannerDesc,
-        btnLabel: month === 7 || month === 8 ? '+ Hasat Kaydı Ekle' : '+ Besleme Kaydı Ekle',
-        action: () => month === 7 || month === 8 ? BM.harvest.add() : BM.feeding.add()
+        btnLabel: btnLabel,
+        action: btnAction
       });
 
       generated.push({
