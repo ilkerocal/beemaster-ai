@@ -1,7 +1,7 @@
 // ============================================================
 // Service Worker — Network-First, No Cache (always fresh)
 // ============================================================
-const CACHE_NAME = 'beemaster-v4.8.1-fresh';
+const CACHE_NAME = 'beemaster-v4.8.2-fresh';
 
 self.addEventListener('install', event => {
   self.skipWaiting();

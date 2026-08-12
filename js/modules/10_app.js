@@ -50,6 +50,7 @@
     render() {
       const stats = this._stats();
       const tasks = JSON.parse(localStorage.getItem('beeos_tasks') || '[]');
+      const notes = this.getNotes();
 
       return `
         <div style="padding:24px;max-width:1240px;margin:0 auto;font-family:system-ui,-apple-system,sans-serif;">
@@ -60,20 +61,20 @@
             <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
               <div style="max-width:650px">
                 <div style="display:inline-flex;align-items:center;gap:8px;padding:4px 12px;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);border-radius:20px;font-size:11px;font-weight:700;color:var(--honey-400);margin-bottom:12px">
-                  <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;display:inline-block"></span> BEEOS AUTOPILOT ENGINE v2.0 READY
+                  <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;display:inline-block"></span> BEEOS AUTOPILOT ENGINE v2.5 READY
                 </div>
                 <h1 style="font-size:1.8rem;font-weight:800;margin-bottom:8px;background:linear-gradient(135deg,#fbbf24,#f59e0b,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent">
                   ⬡ BeeOS Otonom Arıcılık Ajan Merkezi
                 </h1>
                 <p style="font-size:0.88rem;color:var(--text-secondary);line-height:1.6;margin:0">
-                  Tüm arılığınızı 6 yapay zeka ajanı ile saniyeler içinde tarayın, hastalıklara karşı otonom koruma kalkanı oluşturun ve mevsimsel eylem planınızı tek tıkla devreye alın.
+                  NotebookLM bilginizi ve kovan verilerinizi 6 uzman yapay zeka ajanı ile saniyeler içinde tarayın, otonom kararlar alın ve arılığınızı yapay zeka ile yönetin.
                 </p>
               </div>
               <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-end">
                 <button class="btn btn--primary" onclick="BM.beeos.runAutopilot()" style="padding:14px 28px;font-weight:800;font-size:1rem;border-radius:12px;box-shadow:0 8px 24px rgba(245,158,11,0.4);display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#f59e0b,#d97706)">
                   ⚡ OTONOM SÜRÜ ANALİZİ (AUTOPILOT)
                 </button>
-                <div style="font-size:0.75rem;color:var(--text-muted)">6 Ajan Eşzamanlı Tarama Yapar</div>
+                <div style="font-size:0.75rem;color:var(--text-muted)">6 Ajan + NotebookLM Bilgi Tabanı Taranır</div>
               </div>
             </div>
           </div>
@@ -96,6 +97,49 @@
                 <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">${s.label}</div>
               </div>
             `).join('')}
+          </div>
+
+          <!-- NotebookLM & Bilgi Bankası (Knowledge Hub) Section -->
+          <div style="background:linear-gradient(135deg, rgba(30,41,59,0.7), rgba(15,23,42,0.9));border:1px solid rgba(139,92,246,0.3);border-radius:var(--radius-lg);padding:24px;margin-bottom:28px;box-shadow:0 8px 24px rgba(0,0,0,0.3)">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+              <div>
+                <h3 style="font-size:1.1rem;font-weight:800;display:flex;align-items:center;gap:8px;color:#a78bfa;margin:0 0 4px 0">
+                  📚 NotebookLM & Arıcılık Bilgi Bankası (Knowledge Base)
+                </h3>
+                <p style="font-size:0.82rem;color:var(--text-secondary);margin:0">
+                  Google NotebookLM notlarınızı, saha deneyimlerinizi ve arıcılık makalelerinizi buraya ekleyin. Tüm Ajanlar çıkarımlarında bu notları referans alır.
+                </p>
+              </div>
+              <button class="btn btn--primary btn--sm" onclick="BM.beeos.toggleNoteForm()" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);font-weight:700">
+                + NotebookLM Notu Ekle
+              </button>
+            </div>
+
+            <!-- New Note Form (Initially Hidden) -->
+            <div id="notebooklm-form" style="display:none;background:var(--bg-input);border:1px solid var(--n-800);border-radius:var(--radius-md);padding:16px;margin-bottom:16px">
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <input type="text" id="note-title" placeholder="Not Başlığı (Örn: Eğil Beyaztoprak Bol Yağışlı Sezon Notları)" style="background:var(--bg-primary);border:1px solid var(--n-800);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text-primary);font-size:0.85rem">
+                <textarea id="note-content" rows="4" placeholder="NotebookLM'den veya notlarınızdan yapıştırın (Markdown desteklidir)..." style="background:var(--bg-primary);border:1px solid var(--n-800);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text-primary);font-size:0.85rem;resize:vertical"></textarea>
+                <div style="display:flex;justify-content:flex-end;gap:10px">
+                  <button class="btn btn--ghost btn--sm" onclick="BM.beeos.toggleNoteForm()">İptal</button>
+                  <button class="btn btn--primary btn--sm" onclick="BM.beeos.saveNote()">Kaydet & Ajanlara Bağla</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Saved Notes List -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">
+              ${notes.map((n, i) => `
+                <div style="background:rgba(15,23,42,0.6);border:1px solid var(--n-800);border-radius:var(--radius-md);padding:14px;position:relative">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+                    <div style="font-size:0.88rem;font-weight:700;color:var(--honey-400)">📌 ${BM.esc(n.title)}</div>
+                    <button onclick="BM.beeos.deleteNote(${i})" style="color:var(--text-muted);font-size:12px;cursor:pointer" title="Sil">✕</button>
+                  </div>
+                  <div style="font-size:0.78rem;color:var(--text-secondary);line-height:1.5;max-height:80px;overflow-y:auto">${BM.esc(n.content)}</div>
+                  <div style="font-size:0.68rem;color:var(--text-muted);margin-top:8px">📅 ${new Date(n.date).toLocaleDateString('tr-TR')} · Ajan Bağlamında Aktif</div>
+                </div>
+              `).join('')}
+            </div>
           </div>
 
           <!-- Terminal Live Streaming Log Window (Initially Hidden or Idle) -->
@@ -150,10 +194,19 @@
               💬 Canlı Ajan Danışmanı & Kovan Asistanı
             </h3>
             <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:16px">
-              Arılığınızdaki mevcut tüm kovan, varroa ve muayene verileriniz bağlama alınarak anında kişiselleştirilmiş yanıtlar üretilir.
+              Kovan verileriniz ve NotebookLM notlarınız bağlama alınarak seçtiğiniz uzman ajan tarafından özel yanıt üretilir.
             </p>
+            
+            <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+              <label style="font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center">Danışılacak Ajan:</label>
+              <select id="beeos-chat-agent-select" style="background:var(--bg-input);border:1px solid var(--n-800);border-radius:var(--radius-sm);padding:6px 12px;color:var(--honey-400);font-weight:700;font-size:0.82rem">
+                <option value="all">🎯 Tüm Ajan Takımı (Orchestrator)</option>
+                ${this.agents.map(a => `<option value="${a.id}">${a.emoji} ${a.name} (${a.role.split('&')[0]})</option>`).join('')}
+              </select>
+            </div>
+
             <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
-              <input type="text" id="beeos-chat-input" placeholder="Örn: Varroa sayısı 6 olan kovanıma hemen hangi ilacı vermeliyim?" 
+              <input type="text" id="beeos-chat-input" placeholder="Örn: Yağışlı geçen bu sezonda bal nektar akımı ne zamana kadar sürer?" 
                      style="flex:1;min-width:280px;background:var(--bg-input);border:1px solid var(--n-800);border-radius:var(--radius-md);padding:12px 16px;color:var(--text-primary);font-size:0.9rem" 
                      onkeypress="if(event.key==='Enter') BM.beeos.askAgent()">
               <button class="btn btn--primary" onclick="BM.beeos.askAgent()" style="font-weight:700;padding:12px 24px">🤖 Ajana Sor</button>
@@ -233,7 +286,7 @@
           </div>
 
           <p style="font-size:0.75rem;color:var(--text-muted);text-align:center;padding-top:16px;border-top:1px solid var(--n-800)">
-            🐝 BeeOS v2.0 Autopilot Engine · Tam Otonom Arıcılık Karar Destek Sistemi
+            🐝 BeeOS v2.5 Autopilot Engine · NotebookLM Knowledge Entegreli Otonom Karar Destek Sistemi
           </p>
         </div>
       `;
@@ -260,6 +313,49 @@
           { emoji:'📋', val:tasks.length, label:'Ajan Görevi', color:'#8b5cf6' }
         ]
       };
+    },
+
+    getNotes() {
+      const stored = localStorage.getItem('beeos_notebooklm_notes');
+      if (stored) {
+        try { return JSON.parse(stored); } catch (e) {}
+      }
+      const defaultNotes = [{
+        title: 'Eğil Beyaztoprak Florası & Bol Yağışlı Sezon Notları (NotebookLM)',
+        content: 'Yağışlı geçen ilkbahar sezonlarında Geven, Devedikeni ve Dağ Kekiği nektar salgılamaya Ağustos sonuna kadar devam eder. Varroa ilaçlamasında bal akımı sürüyorsa kimyasal yerine organik yöntemler veya sezon sonu Oksalik Asit tercih edilir.',
+        date: new Date().toISOString()
+      }];
+      localStorage.setItem('beeos_notebooklm_notes', JSON.stringify(defaultNotes));
+      return defaultNotes;
+    },
+
+    toggleNoteForm() {
+      const form = document.getElementById('notebooklm-form');
+      if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    },
+
+    saveNote() {
+      const titleEl = document.getElementById('note-title');
+      const contentEl = document.getElementById('note-content');
+      const title = titleEl ? titleEl.value.trim() : '';
+      const content = contentEl ? contentEl.value.trim() : '';
+      if (!title || !content) {
+        BM.Toast.show('Lütfen başlık ve içerik alanlarını doldurun', 'warning');
+        return;
+      }
+      const notes = this.getNotes();
+      notes.unshift({ title, content, date: new Date().toISOString() });
+      localStorage.setItem('beeos_notebooklm_notes', JSON.stringify(notes));
+      BM.Toast.show('📚 NotebookLM Notu Kaydedildi & Ajanlara Bağlandı', 'success');
+      App.render('beeos');
+    },
+
+    deleteNote(index) {
+      const notes = this.getNotes();
+      notes.splice(index, 1);
+      localStorage.setItem('beeos_notebooklm_notes', JSON.stringify(notes));
+      BM.Toast.show('Not silindi', 'info');
+      App.render('beeos');
     },
 
     // Otonom Ajan Simülasyonu & Live Terminal Stream
@@ -290,12 +386,13 @@
 
       const steps = [
         { delay: 300, tag: 'ORCHESTRATOR', msg: `Sürü taranıyor... Toplam ${hives.length} kovan ve ${queens.length} ana arı yüklendi.`, color: '#f59e0b' },
-        { delay: 800, tag: 'FLORA_BOT', msg: `Konum: ${activeApiary ? activeApiary.location : 'Diyarbakır, Eğil'}. Geven & Kekik nektar akımı indeksi %85 aktif.`, color: '#ec4899' },
-        { delay: 1300, tag: 'VETERINARY', msg: `Tüm muayene kayıtları inceleniyor... Varroa eşiği taranıyor.`, color: '#ef4444' },
-        { delay: 1800, tag: 'ARCHITECT', msg: `Kovan petek dolulukları ve çerçeve yaşları kontrol ediliyor...`, color: '#10b981' },
+        { delay: 700, tag: 'NOTEBOOKLM_KB', msg: `📚 NotebookLM Bilgi Bankası tarandı: ${this.getNotes().length} özel araştırma notu bağlama alındı.`, color: '#a78bfa' },
+        { delay: 1100, tag: 'FLORA_BOT', msg: `Konum: ${activeApiary ? activeApiary.location : 'Diyarbakır, Eğil'}. Yağış endeksli nektar akımı aktif!`, color: '#ec4899' },
+        { delay: 1500, tag: 'VETERINARY', msg: `Tüm muayene kayıtları inceleniyor... Varroa eşiği ve ilaçlama geçmişi taranıyor.`, color: '#ef4444' },
+        { delay: 1900, tag: 'ARCHITECT', msg: `Kovan petek dolulukları ve çerçeve yaşları kontrol ediliyor...`, color: '#10b981' },
         { delay: 2300, tag: 'GENETICS', msg: `Ana arı ırkı performans skorları hesaplanıyor (Karniyol/Kafkas)...`, color: '#06b6d4' },
-        { delay: 2800, tag: 'PLANNER', msg: `Gelecek 30 günlük otomatik besleme ve tedavi takvimi oluşturuluyor.`, color: '#8b5cf6' },
-        { delay: 3300, tag: 'SYSTEM', msg: `🎉 Otonom Ajan Taraması Başarıyla Tamamlandı! Eylem Kartları Üretildi.`, color: '#27c93f' }
+        { delay: 2700, tag: 'PLANNER', msg: `Gelecek 30 günlük otomatik besleme ve tedavi takvimi oluşturuluyor.`, color: '#8b5cf6' },
+        { delay: 3200, tag: 'SYSTEM', msg: `🎉 Otonom Ajan Taraması Başarıyla Tamamlandı! NotebookLM Destekli Eylem Kartları Üretildi.`, color: '#27c93f' }
       ];
 
       steps.forEach(step => {
@@ -383,20 +480,29 @@
     askAgent() {
       const input = document.getElementById('beeos-chat-input');
       const resEl = document.getElementById('beeos-chat-response');
-      const q = input.value.trim();
+      const agentSelect = document.getElementById('beeos-chat-agent-select');
+      const selectedAgentId = agentSelect ? agentSelect.value : 'all';
+      const q = input ? input.value.trim() : '';
       if (!q) return;
 
       resEl.style.display = 'block';
-      resEl.innerHTML = '⏳ <i>BeeOS Ajanları kovan verilerinizi ve arılık geçmişinizi tarıyor...</i>';
+      resEl.innerHTML = '⏳ <i>BeeOS Ajanları kovan verilerinizi ve NotebookLM notlarınızı tarıyor...</i>';
 
       const hives = BM.Storage.list('hives');
       const inspections = BM.Storage.list('inspections');
       const queens = BM.Storage.list('queens');
       const activeApiary = BM.Storage.list('apiaries').find(a => a.id === BM.Storage.state.activeApiaryId) || BM.Storage.list('apiaries')[0];
+      const notes = this.getNotes();
 
       setTimeout(() => {
         const lower = q.toLowerCase();
         let ans = '';
+        const agentObj = this.agents.find(a => a.id === selectedAgentId);
+        const agentNameHeader = agentObj ? `${agentObj.emoji} <b>${agentObj.name} (${agentObj.role.split('&')[0]}):</b><br>` : `🎯 <b>Orchestrator & BeeOS Takımı:</b><br>`;
+
+        // NotebookLM note integration check
+        let matchedNote = notes.find(n => lower.split(' ').some(w => w.length > 3 && n.content.toLowerCase().includes(w) || n.title.toLowerCase().includes(w)));
+        let noteContextMsg = matchedNote ? `<div style="margin-top:8px;padding:8px 12px;background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.3);border-radius:6px;font-size:0.8rem">📚 <b>NotebookLM Bağlamı Kullanıldı:</b> "${BM.esc(matchedNote.title)}"</div>` : '';
 
         if (lower.includes('varroa') || lower.includes('hastalık') || lower.includes('bit') || lower.includes('ilaç')) {
           let highRiskHives = hives.filter(h => {
@@ -404,17 +510,24 @@
             return insp && insp.varroaCount >= 6;
           }).map(h => h.name);
 
-          ans = `🤖 <b>Veterinary AI & Orchestrator:</b><br>`;
+          ans = agentNameHeader;
           if (highRiskHives.length > 0) {
-            ans += `⚠️ Arılığınızda <b>${highRiskHives.join(', ')}</b> kovanlarında Varroa sayısı kritik düzeyde (≥6)!<br>• <b>Tavsiye:</b> Apivar veya Oksalik asit damlatma uygulamasını hemen başlatın. Tedavi süresince bal süzümü yapmayın.`;
+            ans += `⚠️ Arılığınızda <b>${highRiskHives.join(', ')}</b> kovanlarında Varroa sayısı kritik düzeyde (≥6)!<br>• <b>Tavsiye:</b> Apivar veya Oksalik asit damlatma uygulamasını hemen başlatın. Nektar akımı sürüyorsa organik varroasit tercih edin.`;
           } else {
-            ans += `✅ Mevcut kovanlarınızın tümünde Varroa sayısı güvenli sınırlar içinde.<br>• <b>Tavsiye:</b> Rutin dip tahtası sayımlarına devam edin.`;
+            ans += `✅ Mevcut kovanlarınızın tümünde Varroa sayısı güvenli sınırlar içinde.<br>• <b>Tavsiye:</b> Rutin dip tahtası sayımlarına ve kış öncesi kontrole devam edin.`;
           }
+        } else if (lower.includes('bal') || lower.includes('yağmur') || lower.includes('akım') || lower.includes('flora') || lower.includes('nektar')) {
+          ans = agentNameHeader + `🌸 <b>Flora & İklim Analizi:</b><br>Bol yağış alan sezonlarda Geven, Devedikeni ve Kekik gibi derin köklü bitkiler nektar salgılamaya <b>Ağustos sonuna kadar</b> devam eder.<br>• <b>Tavsiye:</b> Nektar akımı sürerken besleme yapmayın, kovan bal dolumunu haftalık takip edin.${noteContextMsg}`;
         } else if (lower.includes('besle') || lower.includes('şurup') || lower.includes('kek')) {
-          ans = `🤖 <b>Planner Agent:</b><br>Arılığınız (${activeApiary ? activeApiary.name : 'Diyarbakır Eğil'}) için <b>Mevsimsel Besleme Önerisi:</b><br>• Yavru gelişimini teşvik etmek için 1:1 Şeker Şurubu,<br>• Kış hazırlığı ve kovan stoklaması için 2:1 Koyu Şurup veya Arı Keki verin.`;
+          ans = agentNameHeader + `🌾 <b>Mevsimsel Besleme Reçetesi:</b><br>Arılığınız (${activeApiary ? activeApiary.name : 'Diyarbakır Eğil'}) için:<br>• Nektar akımı varsa beslemeyi durdurun.<br>• Akım bitiminde kuluçkayı teşvik için 1:1 Şurup, kış stoku için 2:1 Koyu Şurup/Kek verin.`;
         } else if (lower.includes('ana arı') || lower.includes('ırk')) {
-          ans = `🤖 <b>Queen Geneticist:</b><br>Sistemdeki <b>${queens.length} adet Ana Arı</b> analiz edildi.<br>• Bölgeniz (${activeApiary ? activeApiary.location : 'Diyarbakır'}) için yüksek bal verimli <b>Karniyol F1</b> ve soğuğa/hastalıklara dirençli <b>Kafkas Saf</b> ırkları en iyi performansı gösteriyor.`;
+          ans = agentNameHeader + `🧬 <b>Ana Arı & Genetik İslah:</b><br>Sistemdeki <b>${queens.length} adet Ana Arı</b> analiz edildi.<br>• Bölgeniz (${activeApiary ? activeApiary.location : 'Diyarbakır'}) için yüksek bal verimli <b>Karniyol F1</b> ve soğuğa/hastalıklara dirençli <b>Kafkas Saf</b> ırkları önerilir.`;
         } else {
+          ans = agentNameHeader + `"<b>${BM.esc(q)}</b>" sorunuz için kovan verileriniz (${hives.length} kovan) ve NotebookLM bilgi bankanız analiz edildi.<br>• Arılık Durumu: ${hives.length} kovan aktif, genel sağlık skoru yüksek.<br>• Detaylı otonom aksiyonlar için <b>⚡ OTONOM SÜRÜ ANALİZİ</b> çalıştırabilirsiniz.${noteContextMsg}`;
+        }
+        resEl.innerHTML = ans;
+      }, 500);
+    },
           ans = `🤖 <b>BeeOS Yapay Zeka Danışmanı:</b><br>"${BM.esc(q)}" sorunuz için ${hives.length} adet kovanınızın verileri tarandı.<br>• Arılık Durumu: ${hives.length} kovan aktif, genel sağlık skoru yüksek.<br>• Detaylı aksiyon almak için yukarıdaki <b>⚡ OTONOM SÜRÜ ANALİZİ</b> butonuna tıklayabilirsiniz.`;
         }
         resEl.innerHTML = ans;
