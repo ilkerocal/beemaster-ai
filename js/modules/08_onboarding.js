@@ -40,12 +40,12 @@
          <label class="field"><span class="field-label">Konum *</span>
            <input class="input" name="location" required value="Eğil, Diyarbakır"></label>
          <div class="field-row">
-           <label class="field"><span class="field-label">Enlem</span>
-             <input class="input" name="lat" type="number" step="0.001" value="38.247"></label>
-           <label class="field"><span class="field-label">Boylam</span>
-             <input class="input" name="lng" type="number" step="0.001" value="40.135"></label>
+           <label class="field"><span class="field-label">Enlem (Opsiyonel)</span>
+             <input class="input" name="lat" type="text" inputmode="decimal" value="38.247"></label>
+           <label class="field"><span class="field-label">Boylam (Opsiyonel)</span>
+             <input class="input" name="lng" type="text" inputmode="decimal" value="40.135"></label>
          </div>
-         <button type="button" class="btn" onclick="BM.onboarding.useLocation()" style="margin-top:var(--space-2);width:100%">📍 Konumumu Al</button>
+         <button type="button" class="btn" onclick="BM.onboarding.useLocation()" style="margin-top:var(--space-2);width:100%">📍 GPS ile Konumumu Al</button>
          <label class="field" style="margin-top:var(--space-3)"><span class="field-label">Flora</span>
            <input class="input" name="flora" value="Geven, Kekik, Adaçayı"></label>
          <div style="display:flex;justify-content:space-between;gap:var(--space-2);padding-top:var(--space-4);border-top:1px solid var(--n-800);margin-top:var(--space-4)">
@@ -60,11 +60,13 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => {
-            document.querySelector('input[name="lat"]').value = pos.coords.latitude.toFixed(3);
-            document.querySelector('input[name="lng"]').value = pos.coords.longitude.toFixed(3);
+            const latInput = document.querySelector('input[name="lat"]');
+            const lngInput = document.querySelector('input[name="lng"]');
+            if (latInput) latInput.value = pos.coords.latitude.toFixed(6);
+            if (lngInput) lngInput.value = pos.coords.longitude.toFixed(6);
             BM.Toast.show('Konum alındı ✓', 'success');
           },
-          err => BM.Toast.show('Konum alınamadı: ' + err.message, 'error')
+          err => BM.Toast.show('Konum alınamadı (elle girebilirsiniz)', 'info')
         );
       }
     },
@@ -74,11 +76,16 @@
       const name = get('input[name="name"]').value.trim();
       const location = get('input[name="location"]').value.trim();
       if (!name || !location) { BM.Toast.show('Ad ve konum gerekli', 'error'); return; }
+      const rawLat = get('input[name="lat"]')?.value;
+      const rawLng = get('input[name="lng"]')?.value;
+      let lat = rawLat ? parseFloat(String(rawLat).replace(',', '.')) : null;
+      let lng = rawLng ? parseFloat(String(rawLng).replace(',', '.')) : null;
+      if (isNaN(lat)) lat = null;
+      if (isNaN(lng)) lng = null;
       const newApiary = {
         name, location,
-        lat: parseFloat(get('input[name="lat"]').value) || null,
-        lng: parseFloat(get('input[name="lng"]').value) || null,
-        flora: get('input[name="flora"]').value.trim(),
+        lat, lng,
+        flora: get('input[name="flora"]')?.value.trim() || '',
         notes: ''
       };
       const apiaryId = BM.Storage.add('apiaries', newApiary);

@@ -13,24 +13,42 @@
       BM.Modal.open('Yeni Arı Üssü',
         `<label class="field"><span class="field-label">Üs Adı *</span>
           <input class="input" name="name" required placeholder="Örn: Çınar Üssü"></label>
-         <label class="field"><span class="field-label">Konum *</span>
-          <div style="display:flex;gap:var(--space-2)">
-            <input class="input" id="ap-loc-input" name="location" required placeholder="Örn: Çınar, Diyarbakır" style="flex:1">
-            <button type="button" id="ap-gps-btn" class="btn btn--primary" onclick="BM.apiaries.gpsCapture()" style="white-space:nowrap;padding:8px 12px" title="GPS ile otomatik konum al">📍 GPS</button>
-          </div></label>
-         <div class="field-row">
-           <label class="field"><span class="field-label">Enlem</span>
-             <input class="input" id="ap-lat-input" name="lat" type="number" step="0.001" placeholder="38.247"></label>
-           <label class="field"><span class="field-label">Boylam</span>
-             <input class="input" id="ap-lng-input" name="lng" type="number" step="0.001" placeholder="40.135"></label>
+         <label class="field"><span class="field-label">Konum / Bölge</span>
+          <input class="input" id="ap-loc-input" name="location" placeholder="Örn: Çınar, Diyarbakır (veya koordinat yapıştırın)" oninput="BM.apiaries.onLocationInput(this.value)">
+         </label>
+         
+         <div style="background:var(--bg-tertiary);border:1px solid var(--n-800);border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-3)">
+           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2)">
+             <span style="font-size:12px;font-weight:600;color:var(--text-primary)">📍 Koordinatlar (Elle girilebilir / Opsiyonel)</span>
+             <button type="button" id="ap-gps-btn" class="btn btn--sm btn--primary" onclick="BM.apiaries.gpsCapture()" style="font-size:11px;padding:4px 10px" title="Cihaz GPS'i ile otomatik al">📍 GPS ile Al</button>
+           </div>
+           <div class="field-row" style="margin-bottom:0">
+             <label class="field" style="margin-bottom:0"><span class="field-label" style="font-size:11px">Enlem (Latitude)</span>
+               <input class="input" id="ap-lat-input" name="lat" type="text" inputmode="decimal" placeholder="Örn: 38.247123" oninput="BM.apiaries.cleanCoordInput(this)"></label>
+             <label class="field" style="margin-bottom:0"><span class="field-label" style="font-size:11px">Boylam (Longitude)</span>
+               <input class="input" id="ap-lng-input" name="lng" type="text" inputmode="decimal" placeholder="Örn: 40.135456" oninput="BM.apiaries.cleanCoordInput(this)"></label>
+           </div>
+           <div style="font-size:10px;color:var(--text-muted);margin-top:6px">💡 Enlem ve boylamı Google Haritalar'dan kopyalayıp doğrudan buraya veya konum kutusuna yapıştırabilirsiniz.</div>
          </div>
+
          <label class="field"><span class="field-label">Flora</span>
-          <input class="input" name="flora" placeholder="Geven, Kekik, Pamuk"></label>
+          <input class="input" name="flora" placeholder="Geven, Kekik, Pamuk, Adaçayı"></label>
          <label class="field"><span class="field-label">Notlar</span>
-          <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+          <textarea class="textarea" name="notes" rows="2" placeholder="Üs hakkında genel notlar..."></textarea></label>`,
         (d) => {
-          if (d.lat) d.lat = parseFloat(d.lat);
-          if (d.lng) d.lng = parseFloat(d.lng);
+          let lat = d.lat ? parseFloat(String(d.lat).replace(',', '.')) : null;
+          let lng = d.lng ? parseFloat(String(d.lng).replace(',', '.')) : null;
+          if (isNaN(lat)) lat = null;
+          if (isNaN(lng)) lng = null;
+          d.lat = lat;
+          d.lng = lng;
+          if (!d.location || !d.location.trim()) {
+            if (lat && lng) {
+              d.location = lat.toFixed(4) + ', ' + lng.toFixed(4);
+            } else {
+              d.location = d.name || 'Konum belirtilmedi';
+            }
+          }
           BM.Storage.add('apiaries', d);
           BM.Toast.show('Üs eklendi ✓', 'success');
           App.render('apiaries');
@@ -45,24 +63,41 @@
       BM.Modal.open('Üs Düzenle — ' + a.name,
         `<label class="field"><span class="field-label">Üs Adı *</span>
            <input class="input" name="name" required value="${BM.esc(a.name)}"></label>
-         <label class="field"><span class="field-label">Konum *</span>
-          <div style="display:flex;gap:var(--space-2)">
-            <input class="input" id="ap-loc-input" name="location" required value="${BM.esc(a.location)}" style="flex:1">
-            <button type="button" id="ap-gps-btn" class="btn btn--primary" onclick="BM.apiaries.gpsCapture()" style="white-space:nowrap;padding:8px 12px">📍 GPS</button>
-          </div></label>
-         <div class="field-row">
-           <label class="field"><span class="field-label">Enlem</span>
-             <input class="input" id="ap-lat-input" name="lat" type="number" step="0.001" value="${a.lat || ''}"></label>
-           <label class="field"><span class="field-label">Boylam</span>
-             <input class="input" id="ap-lng-input" name="lng" type="number" step="0.001" value="${a.lng || ''}"></label>
+         <label class="field"><span class="field-label">Konum / Bölge</span>
+           <input class="input" id="ap-loc-input" name="location" value="${BM.esc(a.location || '')}" placeholder="Örn: Çınar, Diyarbakır" oninput="BM.apiaries.onLocationInput(this.value)">
+         </label>
+
+         <div style="background:var(--bg-tertiary);border:1px solid var(--n-800);border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-3)">
+           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2)">
+             <span style="font-size:12px;font-weight:600;color:var(--text-primary)">📍 Koordinatlar (Elle girilebilir / Opsiyonel)</span>
+             <button type="button" id="ap-gps-btn" class="btn btn--sm btn--primary" onclick="BM.apiaries.gpsCapture()" style="font-size:11px;padding:4px 10px">📍 GPS ile Al</button>
+           </div>
+           <div class="field-row" style="margin-bottom:0">
+             <label class="field" style="margin-bottom:0"><span class="field-label" style="font-size:11px">Enlem (Latitude)</span>
+               <input class="input" id="ap-lat-input" name="lat" type="text" inputmode="decimal" value="${a.lat !== undefined && a.lat !== null ? a.lat : ''}" placeholder="Örn: 38.247123" oninput="BM.apiaries.cleanCoordInput(this)"></label>
+             <label class="field" style="margin-bottom:0"><span class="field-label" style="font-size:11px">Boylam (Longitude)</span>
+               <input class="input" id="ap-lng-input" name="lng" type="text" inputmode="decimal" value="${a.lng !== undefined && a.lng !== null ? a.lng : ''}" placeholder="Örn: 40.135456" oninput="BM.apiaries.cleanCoordInput(this)"></label>
+           </div>
          </div>
+
          <label class="field"><span class="field-label">Flora</span>
            <input class="input" name="flora" value="${BM.esc(a.flora || '')}"></label>
          <label class="field"><span class="field-label">Notlar</span>
            <textarea class="textarea" name="notes" rows="2">${BM.esc(a.notes || '')}</textarea></label>`,
         (d) => {
-          if (d.lat) d.lat = parseFloat(d.lat);
-          if (d.lng) d.lng = parseFloat(d.lng);
+          let lat = d.lat ? parseFloat(String(d.lat).replace(',', '.')) : null;
+          let lng = d.lng ? parseFloat(String(d.lng).replace(',', '.')) : null;
+          if (isNaN(lat)) lat = null;
+          if (isNaN(lng)) lng = null;
+          d.lat = lat;
+          d.lng = lng;
+          if (!d.location || !d.location.trim()) {
+            if (lat && lng) {
+              d.location = lat.toFixed(4) + ', ' + lng.toFixed(4);
+            } else {
+              d.location = d.name || 'Konum belirtilmedi';
+            }
+          }
           BM.Storage.update('apiaries', id, d);
           BM.Toast.show('Üs güncellendi ✓', 'success');
           App.render('apiaries');
@@ -71,13 +106,50 @@
       );
     },
 
-    // GPS ile otomatik konum yakala
+    // Koordinat yapıştırma & ayrıştırma yardımcısı
+    onLocationInput(val) {
+      if (!val) return;
+      const trimmed = val.trim();
+      // Örnek: "38.247123, 40.135456" veya "38,247123, 40,135456" veya "38.247123 40.135456"
+      const match = trimmed.match(/^([-+]?\d+[.,]?\d*)[,\s]+([-+]?\d+[.,]?\d*)$/);
+      if (match) {
+        const lat = parseFloat(match[1].replace(',', '.'));
+        const lng = parseFloat(match[2].replace(',', '.'));
+        if (!isNaN(lat) && !isNaN(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+          const latInput = document.getElementById('ap-lat-input');
+          const lngInput = document.getElementById('ap-lng-input');
+          if (latInput) latInput.value = lat.toFixed(6);
+          if (lngInput) lngInput.value = lng.toFixed(6);
+          BM.Toast.show('Koordinatlar algılandı: ' + lat.toFixed(4) + ', ' + lng.toFixed(4), 'info');
+        }
+      }
+    },
+
+    cleanCoordInput(el) {
+      if (!el || !el.value) return;
+      const val = el.value.trim();
+      // Eğer kullanıcı iki koordinatı birden aynı kutucuğa yapıştırdıysa (örn "38.24, 40.13")
+      if (val.includes(',') && val.split(',').length === 2 && !val.match(/^[-+]?\d+,\d+$/)) {
+        const parts = val.split(',');
+        const lat = parseFloat(parts[0].trim().replace(',', '.'));
+        const lng = parseFloat(parts[1].trim().replace(',', '.'));
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const latInput = document.getElementById('ap-lat-input');
+          const lngInput = document.getElementById('ap-lng-input');
+          if (latInput) latInput.value = lat;
+          if (lngInput) lngInput.value = lng;
+          return;
+        }
+      }
+    },
+
+    // GPS ile otomatik konum yakala (OPSİYONEL)
     gpsCapture() {
       const btn = document.getElementById('ap-gps-btn');
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Alınıyor...'; }
       if (!navigator.geolocation) {
-        BM.Toast.show('Tarayıcı GPS desteklemiyor', 'error');
-        if (btn) { btn.disabled = false; btn.textContent = '📍 GPS'; }
+        BM.Toast.show('Tarayıcı GPS desteklemiyor. Lütfen koordinatları elle giriniz.', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '📍 GPS ile Al'; }
         return;
       }
       BM.Toast.show('GPS sinyali aranıyor...', 'info');
@@ -96,23 +168,25 @@
             .then(data => {
               const addr = data.address || {};
               const parts = [addr.village || addr.town || addr.city_district || addr.county || addr.city, addr.city || addr.state, addr.country].filter(Boolean);
-              const loc = parts.join(', ') || (lat.toFixed(3) + ', ' + lng.toFixed(3));
-              if (locInput) locInput.value = loc;
+              const loc = parts.join(', ') || (lat.toFixed(4) + ', ' + lng.toFixed(4));
+              if (locInput && (!locInput.value || locInput.value.includes(',') || locInput.value.startsWith('3') || locInput.value.startsWith('4'))) {
+                locInput.value = loc;
+              }
               BM.Toast.show('GPS: ' + loc + ' (±' + acc + 'm)', 'success');
             })
             .catch(() => {
-              if (locInput) locInput.value = lat.toFixed(4) + ', ' + lng.toFixed(4);
-              BM.Toast.show('GPS alındı (±' + acc + 'm)', 'success');
+              if (locInput && !locInput.value) locInput.value = lat.toFixed(4) + ', ' + lng.toFixed(4);
+              BM.Toast.show('GPS koordinatı alındı (±' + acc + 'm)', 'success');
             });
-          if (btn) { btn.disabled = false; btn.textContent = '✅ GPS'; }
+          if (btn) { btn.disabled = false; btn.textContent = '✅ GPS Alındı'; }
         },
         (err) => {
           let msg = 'GPS alınamadı';
-          if (err.code === 1) msg = 'GPS izni reddedildi';
-          else if (err.code === 2) msg = 'GPS sinyali yok';
-          else if (err.code === 3) msg = 'GPS zaman aşımı';
-          BM.Toast.show(msg, 'error');
-          if (btn) { btn.disabled = false; btn.textContent = '📍 GPS'; }
+          if (err.code === 1) msg = 'GPS izni verilmedi (koordinatları elle girebilirsiniz)';
+          else if (err.code === 2) msg = 'GPS sinyali bulunamadı (elle girebilirsiniz)';
+          else if (err.code === 3) msg = 'GPS zaman aşımı (elle girebilirsiniz)';
+          BM.Toast.show(msg, 'info');
+          if (btn) { btn.disabled = false; btn.textContent = '📍 GPS ile Al'; }
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );

@@ -206,6 +206,19 @@
       if (coll === 'queens' && (queenName || queenColor)) {
         out['marked_color'] = (queenColor || '') + (queenName ? '|NAME:' + queenName : '');
       }
+      // Apiaries: lat, lng, flora
+      if (coll === 'apiaries') {
+        var apMeta = {};
+        var apExtras = ['lat','lng','flora'];
+        for (var ape = 0; ape < apExtras.length; ape++) {
+          var apk = apExtras[ape];
+          if (obj[apk] !== undefined && obj[apk] !== null && obj[apk] !== '') apMeta[apk] = obj[apk];
+        }
+        if (Object.keys(apMeta).length > 0) {
+          var apBaseNotes = out['notes'] || '';
+          out['notes'] = apBaseNotes + '|META:' + JSON.stringify(apMeta);
+        }
+      }
       // Frames: tum ekstra alanlari META olarak notes'a gom
       if (coll === 'frames') {
         var frMeta = {};
@@ -492,8 +505,15 @@
         // TÜM tabloları paralel çek
         var results = await Promise.all(tables.map(function(t) {
           return client.from(t).select('*').eq('user_id', uid).then(function(r) {
+            if (r.error) {
+              console.warn('[CloudSync] fetch error for ' + t + ':', r.error.message);
+              return { table: t, data: null }; // Fetch hatası, yerel veriyi koru
+            }
             return { table: t, data: (r.data || []).map(fromDb) };
-          }).catch(function() { return { table: t, data: null }; }); // null = fetch failed, keep local
+          }).catch(function(err) {
+            console.warn('[CloudSync] fetch exception for ' + t + ':', err);
+            return { table: t, data: null };
+          });
         }));
 
         // === SMART HYBRID MERGE (Yerel Veriyi Asla Silme, Eksik Yerel Veriyi Buluta Yükle) ===
@@ -509,9 +529,13 @@
           var mergedList = [];
           var mergedMap = {};
 
-          // 1. Buluttan gelen tüm verileri ekle
+          // 1. Buluttan gelen tüm verileri ekle (yereldeki koordinat vb. ekstra alanları koru)
           for (var cidx = 0; cidx < cloudItems.length; cidx++) {
             var citem = cloudItems[cidx];
+            var existingLocal = localItems.find(function(l) { return l.id === citem.id; });
+            if (existingLocal) {
+              citem = Object.assign({}, existingLocal, citem);
+            }
             mergedMap[citem.id] = citem;
             mergedList.push(citem);
           }

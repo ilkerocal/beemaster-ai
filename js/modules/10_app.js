@@ -107,12 +107,17 @@
                   📚 NotebookLM & Arıcılık Bilgi Bankası (Knowledge Base)
                 </h3>
                 <p style="font-size:0.82rem;color:var(--text-secondary);margin:0">
-                  Google NotebookLM notlarınızı, saha deneyimlerinizi ve arıcılık makalelerinizi buraya ekleyin. Tüm Ajanlar çıkarımlarında bu notları referans alır.
+                  Arı Mühendisi YouTube kütüphanesi (49+ Kaynak), Google NotebookLM ve Obsidian notlarınız entegre edilmiştir. Tüm Ajanlar çıkarımlarında bu notları referans alır.
                 </p>
               </div>
-              <button class="btn btn--primary btn--sm" onclick="BM.beeos.toggleNoteForm()" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);font-weight:700">
-                + NotebookLM Notu Ekle
-              </button>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <a href="https://notebook.google.com/notebook/532f1efb-9caa-4d8e-bd12-9aca3c770dbc?authuser=5" target="_blank" class="btn btn--ghost btn--sm" style="border:1px solid rgba(245,158,11,0.4);color:var(--honey-400);font-weight:700;display:inline-flex;align-items:center;gap:6px">
+                  🔗 NotebookLM (49 Kaynak)
+                </a>
+                <button class="btn btn--primary btn--sm" onclick="BM.beeos.toggleNoteForm()" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);font-weight:700">
+                  + Not Ekle
+                </button>
+              </div>
             </div>
 
             <!-- New Note Form (Initially Hidden) -->
@@ -320,11 +325,28 @@
       if (stored) {
         try { return JSON.parse(stored); } catch (e) {}
       }
-      const defaultNotes = [{
-        title: 'Eğil Beyaztoprak Florası & Bol Yağışlı Sezon Notları (NotebookLM)',
-        content: 'Yağışlı geçen ilkbahar sezonlarında Geven, Devedikeni ve Dağ Kekiği nektar salgılamaya Ağustos sonuna kadar devam eder. Varroa ilaçlamasında bal akımı sürüyorsa kimyasal yerine organik yöntemler veya sezon sonu Oksalik Asit tercih edilir.',
-        date: new Date().toISOString()
-      }];
+      const defaultNotes = [
+        {
+          title: '🐝 Arı Mühendisi - Destek Koloni & Bala 20 Kala Protokolü (NotebookLM)',
+          content: 'Nektar akımından 20 gün önce zayıf kovanlardan güçlü kovanlara kapalı yavrulu petek aktarılır. Hedef: Hasatta 80.000-100.000 tarlacı nüfusu. Nektar akımı başladığında şurup beslemesi bıçak gibi kesilir, katlarda havalandırma için ters piramit dizilimi uygulanır.',
+          date: new Date().toISOString()
+        },
+        {
+          title: '🧪 Arı Mühendisi - Formik & Oksalik Asit Varroa Protokolü (NotebookLM)',
+          content: 'Formik Asit 2. Tur uygulamasında 15-25°C ısı aralığı korunur, kovan altı havalandırması tam açık tutulur. Kış salkımı öncesi kapalı yavru bittiğinde Oksalik Asit buharlaştırma (sublimasyon) veya banyo damlatma ile akademik Varroa sayımı yapılır (%3 üzeri acil müdahale).',
+          date: new Date().toISOString()
+        },
+        {
+          title: '🍲 Arı Mühendisi - Isılara Göre Besleme & Fondan Kek Stratejisi (NotebookLM)',
+          content: '15°C üzerinde 1:1 şurup verilir. 10°C altında kovan nemlenmesini önlemek için sıvı şurup kesinlikle verilmez; pudra şekeri tabanlı kışlık fondan kek ve polen keki tercih edilir.',
+          date: new Date().toISOString()
+        },
+        {
+          title: 'Eğil Beyaztoprak Florası & Bol Yağışlı Sezon Notları (NotebookLM)',
+          content: 'Yağışlı geçen ilkbahar sezonlarında Geven, Devedikeni ve Dağ Kekiği nektar salgılamaya Ağustos sonuna kadar devam eder. Varroa ilaçlamasında bal akımı sürüyorsa kimyasal yerine organik yöntemler veya sezon sonu Oksalik Asit tercih edilir.',
+          date: new Date().toISOString()
+        }
+      ];
       localStorage.setItem('beeos_notebooklm_notes', JSON.stringify(defaultNotes));
       return defaultNotes;
     },

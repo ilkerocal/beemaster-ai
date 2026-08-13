@@ -691,6 +691,19 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       if (coll === 'queens' && (queenName || queenColor)) {
         out['marked_color'] = (queenColor || '') + (queenName ? '|NAME:' + queenName : '');
       }
+      // Apiaries: lat, lng, flora
+      if (coll === 'apiaries') {
+        var apMeta = {};
+        var apExtras = ['lat','lng','flora'];
+        for (var ape = 0; ape < apExtras.length; ape++) {
+          var apk = apExtras[ape];
+          if (obj[apk] !== undefined && obj[apk] !== null && obj[apk] !== '') apMeta[apk] = obj[apk];
+        }
+        if (Object.keys(apMeta).length > 0) {
+          var apBaseNotes = out['notes'] || '';
+          out['notes'] = apBaseNotes + '|META:' + JSON.stringify(apMeta);
+        }
+      }
       // Frames: tum ekstra alanlari META olarak notes'a gom
       if (coll === 'frames') {
         var frMeta = {};
@@ -977,8 +990,15 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
         // TÜM tabloları paralel çek
         var results = await Promise.all(tables.map(function(t) {
           return client.from(t).select('*').eq('user_id', uid).then(function(r) {
+            if (r.error) {
+              console.warn('[CloudSync] fetch error for ' + t + ':', r.error.message);
+              return { table: t, data: null }; // Fetch hatası, yerel veriyi koru
+            }
             return { table: t, data: (r.data || []).map(fromDb) };
-          }).catch(function() { return { table: t, data: null }; }); // null = fetch failed, keep local
+          }).catch(function(err) {
+            console.warn('[CloudSync] fetch exception for ' + t + ':', err);
+            return { table: t, data: null };
+          });
         }));
 
         // === SMART HYBRID MERGE (Yerel Veriyi Asla Silme, Eksik Yerel Veriyi Buluta Yükle) ===
@@ -994,9 +1014,13 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
           var mergedList = [];
           var mergedMap = {};
 
-          // 1. Buluttan gelen tüm verileri ekle
+          // 1. Buluttan gelen tüm verileri ekle (yereldeki koordinat vb. ekstra alanları koru)
           for (var cidx = 0; cidx < cloudItems.length; cidx++) {
             var citem = cloudItems[cidx];
+            var existingLocal = localItems.find(function(l) { return l.id === citem.id; });
+            if (existingLocal) {
+              citem = Object.assign({}, existingLocal, citem);
+            }
             mergedMap[citem.id] = citem;
             mergedList.push(citem);
           }
@@ -1297,24 +1321,42 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       BM.Modal.open('Yeni Arı Üssü',
         `<label class="field"><span class="field-label">Üs Adı *</span>
           <input class="input" name="name" required placeholder="Örn: Çınar Üssü"></label>
-         <label class="field"><span class="field-label">Konum *</span>
-          <div style="display:flex;gap:var(--space-2)">
-            <input class="input" id="ap-loc-input" name="location" required placeholder="Örn: Çınar, Diyarbakır" style="flex:1">
-            <button type="button" id="ap-gps-btn" class="btn btn--primary" onclick="BM.apiaries.gpsCapture()" style="white-space:nowrap;padding:8px 12px" title="GPS ile otomatik konum al">📍 GPS</button>
-          </div></label>
-         <div class="field-row">
-           <label class="field"><span class="field-label">Enlem</span>
-             <input class="input" id="ap-lat-input" name="lat" type="number" step="0.001" placeholder="38.247"></label>
-           <label class="field"><span class="field-label">Boylam</span>
-             <input class="input" id="ap-lng-input" name="lng" type="number" step="0.001" placeholder="40.135"></label>
+         <label class="field"><span class="field-label">Konum / Bölge</span>
+          <input class="input" id="ap-loc-input" name="location" placeholder="Örn: Çınar, Diyarbakır (veya koordinat yapıştırın)" oninput="BM.apiaries.onLocationInput(this.value)">
+         </label>
+         
+         <div style="background:var(--bg-tertiary);border:1px solid var(--n-800);border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-3)">
+           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2)">
+             <span style="font-size:12px;font-weight:600;color:var(--text-primary)">📍 Koordinatlar (Elle girilebilir / Opsiyonel)</span>
+             <button type="button" id="ap-gps-btn" class="btn btn--sm btn--primary" onclick="BM.apiaries.gpsCapture()" style="font-size:11px;padding:4px 10px" title="Cihaz GPS'i ile otomatik al">📍 GPS ile Al</button>
+           </div>
+           <div class="field-row" style="margin-bottom:0">
+             <label class="field" style="margin-bottom:0"><span class="field-label" style="font-size:11px">Enlem (Latitude)</span>
+               <input class="input" id="ap-lat-input" name="lat" type="text" inputmode="decimal" placeholder="Örn: 38.247123" oninput="BM.apiaries.cleanCoordInput(this)"></label>
+             <label class="field" style="margin-bottom:0"><span class="field-label" style="font-size:11px">Boylam (Longitude)</span>
+               <input class="input" id="ap-lng-input" name="lng" type="text" inputmode="decimal" placeholder="Örn: 40.135456" oninput="BM.apiaries.cleanCoordInput(this)"></label>
+           </div>
+           <div style="font-size:10px;color:var(--text-muted);margin-top:6px">💡 Enlem ve boylamı Google Haritalar'dan kopyalayıp doğrudan buraya veya konum kutusuna yapıştırabilirsiniz.</div>
          </div>
+
          <label class="field"><span class="field-label">Flora</span>
-          <input class="input" name="flora" placeholder="Geven, Kekik, Pamuk"></label>
+          <input class="input" name="flora" placeholder="Geven, Kekik, Pamuk, Adaçayı"></label>
          <label class="field"><span class="field-label">Notlar</span>
-          <textarea class="textarea" name="notes" rows="2"></textarea></label>`,
+          <textarea class="textarea" name="notes" rows="2" placeholder="Üs hakkında genel notlar..."></textarea></label>`,
         (d) => {
-          if (d.lat) d.lat = parseFloat(d.lat);
-          if (d.lng) d.lng = parseFloat(d.lng);
+          let lat = d.lat ? parseFloat(String(d.lat).replace(',', '.')) : null;
+          let lng = d.lng ? parseFloat(String(d.lng).replace(',', '.')) : null;
+          if (isNaN(lat)) lat = null;
+          if (isNaN(lng)) lng = null;
+          d.lat = lat;
+          d.lng = lng;
+          if (!d.location || !d.location.trim()) {
+            if (lat && lng) {
+              d.location = lat.toFixed(4) + ', ' + lng.toFixed(4);
+            } else {
+              d.location = d.name || 'Konum belirtilmedi';
+            }
+          }
           BM.Storage.add('apiaries', d);
           BM.Toast.show('Üs eklendi ✓', 'success');
           App.render('apiaries');
@@ -1329,24 +1371,41 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       BM.Modal.open('Üs Düzenle — ' + a.name,
         `<label class="field"><span class="field-label">Üs Adı *</span>
            <input class="input" name="name" required value="${BM.esc(a.name)}"></label>
-         <label class="field"><span class="field-label">Konum *</span>
-          <div style="display:flex;gap:var(--space-2)">
-            <input class="input" id="ap-loc-input" name="location" required value="${BM.esc(a.location)}" style="flex:1">
-            <button type="button" id="ap-gps-btn" class="btn btn--primary" onclick="BM.apiaries.gpsCapture()" style="white-space:nowrap;padding:8px 12px">📍 GPS</button>
-          </div></label>
-         <div class="field-row">
-           <label class="field"><span class="field-label">Enlem</span>
-             <input class="input" id="ap-lat-input" name="lat" type="number" step="0.001" value="${a.lat || ''}"></label>
-           <label class="field"><span class="field-label">Boylam</span>
-             <input class="input" id="ap-lng-input" name="lng" type="number" step="0.001" value="${a.lng || ''}"></label>
+         <label class="field"><span class="field-label">Konum / Bölge</span>
+           <input class="input" id="ap-loc-input" name="location" value="${BM.esc(a.location || '')}" placeholder="Örn: Çınar, Diyarbakır" oninput="BM.apiaries.onLocationInput(this.value)">
+         </label>
+
+         <div style="background:var(--bg-tertiary);border:1px solid var(--n-800);border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-3)">
+           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2)">
+             <span style="font-size:12px;font-weight:600;color:var(--text-primary)">📍 Koordinatlar (Elle girilebilir / Opsiyonel)</span>
+             <button type="button" id="ap-gps-btn" class="btn btn--sm btn--primary" onclick="BM.apiaries.gpsCapture()" style="font-size:11px;padding:4px 10px">📍 GPS ile Al</button>
+           </div>
+           <div class="field-row" style="margin-bottom:0">
+             <label class="field" style="margin-bottom:0"><span class="field-label" style="font-size:11px">Enlem (Latitude)</span>
+               <input class="input" id="ap-lat-input" name="lat" type="text" inputmode="decimal" value="${a.lat !== undefined && a.lat !== null ? a.lat : ''}" placeholder="Örn: 38.247123" oninput="BM.apiaries.cleanCoordInput(this)"></label>
+             <label class="field" style="margin-bottom:0"><span class="field-label" style="font-size:11px">Boylam (Longitude)</span>
+               <input class="input" id="ap-lng-input" name="lng" type="text" inputmode="decimal" value="${a.lng !== undefined && a.lng !== null ? a.lng : ''}" placeholder="Örn: 40.135456" oninput="BM.apiaries.cleanCoordInput(this)"></label>
+           </div>
          </div>
+
          <label class="field"><span class="field-label">Flora</span>
            <input class="input" name="flora" value="${BM.esc(a.flora || '')}"></label>
          <label class="field"><span class="field-label">Notlar</span>
            <textarea class="textarea" name="notes" rows="2">${BM.esc(a.notes || '')}</textarea></label>`,
         (d) => {
-          if (d.lat) d.lat = parseFloat(d.lat);
-          if (d.lng) d.lng = parseFloat(d.lng);
+          let lat = d.lat ? parseFloat(String(d.lat).replace(',', '.')) : null;
+          let lng = d.lng ? parseFloat(String(d.lng).replace(',', '.')) : null;
+          if (isNaN(lat)) lat = null;
+          if (isNaN(lng)) lng = null;
+          d.lat = lat;
+          d.lng = lng;
+          if (!d.location || !d.location.trim()) {
+            if (lat && lng) {
+              d.location = lat.toFixed(4) + ', ' + lng.toFixed(4);
+            } else {
+              d.location = d.name || 'Konum belirtilmedi';
+            }
+          }
           BM.Storage.update('apiaries', id, d);
           BM.Toast.show('Üs güncellendi ✓', 'success');
           App.render('apiaries');
@@ -1355,13 +1414,50 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
       );
     },
 
-    // GPS ile otomatik konum yakala
+    // Koordinat yapıştırma & ayrıştırma yardımcısı
+    onLocationInput(val) {
+      if (!val) return;
+      const trimmed = val.trim();
+      // Örnek: "38.247123, 40.135456" veya "38,247123, 40,135456" veya "38.247123 40.135456"
+      const match = trimmed.match(/^([-+]?\d+[.,]?\d*)[,\s]+([-+]?\d+[.,]?\d*)$/);
+      if (match) {
+        const lat = parseFloat(match[1].replace(',', '.'));
+        const lng = parseFloat(match[2].replace(',', '.'));
+        if (!isNaN(lat) && !isNaN(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+          const latInput = document.getElementById('ap-lat-input');
+          const lngInput = document.getElementById('ap-lng-input');
+          if (latInput) latInput.value = lat.toFixed(6);
+          if (lngInput) lngInput.value = lng.toFixed(6);
+          BM.Toast.show('Koordinatlar algılandı: ' + lat.toFixed(4) + ', ' + lng.toFixed(4), 'info');
+        }
+      }
+    },
+
+    cleanCoordInput(el) {
+      if (!el || !el.value) return;
+      const val = el.value.trim();
+      // Eğer kullanıcı iki koordinatı birden aynı kutucuğa yapıştırdıysa (örn "38.24, 40.13")
+      if (val.includes(',') && val.split(',').length === 2 && !val.match(/^[-+]?\d+,\d+$/)) {
+        const parts = val.split(',');
+        const lat = parseFloat(parts[0].trim().replace(',', '.'));
+        const lng = parseFloat(parts[1].trim().replace(',', '.'));
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const latInput = document.getElementById('ap-lat-input');
+          const lngInput = document.getElementById('ap-lng-input');
+          if (latInput) latInput.value = lat;
+          if (lngInput) lngInput.value = lng;
+          return;
+        }
+      }
+    },
+
+    // GPS ile otomatik konum yakala (OPSİYONEL)
     gpsCapture() {
       const btn = document.getElementById('ap-gps-btn');
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Alınıyor...'; }
       if (!navigator.geolocation) {
-        BM.Toast.show('Tarayıcı GPS desteklemiyor', 'error');
-        if (btn) { btn.disabled = false; btn.textContent = '📍 GPS'; }
+        BM.Toast.show('Tarayıcı GPS desteklemiyor. Lütfen koordinatları elle giriniz.', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '📍 GPS ile Al'; }
         return;
       }
       BM.Toast.show('GPS sinyali aranıyor...', 'info');
@@ -1380,23 +1476,25 @@ window.__SUPABASE_ANON_KEY__ = 'sb_publishable_3j7uCLoJRximHZjlAi4Frw_7HCwHm6M';
             .then(data => {
               const addr = data.address || {};
               const parts = [addr.village || addr.town || addr.city_district || addr.county || addr.city, addr.city || addr.state, addr.country].filter(Boolean);
-              const loc = parts.join(', ') || (lat.toFixed(3) + ', ' + lng.toFixed(3));
-              if (locInput) locInput.value = loc;
+              const loc = parts.join(', ') || (lat.toFixed(4) + ', ' + lng.toFixed(4));
+              if (locInput && (!locInput.value || locInput.value.includes(',') || locInput.value.startsWith('3') || locInput.value.startsWith('4'))) {
+                locInput.value = loc;
+              }
               BM.Toast.show('GPS: ' + loc + ' (±' + acc + 'm)', 'success');
             })
             .catch(() => {
-              if (locInput) locInput.value = lat.toFixed(4) + ', ' + lng.toFixed(4);
-              BM.Toast.show('GPS alındı (±' + acc + 'm)', 'success');
+              if (locInput && !locInput.value) locInput.value = lat.toFixed(4) + ', ' + lng.toFixed(4);
+              BM.Toast.show('GPS koordinatı alındı (±' + acc + 'm)', 'success');
             });
-          if (btn) { btn.disabled = false; btn.textContent = '✅ GPS'; }
+          if (btn) { btn.disabled = false; btn.textContent = '✅ GPS Alındı'; }
         },
         (err) => {
           let msg = 'GPS alınamadı';
-          if (err.code === 1) msg = 'GPS izni reddedildi';
-          else if (err.code === 2) msg = 'GPS sinyali yok';
-          else if (err.code === 3) msg = 'GPS zaman aşımı';
-          BM.Toast.show(msg, 'error');
-          if (btn) { btn.disabled = false; btn.textContent = '📍 GPS'; }
+          if (err.code === 1) msg = 'GPS izni verilmedi (koordinatları elle girebilirsiniz)';
+          else if (err.code === 2) msg = 'GPS sinyali bulunamadı (elle girebilirsiniz)';
+          else if (err.code === 3) msg = 'GPS zaman aşımı (elle girebilirsiniz)';
+          BM.Toast.show(msg, 'info');
+          if (btn) { btn.disabled = false; btn.textContent = '📍 GPS ile Al'; }
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
@@ -4215,12 +4313,12 @@ BM.hives = hivesModule;
          <label class="field"><span class="field-label">Konum *</span>
            <input class="input" name="location" required value="Eğil, Diyarbakır"></label>
          <div class="field-row">
-           <label class="field"><span class="field-label">Enlem</span>
-             <input class="input" name="lat" type="number" step="0.001" value="38.247"></label>
-           <label class="field"><span class="field-label">Boylam</span>
-             <input class="input" name="lng" type="number" step="0.001" value="40.135"></label>
+           <label class="field"><span class="field-label">Enlem (Opsiyonel)</span>
+             <input class="input" name="lat" type="text" inputmode="decimal" value="38.247"></label>
+           <label class="field"><span class="field-label">Boylam (Opsiyonel)</span>
+             <input class="input" name="lng" type="text" inputmode="decimal" value="40.135"></label>
          </div>
-         <button type="button" class="btn" onclick="BM.onboarding.useLocation()" style="margin-top:var(--space-2);width:100%">📍 Konumumu Al</button>
+         <button type="button" class="btn" onclick="BM.onboarding.useLocation()" style="margin-top:var(--space-2);width:100%">📍 GPS ile Konumumu Al</button>
          <label class="field" style="margin-top:var(--space-3)"><span class="field-label">Flora</span>
            <input class="input" name="flora" value="Geven, Kekik, Adaçayı"></label>
          <div style="display:flex;justify-content:space-between;gap:var(--space-2);padding-top:var(--space-4);border-top:1px solid var(--n-800);margin-top:var(--space-4)">
@@ -4235,11 +4333,13 @@ BM.hives = hivesModule;
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => {
-            document.querySelector('input[name="lat"]').value = pos.coords.latitude.toFixed(3);
-            document.querySelector('input[name="lng"]').value = pos.coords.longitude.toFixed(3);
+            const latInput = document.querySelector('input[name="lat"]');
+            const lngInput = document.querySelector('input[name="lng"]');
+            if (latInput) latInput.value = pos.coords.latitude.toFixed(6);
+            if (lngInput) lngInput.value = pos.coords.longitude.toFixed(6);
             BM.Toast.show('Konum alındı ✓', 'success');
           },
-          err => BM.Toast.show('Konum alınamadı: ' + err.message, 'error')
+          err => BM.Toast.show('Konum alınamadı (elle girebilirsiniz)', 'info')
         );
       }
     },
@@ -4249,11 +4349,16 @@ BM.hives = hivesModule;
       const name = get('input[name="name"]').value.trim();
       const location = get('input[name="location"]').value.trim();
       if (!name || !location) { BM.Toast.show('Ad ve konum gerekli', 'error'); return; }
+      const rawLat = get('input[name="lat"]')?.value;
+      const rawLng = get('input[name="lng"]')?.value;
+      let lat = rawLat ? parseFloat(String(rawLat).replace(',', '.')) : null;
+      let lng = rawLng ? parseFloat(String(rawLng).replace(',', '.')) : null;
+      if (isNaN(lat)) lat = null;
+      if (isNaN(lng)) lng = null;
       const newApiary = {
         name, location,
-        lat: parseFloat(get('input[name="lat"]').value) || null,
-        lng: parseFloat(get('input[name="lng"]').value) || null,
-        flora: get('input[name="flora"]').value.trim(),
+        lat, lng,
+        flora: get('input[name="flora"]')?.value.trim() || '',
         notes: ''
       };
       const apiaryId = BM.Storage.add('apiaries', newApiary);
@@ -4735,12 +4840,17 @@ BM.frames = framesModule;
                   📚 NotebookLM & Arıcılık Bilgi Bankası (Knowledge Base)
                 </h3>
                 <p style="font-size:0.82rem;color:var(--text-secondary);margin:0">
-                  Google NotebookLM notlarınızı, saha deneyimlerinizi ve arıcılık makalelerinizi buraya ekleyin. Tüm Ajanlar çıkarımlarında bu notları referans alır.
+                  Arı Mühendisi YouTube kütüphanesi (49+ Kaynak), Google NotebookLM ve Obsidian notlarınız entegre edilmiştir. Tüm Ajanlar çıkarımlarında bu notları referans alır.
                 </p>
               </div>
-              <button class="btn btn--primary btn--sm" onclick="BM.beeos.toggleNoteForm()" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);font-weight:700">
-                + NotebookLM Notu Ekle
-              </button>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <a href="https://notebook.google.com/notebook/532f1efb-9caa-4d8e-bd12-9aca3c770dbc?authuser=5" target="_blank" class="btn btn--ghost btn--sm" style="border:1px solid rgba(245,158,11,0.4);color:var(--honey-400);font-weight:700;display:inline-flex;align-items:center;gap:6px">
+                  🔗 NotebookLM (49 Kaynak)
+                </a>
+                <button class="btn btn--primary btn--sm" onclick="BM.beeos.toggleNoteForm()" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);font-weight:700">
+                  + Not Ekle
+                </button>
+              </div>
             </div>
 
             <!-- New Note Form (Initially Hidden) -->
@@ -4948,11 +5058,28 @@ BM.frames = framesModule;
       if (stored) {
         try { return JSON.parse(stored); } catch (e) {}
       }
-      const defaultNotes = [{
-        title: 'Eğil Beyaztoprak Florası & Bol Yağışlı Sezon Notları (NotebookLM)',
-        content: 'Yağışlı geçen ilkbahar sezonlarında Geven, Devedikeni ve Dağ Kekiği nektar salgılamaya Ağustos sonuna kadar devam eder. Varroa ilaçlamasında bal akımı sürüyorsa kimyasal yerine organik yöntemler veya sezon sonu Oksalik Asit tercih edilir.',
-        date: new Date().toISOString()
-      }];
+      const defaultNotes = [
+        {
+          title: '🐝 Arı Mühendisi - Destek Koloni & Bala 20 Kala Protokolü (NotebookLM)',
+          content: 'Nektar akımından 20 gün önce zayıf kovanlardan güçlü kovanlara kapalı yavrulu petek aktarılır. Hedef: Hasatta 80.000-100.000 tarlacı nüfusu. Nektar akımı başladığında şurup beslemesi bıçak gibi kesilir, katlarda havalandırma için ters piramit dizilimi uygulanır.',
+          date: new Date().toISOString()
+        },
+        {
+          title: '🧪 Arı Mühendisi - Formik & Oksalik Asit Varroa Protokolü (NotebookLM)',
+          content: 'Formik Asit 2. Tur uygulamasında 15-25°C ısı aralığı korunur, kovan altı havalandırması tam açık tutulur. Kış salkımı öncesi kapalı yavru bittiğinde Oksalik Asit buharlaştırma (sublimasyon) veya banyo damlatma ile akademik Varroa sayımı yapılır (%3 üzeri acil müdahale).',
+          date: new Date().toISOString()
+        },
+        {
+          title: '🍲 Arı Mühendisi - Isılara Göre Besleme & Fondan Kek Stratejisi (NotebookLM)',
+          content: '15°C üzerinde 1:1 şurup verilir. 10°C altında kovan nemlenmesini önlemek için sıvı şurup kesinlikle verilmez; pudra şekeri tabanlı kışlık fondan kek ve polen keki tercih edilir.',
+          date: new Date().toISOString()
+        },
+        {
+          title: 'Eğil Beyaztoprak Florası & Bol Yağışlı Sezon Notları (NotebookLM)',
+          content: 'Yağışlı geçen ilkbahar sezonlarında Geven, Devedikeni ve Dağ Kekiği nektar salgılamaya Ağustos sonuna kadar devam eder. Varroa ilaçlamasında bal akımı sürüyorsa kimyasal yerine organik yöntemler veya sezon sonu Oksalik Asit tercih edilir.',
+          date: new Date().toISOString()
+        }
+      ];
       localStorage.setItem('beeos_notebooklm_notes', JSON.stringify(defaultNotes));
       return defaultNotes;
     },
