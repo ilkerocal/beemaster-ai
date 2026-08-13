@@ -14,7 +14,7 @@
         `<label class="field"><span class="field-label">Üs Adı *</span>
           <input class="input" name="name" required placeholder="Örn: Çınar Üssü"></label>
          <label class="field"><span class="field-label">Konum / Bölge</span>
-          <input class="input" id="ap-loc-input" name="location" placeholder="Örn: Çınar, Diyarbakır (veya koordinat yapıştırın)" oninput="BM.apiaries.onLocationInput(this.value)">
+          <input class="input" id="ap-loc-input" name="location" placeholder="Örn: Eğil, Diyarbakır (veya koordinat yapıştırın)" oninput="BM.apiaries.onLocationInput(this.value)">
          </label>
          
          <div style="background:var(--bg-tertiary);border:1px solid var(--n-800);border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-3)">
@@ -28,11 +28,17 @@
              <label class="field" style="margin-bottom:0"><span class="field-label" style="font-size:11px">Boylam (Longitude)</span>
                <input class="input" id="ap-lng-input" name="lng" type="text" inputmode="decimal" placeholder="Örn: 40.135456" oninput="BM.apiaries.cleanCoordInput(this)"></label>
            </div>
-           <div style="font-size:10px;color:var(--text-muted);margin-top:6px">💡 Enlem ve boylamı Google Haritalar'dan kopyalayıp doğrudan buraya veya konum kutusuna yapıştırabilirsiniz.</div>
+           <div style="font-size:10px;color:var(--text-muted);margin-top:6px">💡 Koordinat veya konum girdiğinizde yapay zeka bölge florasını otomatik çıkaracaktır.</div>
          </div>
 
-         <label class="field"><span class="field-label">Flora</span>
-          <input class="input" name="flora" placeholder="Geven, Kekik, Pamuk, Adaçayı"></label>
+         <label class="field">
+           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+             <span class="field-label" style="margin-bottom:0">Flora & Mera Bitkileri</span>
+             <button type="button" class="btn btn--sm btn--ghost" onclick="BM.apiaries.triggerFloraAI()" style="font-size:11px;color:var(--honey-500);padding:2px 8px;border:1px solid rgba(245,158,11,0.3);border-radius:4px" title="Yapay zeka ile konuma göre florayı otomatik çıkar">✨ AI Flora Analizi</button>
+           </div>
+           <input class="input" id="ap-flora-input" name="flora" placeholder="Geven, Kekik, Pamuk, Adaçayı">
+           <div id="ap-flora-badge" style="font-size:11px;color:var(--honey-400);margin-top:5px;display:none;background:rgba(245,158,11,0.08);padding:6px 10px;border-radius:6px;border:1px dashed rgba(245,158,11,0.3);line-height:1.4"></div>
+         </label>
          <label class="field"><span class="field-label">Notlar</span>
           <textarea class="textarea" name="notes" rows="2" placeholder="Üs hakkında genel notlar..."></textarea></label>`,
         (d) => {
@@ -80,8 +86,14 @@
            </div>
          </div>
 
-         <label class="field"><span class="field-label">Flora</span>
-           <input class="input" name="flora" value="${BM.esc(a.flora || '')}"></label>
+         <label class="field">
+           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+             <span class="field-label" style="margin-bottom:0">Flora & Mera Bitkileri</span>
+             <button type="button" class="btn btn--sm btn--ghost" onclick="BM.apiaries.triggerFloraAI()" style="font-size:11px;color:var(--honey-500);padding:2px 8px;border:1px solid rgba(245,158,11,0.3);border-radius:4px" title="Yapay zeka ile konuma göre florayı otomatik çıkar">✨ AI Flora Analizi</button>
+           </div>
+           <input class="input" id="ap-flora-input" name="flora" value="${BM.esc(a.flora || '')}">
+           <div id="ap-flora-badge" style="font-size:11px;color:var(--honey-400);margin-top:5px;display:none;background:rgba(245,158,11,0.08);padding:6px 10px;border-radius:6px;border:1px dashed rgba(245,158,11,0.3);line-height:1.4"></div>
+         </label>
          <label class="field"><span class="field-label">Notlar</span>
            <textarea class="textarea" name="notes" rows="2">${BM.esc(a.notes || '')}</textarea></label>`,
         (d) => {
@@ -106,6 +118,44 @@
       );
     },
 
+    // AI Flora Motorunu tetikleme ve otomatik doldurma
+    autoDetectFlora(silent = false) {
+      const latInput = document.getElementById('ap-lat-input');
+      const lngInput = document.getElementById('ap-lng-input');
+      const locInput = document.getElementById('ap-loc-input');
+      const floraInput = document.getElementById('ap-flora-input');
+      const badge = document.getElementById('ap-flora-badge');
+
+      if (!floraInput) return;
+
+      const rawLat = latInput ? latInput.value : '';
+      const rawLng = lngInput ? lngInput.value : '';
+      const locText = locInput ? locInput.value : '';
+
+      let lat = rawLat ? parseFloat(String(rawLat).replace(',', '.')) : null;
+      let lng = rawLng ? parseFloat(String(rawLng).replace(',', '.')) : null;
+      if (isNaN(lat)) lat = null;
+      if (isNaN(lng)) lng = null;
+
+      if (!lat && !lng && !locText.trim()) return;
+
+      const pred = BM.Flora.predict(lat, lng, locText);
+      if (pred && pred.flora) {
+        floraInput.value = pred.flora;
+        if (badge) {
+          badge.style.display = 'block';
+          badge.innerHTML = `🌿 <b>${pred.name} Florası:</b> ${pred.nectarFlow}`;
+        }
+        if (!silent) {
+          BM.Toast.show(`🌿 AI Flora: ${pred.name} tespit edildi`, 'success');
+        }
+      }
+    },
+
+    triggerFloraAI() {
+      this.autoDetectFlora(false);
+    },
+
     // Koordinat yapıştırma & ayrıştırma yardımcısı
     onLocationInput(val) {
       if (!val) return;
@@ -123,6 +173,8 @@
           BM.Toast.show('Koordinatlar algılandı: ' + lat.toFixed(4) + ', ' + lng.toFixed(4), 'info');
         }
       }
+      clearTimeout(this._floraDebounce);
+      this._floraDebounce = setTimeout(() => this.autoDetectFlora(true), 350);
     },
 
     cleanCoordInput(el) {
@@ -138,9 +190,10 @@
           const lngInput = document.getElementById('ap-lng-input');
           if (latInput) latInput.value = lat;
           if (lngInput) lngInput.value = lng;
-          return;
         }
       }
+      clearTimeout(this._floraDebounce);
+      this._floraDebounce = setTimeout(() => this.autoDetectFlora(true), 350);
     },
 
     // GPS ile otomatik konum yakala (OPSİYONEL)
@@ -173,10 +226,12 @@
                 locInput.value = loc;
               }
               BM.Toast.show('GPS: ' + loc + ' (±' + acc + 'm)', 'success');
+              BM.apiaries.autoDetectFlora(false);
             })
             .catch(() => {
               if (locInput && !locInput.value) locInput.value = lat.toFixed(4) + ', ' + lng.toFixed(4);
               BM.Toast.show('GPS koordinatı alındı (±' + acc + 'm)', 'success');
+              BM.apiaries.autoDetectFlora(false);
             });
           if (btn) { btn.disabled = false; btn.textContent = '✅ GPS Alındı'; }
         },
@@ -424,6 +479,185 @@
     }
   };
 
+  // ============================================================
+  // Flora & Climate AI Engine — Obsidian / NotebookLM Expert Model
+  // ============================================================
+  const FloraEngine = {
+    regions: [
+      {
+        id: 'egil_diyarbakir',
+        name: 'Diyarbakır (Eğil & Fırat Vadisi)',
+        keywords: ['eğil', 'egil', 'dicle', 'hani', 'beyaztoprak', 'selman', 'kayaş', 'kalkan'],
+        center: { lat: 38.25, lng: 40.14 },
+        bounds: { minLat: 38.05, maxLat: 38.55, minLng: 39.85, maxLng: 40.50 },
+        flora: 'Geven (Astragalus), Dağ Kekiği (Thymus), Adaçayı, Badem, Kayısı, Kenger, Yabani Hardal',
+        nectarFlow: 'Mayıs sonu - Haziran Geven zirvesi, Temmuz Kekik aromatik nektar akımı',
+        icon: '🌸'
+      },
+      {
+        id: 'diyarbakir_sur_cinar',
+        name: 'Diyarbakır (Sur, Çınar & Karacadağ Bozkırı)',
+        keywords: ['diyarbakır', 'diyarbakir', 'sur', 'çınar', 'cinar', 'ergani', 'bismil', 'silvan', 'karacadağ', 'karacadag', 'bağlar', 'kayapınar', 'yenişehir'],
+        center: { lat: 37.91, lng: 40.23 },
+        bounds: { minLat: 37.40, maxLat: 38.70, minLng: 39.40, maxLng: 41.30 },
+        flora: 'Geven, Dağ Kekiği, Pamuk, Ayçiçeği, Kenger, Devedikeni, Yabani Fiğ',
+        nectarFlow: 'Haziran-Temmuz Geven & Bozkır Çiçekleri, Ağustos Pamuk (3km dikkat)',
+        icon: '🌾'
+      },
+      {
+        id: 'batman_siirt_mardin',
+        name: 'Güneydoğu Toros & Mezopotamya (Siirt, Batman, Mardin)',
+        keywords: ['siirt', 'pervari', 'batman', 'sason', 'mardin', 'midyat', 'nusaybin', 'şırnak', 'sirnak', 'cizre', 'derik'],
+        center: { lat: 37.93, lng: 41.94 },
+        bounds: { minLat: 36.90, maxLat: 38.50, minLng: 40.50, maxLng: 43.50 },
+        flora: 'Pervari Yüksek Dağ Florası, Geven, Meşe Salgısı, Menengiç, Dağ Kekiği, Badem',
+        nectarFlow: 'Haziran-Temmuz Yüksek Yayla Geveni & Pervari Balı Akımı',
+        icon: '🏔️'
+      },
+      {
+        id: 'mugla_ege_cam',
+        name: 'Muğla & Ege Çam Florası',
+        keywords: ['muğla', 'mugla', 'marmaris', 'köyceğiz', 'koycegiz', 'milas', 'datça', 'datca', 'fethiye', 'ula', 'bodrum', 'yatağan', 'aydın', 'aydin', 'kuşadası'],
+        center: { lat: 37.21, lng: 28.36 },
+        bounds: { minLat: 36.50, maxLat: 37.80, minLng: 27.10, maxLng: 29.70 },
+        flora: 'Çam Balı (Marchalina hellenica / Basra), Püren (Funda), Hayıt, Dağ Kekiği, Sandal Ağacı, Narenciye, Keçiboynuzu',
+        nectarFlow: 'Ağustos-Ekim Basra Çam Salgısı Zirve, Mart-Nisan Narenciye, Sonbahar Püren',
+        icon: '🌲'
+      },
+      {
+        id: 'rize_artvin_anzer',
+        name: 'Doğu Karadeniz & Anzer Yaylası Florası',
+        keywords: ['rize', 'anzer', 'artvin', 'macahel', 'ikizdere', 'çamlıhemşin', 'camlihemsin', 'şavşat', 'savsat', 'ayder', 'yusufeli', 'trabzon', 'of', 'çaykara'],
+        center: { lat: 40.98, lng: 40.52 },
+        bounds: { minLat: 40.40, maxLat: 41.60, minLng: 39.50, maxLng: 42.40 },
+        flora: 'Anzer Yayla Çiçekleri (450+ Tür), Kestane, Ormangülü (Komar), Ihlamur, Karakovan Çiçek Balı, Yabani Yabanmersini',
+        nectarFlow: 'Haziran Kestane & Ihlamur, Temmuz Anzer Yayla Çiçekleri Zirve',
+        icon: '🐝'
+      },
+      {
+        id: 'antalya_mersin_akdeniz',
+        name: 'Batı & Orta Akdeniz Florası',
+        keywords: ['antalya', 'mersin', 'alanya', 'manavgat', 'kumluca', 'finike', 'anamur', 'silifke', 'tarsus', 'kaş', 'kas', 'kemer', 'gazipaşa', 'serik'],
+        center: { lat: 36.88, lng: 30.70 },
+        bounds: { minLat: 35.90, maxLat: 37.40, minLng: 29.20, maxLng: 35.20 },
+        flora: 'Narenciye (Portakal/Limon Çiçeği), Toros Sedir Balı, Keçiboynuzu (Harnup), Dağ Kekiği, Sandal, Adaçayı, Okaliptüs',
+        nectarFlow: 'Mart-Nisan Narenciye Akımı, Temmuz Toros Kekiği, Eylül-Ekim Keçiboynuzu & Sandal',
+        icon: '🍊'
+      },
+      {
+        id: 'trakya_marmara',
+        name: 'Trakya & Marmara Ayçiçeği-Meşe Florası',
+        keywords: ['edirne', 'tekirdağ', 'tekirdag', 'kırklareli', 'kirklareli', 'çorlu', 'corlu', 'keşan', 'kesan', 'lüleburgaz', 'ıstranca', 'bursa', 'yalova', 'balıkesir', 'çanakkale'],
+        center: { lat: 41.67, lng: 26.55 },
+        bounds: { minLat: 39.80, maxLat: 42.15, minLng: 25.80, maxLng: 29.50 },
+        flora: 'Ayçiçeği (Helianthus), Kanola, Akasya, Meşe Salgısı (Istranca), Hardal, Kestane, Çayır Üçgülü',
+        nectarFlow: 'Mayıs Kanola & Akasya, Temmuz-Ağustos Ayçiçeği Ana Akımı, Ağustos Meşe Salgısı',
+        icon: '🌻'
+      },
+      {
+        id: 'sivas_erzurum_kars',
+        name: 'Doğu Anadolu Yüksek Yayla Florası',
+        keywords: ['sivas', 'zara', 'erzurum', 'kars', 'ardahan', 'göle', 'ağrı', 'agri', 'van', 'bitlis', 'bingöl', 'bingol', 'hakkari', 'muş', 'mus', 'erzincan', 'malatya'],
+        center: { lat: 39.75, lng: 37.01 },
+        bounds: { minLat: 38.20, maxLat: 41.50, minLng: 36.00, maxLng: 44.60 },
+        flora: 'Yüksek Yayla Geveni (Astragalus), Korunga, Dağ Kekiği, Çayır Üçgülü, Ballıbaba, Peygamber Çiçeği',
+        nectarFlow: 'Haziran sonu - Temmuz Yüksek Rakım (1800-2400m) Kristal Çiçek Balı Akımı',
+        icon: '🌺'
+      },
+      {
+        id: 'isparta_burdur_lavanta',
+        name: 'Göller Yöresi & Lavanta-Gül Florası',
+        keywords: ['isparta', 'burdur', 'kuyucak', 'keçiborlu', 'keciborlu', 'eğirdir', 'egirdir', 'yalvaç', 'dinar', 'bucak'],
+        center: { lat: 37.76, lng: 30.55 },
+        bounds: { minLat: 37.20, maxLat: 38.60, minLng: 29.50, maxLng: 31.80 },
+        flora: 'Lavanta (Lavandula), Yağ Gülü (Rosa damascena), Dağ Kekiği, Geven, Korunga, Meyve Bahçeleri',
+        nectarFlow: 'Mayıs Gül Çiçeklenmesi, Temmuz Lavanta Monofloral Bal Akımı',
+        icon: '💜'
+      },
+      {
+        id: 'ic_anadolu_bozkir',
+        name: 'İç Anadolu Bozkır & Geven Florası',
+        keywords: ['konya', 'ankara', 'eskişehir', 'eskisehir', 'kayseri', 'aksaray', 'karaman', 'kırşehir', 'kirsehir', 'nevşehir', 'nevsehir', 'yozgat', 'niğde', 'nigde', 'çankırı'],
+        center: { lat: 39.92, lng: 32.85 },
+        bounds: { minLat: 37.00, maxLat: 40.80, minLng: 30.00, maxLng: 36.50 },
+        flora: 'Bozkır Geveni, Korunga, Yonca, Ayçiçeği, Taş Yoncası, Çörek Otu, Papatya, Yabani Hardal',
+        nectarFlow: 'Haziran Geven & Korunga Zirve, Temmuz Yonca & Ayçiçeği',
+        icon: '🌾'
+      },
+      {
+        id: 'bati_karadeniz_kestane',
+        name: 'Batı Karadeniz Kestane & Ihlamur Florası',
+        keywords: ['zonguldak', 'bartın', 'bartin', 'kastamonu', 'sinop', 'düzce', 'duzce', 'bolu', 'karabük', 'cide', 'inebolu', 'giresun', 'ordu', 'samsun'],
+        center: { lat: 41.45, lng: 31.79 },
+        bounds: { minLat: 40.50, maxLat: 42.10, minLng: 30.80, maxLng: 38.50 },
+        flora: 'Kestane, Ihlamur, Orman Gülü, Meşe Balı, Böğürtlen, Yaban Mersini',
+        nectarFlow: 'Haziran Kestane Zirvesi (Koyu, Enzim zengini), Temmuz Ihlamur',
+        icon: '🌰'
+      },
+      {
+        id: 'cukurova_guney',
+        name: 'Çukurova & Doğu Akdeniz Florası',
+        keywords: ['adana', 'hatay', 'osmaniye', 'iskenderun', 'antakya', 'ceyhan', 'kozan', 'kadirli', 'dörtyol'],
+        center: { lat: 37.00, lng: 35.32 },
+        bounds: { minLat: 35.80, maxLat: 37.80, minLng: 35.00, maxLng: 36.80 },
+        flora: 'Narenciye, Pamuk, Okaliptüs, Geven, Dağ Kekiği, Defne, Çemen',
+        nectarFlow: 'Mart-Nisan Narenciye Erken Gelişim, Ağustos Pamuk',
+        icon: '🌿'
+      }
+    ],
+
+    predict(lat, lng, locText) {
+      const text = (locText || '').toLowerCase();
+      // 1. Keyword search in location text
+      if (text) {
+        for (const reg of this.regions) {
+          for (const kw of reg.keywords) {
+            if (text.includes(kw)) {
+              return { ...reg, matchType: 'location_keyword' };
+            }
+          }
+        }
+      }
+
+      // 2. Coordinate search (Bounding Box)
+      if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+        for (const reg of this.regions) {
+          if (lat >= reg.bounds.minLat && lat <= reg.bounds.maxLat &&
+              lng >= reg.bounds.minLng && lng <= reg.bounds.maxLng) {
+            return { ...reg, matchType: 'coordinate_bounds' };
+          }
+        }
+
+        // 3. Nearest Center Distance
+        let nearest = null;
+        let minDist = Infinity;
+        for (const reg of this.regions) {
+          const dLat = lat - reg.center.lat;
+          const dLng = lng - reg.center.lng;
+          const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+          if (dist < minDist) {
+            minDist = dist;
+            nearest = reg;
+          }
+        }
+        if (nearest && minDist < 3.5) {
+          return { ...nearest, matchType: 'coordinate_distance' };
+        }
+      }
+
+      // 4. Default Fallback
+      return {
+        id: 'default_anatolian',
+        name: 'Anadolu Genel Florası',
+        flora: 'Geven, Dağ Kekiği, Korunga, Üçgül, Yabani Bozkır Çiçekleri',
+        nectarFlow: 'Mayıs-Temmuz Genel Nektar Akımı',
+        icon: '🌸',
+        matchType: 'default'
+      };
+    }
+  };
+
+  BM.Flora = FloraEngine;
   BM.apiaries = apiariesModule;
 })(window);
 

@@ -60,11 +60,18 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
             const latInput = document.querySelector('input[name="lat"]');
             const lngInput = document.querySelector('input[name="lng"]');
-            if (latInput) latInput.value = pos.coords.latitude.toFixed(6);
-            if (lngInput) lngInput.value = pos.coords.longitude.toFixed(6);
-            BM.Toast.show('Konum alındı ✓', 'success');
+            const floraInput = document.querySelector('input[name="flora"]');
+            if (latInput) latInput.value = lat.toFixed(6);
+            if (lngInput) lngInput.value = lng.toFixed(6);
+            if (BM.Flora && floraInput) {
+              const pred = BM.Flora.predict(lat, lng, '');
+              if (pred && pred.flora) floraInput.value = pred.flora;
+            }
+            BM.Toast.show('Konum ve AI Flora alındı ✓', 'success');
           },
           err => BM.Toast.show('Konum alınamadı (elle girebilirsiniz)', 'info')
         );

@@ -587,8 +587,12 @@
           } else {
             ans += `✅ Mevcut kovanlarınızın tümünde Varroa sayısı güvenli sınırlar içinde.<br>• <b>Tavsiye:</b> Rutin dip tahtası sayımlarına ve kış öncesi kontrole devam edin.`;
           }
-        } else if (lower.includes('bal') || lower.includes('yağmur') || lower.includes('akım') || lower.includes('flora') || lower.includes('nektar')) {
-          ans = agentNameHeader + `🌸 <b>Flora & İklim Analizi:</b><br>Bol yağış alan sezonlarda Geven, Devedikeni ve Kekik gibi derin köklü bitkiler nektar salgılamaya <b>Ağustos sonuna kadar</b> devam eder.<br>• <b>Tavsiye:</b> Nektar akımı sürerken besleme yapmayın, kovan bal dolumunu haftalık takip edin.${noteContextMsg}`;
+        } else if (lower.includes('bal') || lower.includes('yağmur') || lower.includes('akım') || lower.includes('flora') || lower.includes('nektar') || lower.includes('bitki')) {
+          const ap = activeApiary;
+          const pred = BM.Flora ? BM.Flora.predict(ap?.lat, ap?.lng, ap?.location || lower) : null;
+          ans = agentNameHeader + `🌸 <b>Flora & İklim Analizi (${pred ? pred.name : 'Bölgesel'}):</b><br>` +
+            (pred ? `• <b>Mera Bitkileri:</b> ${pred.flora}<br>• <b>Nektar Takvimi:</b> ${pred.nectarFlow}<br>` : '') +
+            `• <b>Tavsiye:</b> Nektar akımı sürerken besleme yapmayın, kovan bal dolumunu haftalık takip edin.${noteContextMsg}`;
         } else if (lower.includes('besle') || lower.includes('şurup') || lower.includes('kek')) {
           ans = agentNameHeader + `🌾 <b>Mevsimsel Besleme Reçetesi:</b><br>Arılığınız (${activeApiary ? activeApiary.name : 'Diyarbakır Eğil'}) için:<br>• Nektar akımı varsa beslemeyi durdurun.<br>• Akım bitiminde kuluçkayı teşvik için 1:1 Şurup, kış stoku için 2:1 Koyu Şurup/Kek verin.`;
         } else if (lower.includes('ana arı') || lower.includes('ırk')) {
