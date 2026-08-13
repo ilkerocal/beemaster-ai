@@ -273,10 +273,13 @@
         s.mode = this._state.mode || 'form';
         s.photoTag = this._state.photoTag || '';
         await BM.Storage.add('inspections', s);
+        if (BM.queens && BM.queens.recalculateForHive) {
+          BM.queens.recalculateForHive(s.hiveId);
+        }
         if (anomalies.filter(a => a.severity === 'high').length > 0) {
           BM.Toast.show(`Muayene kaydedildi. ${anomalies.length} anomali!`, 'warn');
         } else {
-          BM.Toast.show('Muayene kaydedildi ✓', 'success');
+          BM.Toast.show('Muayene kaydedildi ve Ana Arı performansı güncellendi ✓', 'success');
         }
         if (s.varroaCount >= 6) {
           setTimeout(() => {
@@ -475,6 +478,9 @@
           d.varroaCount = parseInt(d.varroaCount) || 0;
           d.broodFrames = parseInt(d.broodFrames) || 0;
           BM.Storage.update('inspections', id, d);
+          if (BM.queens && BM.queens.recalculateForHive) {
+            BM.queens.recalculateForHive(d.hiveId || i.hiveId);
+          }
           BM.Toast.show('Muayene güncellendi ✓', 'success');
           App.render('inspections');
           return true;
@@ -483,8 +489,12 @@
     },
 
     del(id) {
+      const i = BM.Storage.get('inspections', id);
       BM.Modal.confirm('Bu muayeneyi silmek istiyor musunuz?', () => {
         BM.Storage.remove('inspections', id);
+        if (i && BM.queens && BM.queens.recalculateForHive) {
+          BM.queens.recalculateForHive(i.hiveId);
+        }
         BM.Toast.show('Muayene silindi', 'info');
         App.render('inspections');
       });

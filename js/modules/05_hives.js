@@ -443,32 +443,78 @@
         el.innerHTML = `<div class="card"><div class="empty"><div class="empty__icon">${BM.Icons.queens}</div><div class="empty__title">Bu kovanda ana arı kaydı yok</div><button class="btn btn--primary" onclick="BM.queens.add('${id}')">Ana Arı Ekle</button></div></div>`;
         return;
       }
+      const m = BM.queens.calculateMetrics(q);
       const age = ((Date.now() - new Date(q.birthDate).getTime()) / (365 * 864e5)).toFixed(1);
+      const score = m ? m.percentage : Math.round((q.performanceScore || 0.8) * 100);
+
       el.innerHTML = `
         <div class="grid-2">
           <div class="card">
-            <div class="card-head"><div class="card-title">Ana Arı Bilgileri</div><button class="btn btn--sm" onclick="BM.queens.edit('${q.id}')">Düzenle</button></div>
+            <div class="card-head">
+              <div class="card-title">Ana Arı Bilgileri</div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn--sm btn--ghost" onclick="BM.queens.recalculate('${q.id}');BM.hives._renderTab('${id}','queen')" title="Yöntem B ile skoru yeniden hesapla">⚡ AI Güncelle</button>
+                <button class="btn btn--sm" onclick="BM.queens.edit('${q.id}')">Düzenle</button>
+              </div>
+            </div>
             <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4)">
               <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--honey-400),var(--honey-600));display:flex;align-items:center;justify-content:center;font-size:30px">${BM.Icons.queens}</div>
               <div>
                 <div style="font-size:16px;font-weight:700">${BM.esc(BM.T.strain(q.strain))}</div>
-                <div style="font-size:12px;color:var(--text-secondary)">İşaret: <strong>${BM.T.color(q.markedColor)}</strong> · Kaynak: ${BM.T.source(q.source)}</div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">
+                  İşaret: <strong>${BM.T.color(q.markedColor)}</strong> · Kaynak: ${BM.T.source(q.source)}
+                </div>
+                <div style="margin-top:4px"><span class="badge ${BM.T.statusCls(q.status)}">${BM.T.status(q.status)}</span></div>
               </div>
             </div>
             <div class="row-list">
-              <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Doğum</div><div class="row-list__info">${BM.dateStr(q.birthDate)}</div></div></div>
-              <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Yaş</div><div class="row-list__info">${age} yıl</div></div></div>
-              <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Performans</div><div class="row-list__info">${(q.performanceScore * 100).toFixed(0)}%</div></div></div>
-              <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Durum</div><div class="row-list__info">${BM.T.status(q.status)}</div></div></div>
+              <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Doğum Tarihi</div><div class="row-list__info">${BM.dateStr(q.birthDate)}</div></div></div>
+              <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Yaş</div><div class="row-list__info">${age} yıl (${m ? m.ageMonths : 0} ay)</div></div></div>
+              <div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Durum / Sağlık</div><div class="row-list__info">${m ? m.statusBadge : BM.T.status(q.status)}</div></div></div>
               ${q.supplier ? `<div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Tedarikçi</div><div class="row-list__info">${BM.esc(q.supplier)}</div></div></div>` : ''}
+              ${q.costTry ? `<div class="row-list__item"><div class="row-list__main"><div class="row-list__name">Maliyet</div><div class="row-list__info">${BM.fmt(q.costTry)} ₺</div></div></div>` : ''}
             </div>
           </div>
+
           <div class="card">
-            <div class="card-title">📊 Performans Skoru</div>
-            <div style="margin-top:var(--space-4);padding:var(--space-5);background:var(--bg-tertiary);border-radius:var(--r-lg);text-align:center">
-              <div style="font-size:48px;font-weight:800;color:${q.performanceScore >= 0.7 ? 'var(--success)' : q.performanceScore >= 0.5 ? 'var(--honey-500)' : 'var(--danger)'}">${(q.performanceScore * 100).toFixed(0)}%</div>
-              <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Mevcut Skor</div>
+            <div class="card-head">
+              <div class="card-title">🤖 AI Performans Analizi (Yöntem B)</div>
+              <span class="badge ${score >= 70 ? 'badge--success' : score >= 50 ? 'badge--warn' : 'badge--danger'}">${m ? m.statusBadge : '%' + score}</span>
             </div>
+            
+            <div style="margin-top:var(--space-2);padding:var(--space-4);background:var(--bg-tertiary);border-radius:var(--radius-lg);text-align:center">
+              <div style="font-size:44px;font-weight:800;color:${score >= 70 ? 'var(--success)' : score >= 50 ? 'var(--honey-500)' : 'var(--danger)'}">%${score}</div>
+              <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Muayene & Hasat Tabanlı AI Puanı</div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);margin-top:var(--space-3)">
+              <div style="background:var(--bg-tertiary);padding:8px 10px;border-radius:var(--radius-md);border-left:3px solid #f59e0b">
+                <div style="font-size:11px;color:var(--text-muted)">🍯 Bal Verimi (%35)</div>
+                <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-top:2px">%${m ? m.breakdown.productivity : 80}</div>
+                <div style="font-size:10px;color:var(--text-secondary)">Toplam: ${m ? m.totalHoney : 0} kg</div>
+              </div>
+              <div style="background:var(--bg-tertiary);padding:8px 10px;border-radius:var(--radius-md);border-left:3px solid #10b981">
+                <div style="font-size:11px;color:var(--text-muted)">🛡️ Varroa & Sağlık (%25)</div>
+                <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-top:2px">%${m ? m.breakdown.health : 85}</div>
+                <div style="font-size:10px;color:var(--text-secondary)">Ort. Varroa: ${m ? m.avgVarroa : 0}</div>
+              </div>
+              <div style="background:var(--bg-tertiary);padding:8px 10px;border-radius:var(--radius-md);border-left:3px solid #f97316">
+                <div style="font-size:11px;color:var(--text-muted)">🥚 Yavru Düzeni (%20)</div>
+                <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-top:2px">%${m ? m.breakdown.broodPattern : 85}</div>
+                <div style="font-size:10px;color:var(--text-secondary)">Kuluçka kalitesi</div>
+              </div>
+              <div style="background:var(--bg-tertiary);padding:8px 10px;border-radius:var(--radius-md);border-left:3px solid #06b6d4">
+                <div style="font-size:11px;color:var(--text-muted)">🟢 Koloni Huyu (%20)</div>
+                <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-top:2px">%${m ? m.breakdown.temperament : 80}</div>
+                <div style="font-size:10px;color:var(--text-secondary)">Sakinlik puanı</div>
+              </div>
+            </div>
+
+            ${m && m.recommendation ? `
+              <div style="margin-top:var(--space-3);padding:10px;background:rgba(245,158,11,0.08);border:1px dashed rgba(245,158,11,0.3);border-radius:var(--radius-md);font-size:12px;color:var(--text-primary);line-height:1.4">
+                💡 <b>AI Tavsiyesi:</b> ${m.recommendation}
+              </div>
+            ` : ''}
           </div>
         </div>
       `;

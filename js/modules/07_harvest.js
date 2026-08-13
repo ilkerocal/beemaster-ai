@@ -27,7 +27,10 @@
           const h = BM.Storage.get('hives', d.hiveId);
           if (h) d.apiaryId = h.apiaryId;
           BM.Storage.add('harvests', d);
-          BM.Toast.show('Hasat kaydedildi ✓', 'success');
+          if (BM.queens && BM.queens.recalculateForHive) {
+            BM.queens.recalculateForHive(d.hiveId);
+          }
+          BM.Toast.show('Hasat kaydedildi ve Ana Arı verim skoru güncellendi ✓', 'success');
           App.render('harvest');
           return true;
         }
@@ -56,12 +59,26 @@
          </div>
          <label class="field"><span class="field-label">Notlar</span>
            <textarea class="textarea" name="notes" rows="2">${BM.esc(h.notes || '')}</textarea></label>`,
-        (d) => { d.weight = parseFloat(d.weight) || 0; d.frames = parseInt(d.frames) || 0; BM.Storage.update('harvests', id, d); BM.Toast.show('Hasat güncellendi ✓', 'success'); App.render('harvest'); return true; }
+        (d) => {
+          d.weight = parseFloat(d.weight) || 0;
+          d.frames = parseInt(d.frames) || 0;
+          BM.Storage.update('harvests', id, d);
+          if (BM.queens && BM.queens.recalculateForHive) {
+            BM.queens.recalculateForHive(d.hiveId || h.hiveId);
+          }
+          BM.Toast.show('Hasat güncellendi ✓', 'success');
+          App.render('harvest');
+          return true;
+        }
       );
     },
     del(id) {
+      const h = BM.Storage.get('harvests', id);
       BM.Modal.confirm('Bu hasat kaydını silmek istiyor musunuz?', () => {
         BM.Storage.remove('harvests', id);
+        if (h && BM.queens && BM.queens.recalculateForHive) {
+          BM.queens.recalculateForHive(h.hiveId);
+        }
         BM.Toast.show('Hasat silindi', 'info');
         App.render('harvest');
       });
